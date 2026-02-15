@@ -149,6 +149,42 @@ function registerIpcHandlers() {
     return { inserted };
   });
 
+  // Tag handlers
+  ipcMain.handle('tag:getAll', () => {
+    return dataStore.getAllTags();
+  });
+
+  ipcMain.handle('tag:add', async (_event, name) => {
+    const tag = dataStore.addTag(name);
+    await syncManager.notifyChange('Add tag: ' + tag.name);
+    return tag;
+  });
+
+  ipcMain.handle('tag:edit', async (_event, id, data) => {
+    const tag = dataStore.editTag(id, data);
+    await syncManager.notifyChange('Edit tag: ' + tag.name);
+    return tag;
+  });
+
+  ipcMain.handle('tag:remove', async (_event, id) => {
+    const tag = dataStore.getTagById(id);
+    dataStore.removeTag(id);
+    await syncManager.notifyChange('Remove tag: ' + (tag ? tag.name : id));
+    return { success: true };
+  });
+
+  ipcMain.handle('tag:assign', async (_event, feedId, tagId) => {
+    dataStore.assignTagToFeed(feedId, tagId);
+    await syncManager.notifyChange('Assign tag to feed');
+    return { success: true };
+  });
+
+  ipcMain.handle('tag:unassign', async (_event, feedId, tagId) => {
+    dataStore.unassignTagFromFeed(feedId, tagId);
+    await syncManager.notifyChange('Unassign tag from feed');
+    return { success: true };
+  });
+
   // Entry handlers
   ipcMain.handle('entry:getByFeed', (_event, feedId) => {
     return dataStore.getEntriesByFeed(feedId);

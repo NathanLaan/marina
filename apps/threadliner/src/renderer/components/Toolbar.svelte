@@ -90,6 +90,10 @@
     >
       <i class="fas fa-rotate-left"></i>
     </button>
+    <div class="toolbar-divider"></div>
+    <button class="toolbar-btn" title="Tags" on:click={() => dispatch('openTags')}>
+      <i class="fas fa-tags"></i>
+    </button>
   </div>
   <div class="toolbar-group">
     <button class="toolbar-btn" class:sync-pending={hasPendingSync} title="Sync" on:click={() => dispatch('openSync')}>

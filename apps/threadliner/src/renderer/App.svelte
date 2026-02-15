@@ -9,7 +9,8 @@
   import SettingsModal from './components/SettingsModal.svelte';
   import SyncModal from './components/SyncModal.svelte';
   import SetupDialog from './components/SetupDialog.svelte';
-  import { loadFeeds, error, setupComplete, checkSetup } from './stores/app.js';
+  import TagsModal from './components/TagsModal.svelte';
+  import { loadFeeds, loadTags, error, setupComplete, checkSetup } from './stores/app.js';
   import { loadTheme } from './stores/theme.js';
   import { startPolling, stopPolling } from './stores/sync.js';
 
@@ -18,6 +19,7 @@
   let showEditModal = false;
   let showSettingsModal = false;
   let showSyncModal = false;
+  let showTagsModal = false;
   let loading = true;
 
   onMount(async () => {
@@ -25,6 +27,7 @@
     if (isReady) {
       await loadTheme();
       await loadFeeds();
+      await loadTags();
       startPolling();
     }
     loading = false;
@@ -38,6 +41,7 @@
     setupComplete.set(true);
     await loadTheme();
     await loadFeeds();
+    await loadTags();
     startPolling();
   }
 </script>
@@ -55,6 +59,7 @@
       on:editFeed={() => (showEditModal = true)}
       on:openSettings={() => (showSettingsModal = true)}
       on:openSync={() => (showSyncModal = true)}
+      on:openTags={() => (showTagsModal = true)}
     />
     <div class="main-content">
       <Sidebar bind:width={sidebarWidth} />
@@ -86,6 +91,10 @@
 
   {#if showSyncModal}
     <SyncModal on:close={() => (showSyncModal = false)} />
+  {/if}
+
+  {#if showTagsModal}
+    <TagsModal on:close={() => (showTagsModal = false)} />
   {/if}
 {/if}
 

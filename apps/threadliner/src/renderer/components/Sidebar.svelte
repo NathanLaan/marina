@@ -1,5 +1,5 @@
 <script>
-  import { feeds, selectedFeedId, selectFeed } from '../stores/app.js';
+  import { feeds, selectedFeedId, selectFeed, tags, selectedFeedTagIds, assignTagToFeed, unassignTagFromFeed } from '../stores/app.js';
 
   export let width = 240;
 
@@ -28,6 +28,15 @@
   function handleFeedClick(feedId) {
     selectFeed(feedId);
   }
+
+  function handleTagToggle(tagId) {
+    if ($selectedFeedId === null) return;
+    if ($selectedFeedTagIds.includes(tagId)) {
+      unassignTagFromFeed($selectedFeedId, tagId);
+    } else {
+      assignTagToFeed($selectedFeedId, tagId);
+    }
+  }
 </script>
 
 <div class="sidebar" style="width: {width}px" class:resizing={isResizing}>
@@ -52,6 +61,26 @@
       {/each}
     {/if}
   </div>
+  {#if $tags.length > 0}
+    <div class="tags-section">
+      <div class="tags-header">
+        <h2>Tags</h2>
+      </div>
+      <div class="tags-list">
+        {#each $tags as tag (tag.id)}
+          <button
+            class="tag-toggle"
+            class:assigned={$selectedFeedTagIds.includes(tag.id)}
+            disabled={$selectedFeedId === null}
+            on:click={() => handleTagToggle(tag.id)}
+          >
+            <i class="fas" class:fa-square-check={$selectedFeedTagIds.includes(tag.id)} class:fa-square={!$selectedFeedTagIds.includes(tag.id)}></i>
+            <span class="tag-name">{tag.name}</span>
+          </button>
+        {/each}
+      </div>
+    </div>
+  {/if}
   <!-- svelte-ignore a11y-no-static-element-interactions -->
   <div class="resize-handle" on:mousedown={startResize}></div>
 </div>
@@ -140,6 +169,66 @@
     color: var(--color-text-muted);
     font-size: 13px;
     text-align: center;
+  }
+
+  .tags-section {
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    max-height: 40%;
+    flex-shrink: 0;
+  }
+
+  .tags-header {
+    padding: 12px 16px;
+  }
+
+  .tags-header h2 {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-text-muted);
+  }
+
+  .tags-list {
+    overflow-y: auto;
+    padding: 0 0 4px 0;
+  }
+
+  .tag-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 16px;
+    text-align: left;
+    font-size: 13px;
+    color: var(--color-text-muted);
+    border-radius: 0;
+    transition: background-color 0.1s, color 0.1s;
+  }
+
+  .tag-toggle:hover:not(:disabled) {
+    background-color: var(--color-surface-hover);
+    color: var(--color-text);
+  }
+
+  .tag-toggle:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  .tag-toggle.assigned {
+    color: var(--color-accent);
+  }
+
+  .tag-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
   }
 
   .resize-handle {

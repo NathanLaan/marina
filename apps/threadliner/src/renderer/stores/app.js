@@ -3,6 +3,7 @@ import { writable, derived } from 'svelte/store';
 // Core data stores
 export const feeds = writable([]);
 export const entries = writable([]);
+export const tags = writable([]);
 
 // Selection state
 export const selectedFeedId = writable(null);
@@ -28,6 +29,16 @@ export const selectedEntry = derived(
   ([$entries, $selectedEntryId]) => {
     if ($selectedEntryId === null) return null;
     return $entries.find((e) => e.id === $selectedEntryId) || null;
+  }
+);
+
+// Derived: tag IDs assigned to the currently selected feed
+export const selectedFeedTagIds = derived(
+  [feeds, selectedFeedId],
+  ([$feeds, $selectedFeedId]) => {
+    if ($selectedFeedId === null) return [];
+    const feed = $feeds.find((f) => f.id === $selectedFeedId);
+    return feed && Array.isArray(feed.tag_ids) ? feed.tag_ids : [];
   }
 );
 
@@ -200,5 +211,69 @@ export async function markEntryUnread(entryId, feedId) {
     loadFeeds();
   } catch (err) {
     // Non-critical
+  }
+}
+
+// Tag actions
+
+export async function loadTags() {
+  try {
+    const result = await window.api.getTags();
+    tags.set(result);
+  } catch (err) {
+    error.set('Failed to load tags: ' + err.message);
+  }
+}
+
+export async function addTag(name) {
+  error.set(null);
+  try {
+    await window.api.addTag(name);
+    await loadTags();
+  } catch (err) {
+    error.set('Failed to add tag: ' + err.message);
+    throw err;
+  }
+}
+
+export async function editTag(id, data) {
+  error.set(null);
+  try {
+    await window.api.editTag(id, data);
+    await loadTags();
+  } catch (err) {
+    error.set('Failed to edit tag: ' + err.message);
+    throw err;
+  }
+}
+
+export async function removeTag(id) {
+  error.set(null);
+  try {
+    await window.api.removeTag(id);
+    tags.update((items) => items.filter((t) => t.id !== id));
+    await loadFeeds();
+  } catch (err) {
+    error.set('Failed to remove tag: ' + err.message);
+  }
+}
+
+export async function assignTagToFeed(feedId, tagId) {
+  error.set(null);
+  try {
+    await window.api.assignTag(feedId, tagId);
+    await loadFeeds();
+  } catch (err) {
+    error.set('Failed to assign tag: ' + err.message);
+  }
+}
+
+export async function unassignTagFromFeed(feedId, tagId) {
+  error.set(null);
+  try {
+    await window.api.unassignTag(feedId, tagId);
+    await loadFeeds();
+  } catch (err) {
+    error.set('Failed to unassign tag: ' + err.message);
   }
 }

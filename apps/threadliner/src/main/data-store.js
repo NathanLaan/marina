@@ -4,6 +4,7 @@ const crypto = require('crypto');
 
 let dataDir = null;
 let feedsCache = null;
+let tagsCache = null;
 
 // --- Initialization ---
 
@@ -11,6 +12,7 @@ function init(dir) {
   dataDir = dir;
   ensureDirectoryStructure();
   feedsCache = null;
+  tagsCache = null;
 }
 
 function getDataDir() {
@@ -38,6 +40,11 @@ function ensureDirectoryStructure() {
   if (!fs.existsSync(settingsPath)) {
     writeJsonAtomic(settingsPath, {});
   }
+
+  const tagsPath = getTagsIndexPath();
+  if (!fs.existsSync(tagsPath)) {
+    writeJsonAtomic(tagsPath, { tags: [] });
+  }
 }
 
 // --- Path helpers ---
@@ -56,6 +63,10 @@ function getEntriesPath(feedId) {
 
 function getSettingsPath() {
   return path.join(dataDir, 'configuration', 'settings.json');
+}
+
+function getTagsIndexPath() {
+  return path.join(dataDir, 'data', 'tags.json');
 }
 
 // --- Atomic file I/O ---
@@ -262,6 +273,123 @@ function markAllUnread(feedId) {
   }
 }
 
+// --- Tag operations ---
+
+function loadTagsIndex() {
+  if (tagsCache) return tagsCache;
+  const data = readJson(getTagsIndexPath());
+  tagsCache = data && Array.isArray(data.tags) ? data.tags : [];
+  return tagsCache;
+}
+
+function saveTagsIndex(tags) {
+  tagsCache = tags;
+  writeJsonAtomic(getTagsIndexPath(), { tags });
+}
+
+function getAllTags() {
+  return loadTagsIndex();
+}
+
+function getTagById(id) {
+  const tags = loadTagsIndex();
+  return tags.find((t) => t.id === id) || null;
+}
+
+function addTag(name) {
+  const tags = loadTagsIndex();
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error('Tag name cannot be empty');
+
+  const existing = tags.find((t) => t.name.toLowerCase() === trimmed.toLowerCase());
+  if (existing) throw new Error('A tag with this name already exists');
+
+  const tag = {
+    id: crypto.randomUUID(),
+    name: trimmed,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  tags.push(tag);
+  saveTagsIndex(tags);
+  return tag;
+}
+
+function editTag(id, data) {
+  const tags = loadTagsIndex();
+  const index = tags.findIndex((t) => t.id === id);
+  if (index === -1) throw new Error('Tag not found');
+
+  if (data.name !== undefined) {
+    const trimmed = data.name.trim();
+    if (!trimmed) throw new Error('Tag name cannot be empty');
+    const duplicate = tags.find((t) => t.id !== id && t.name.toLowerCase() === trimmed.toLowerCase());
+    if (duplicate) throw new Error('A tag with this name already exists');
+    tags[index].name = trimmed;
+  }
+
+  tags[index].updatedAt = new Date().toISOString();
+  saveTagsIndex(tags);
+  return tags[index];
+}
+
+function removeTag(id) {
+  let tags = loadTagsIndex();
+  tags = tags.filter((t) => t.id !== id);
+  saveTagsIndex(tags);
+
+  // Cascade: strip this tagId from all feeds
+  const feeds = loadFeedsIndex();
+  let changed = false;
+  for (const feed of feeds) {
+    if (Array.isArray(feed.tagIds) && feed.tagIds.includes(id)) {
+      feed.tagIds = feed.tagIds.filter((tid) => tid !== id);
+      changed = true;
+    }
+  }
+  if (changed) {
+    saveFeedsIndex(feeds);
+  }
+}
+
+function assignTagToFeed(feedId, tagId) {
+  const feeds = loadFeedsIndex();
+  const feed = feeds.find((f) => f.id === feedId);
+  if (!feed) throw new Error('Feed not found');
+  if (!getTagById(tagId)) throw new Error('Tag not found');
+
+  if (!Array.isArray(feed.tagIds)) feed.tagIds = [];
+  if (!feed.tagIds.includes(tagId)) {
+    feed.tagIds.push(tagId);
+    saveFeedsIndex(feeds);
+  }
+}
+
+function unassignTagFromFeed(feedId, tagId) {
+  const feeds = loadFeedsIndex();
+  const feed = feeds.find((f) => f.id === feedId);
+  if (!feed) throw new Error('Feed not found');
+
+  if (Array.isArray(feed.tagIds) && feed.tagIds.includes(tagId)) {
+    feed.tagIds = feed.tagIds.filter((tid) => tid !== tagId);
+    saveFeedsIndex(feeds);
+  }
+}
+
+function tagToRendererFormat(tag) {
+  return {
+    id: tag.id,
+    name: tag.name,
+    created_at: tag.createdAt,
+    updated_at: tag.updatedAt,
+  };
+}
+
+function getAllTagsForRenderer() {
+  return getAllTags().map(tagToRendererFormat);
+}
+
 // --- Settings operations ---
 
 function getAllSettings() {
@@ -292,6 +420,7 @@ function feedToRendererFormat(feed) {
     created_at: feed.createdAt,
     updated_at: feed.updatedAt,
     unread_count: feed.unread_count || 0,
+    tag_ids: Array.isArray(feed.tagIds) ? feed.tagIds : [],
   };
 }
 
@@ -332,6 +461,13 @@ module.exports = {
   markEntryUnread,
   markAllRead,
   markAllUnread,
+  getAllTags: getAllTagsForRenderer,
+  getTagById,
+  addTag,
+  editTag: editTag,
+  removeTag,
+  assignTagToFeed,
+  unassignTagFromFeed,
   getSetting,
   setSetting,
 };

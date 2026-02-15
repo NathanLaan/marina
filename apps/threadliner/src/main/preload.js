@@ -20,6 +20,14 @@ contextBridge.exposeInMainWorld('api', {
   markAllRead: (feedId) => ipcRenderer.invoke('entry:markAllRead', feedId),
   markAllUnread: (feedId) => ipcRenderer.invoke('entry:markAllUnread', feedId),
 
+  // Tag operations
+  getTags: () => ipcRenderer.invoke('tag:getAll'),
+  addTag: (name) => ipcRenderer.invoke('tag:add', name),
+  editTag: (id, data) => ipcRenderer.invoke('tag:edit', id, data),
+  removeTag: (id) => ipcRenderer.invoke('tag:remove', id),
+  assignTag: (feedId, tagId) => ipcRenderer.invoke('tag:assign', feedId, tagId),
+  unassignTag: (feedId, tagId) => ipcRenderer.invoke('tag:unassign', feedId, tagId),
+
   // Settings operations
   getSetting: (key) => ipcRenderer.invoke('settings:get', key),
   setSetting: (key, value) => ipcRenderer.invoke('settings:set', key, value),
