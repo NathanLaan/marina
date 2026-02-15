@@ -6,6 +6,9 @@
     markAllRead, markAllUnread,
     markEntryRead, markEntryUnread,
   } from '../stores/app.js';
+  import { syncStatus } from '../stores/sync.js';
+
+  $: hasPendingSync = $syncStatus === 'committing' || $syncStatus === 'waiting';
 
   const dispatch = createEventDispatcher();
 
@@ -89,7 +92,7 @@
     </button>
   </div>
   <div class="toolbar-group">
-    <button class="toolbar-btn" title="Sync" on:click={() => dispatch('openSync')}>
+    <button class="toolbar-btn" class:sync-pending={hasPendingSync} title="Sync" on:click={() => dispatch('openSync')}>
       <i class="fas fa-cloud"></i>
     </button>
     <button class="toolbar-btn" title="Settings" on:click={() => dispatch('openSettings')}>
@@ -144,5 +147,9 @@
   .toolbar-btn:disabled {
     opacity: 0.3;
     cursor: default;
+  }
+
+  .toolbar-btn.sync-pending {
+    color: var(--color-accent);
   }
 </style>

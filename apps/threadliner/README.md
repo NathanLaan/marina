@@ -101,6 +101,80 @@ Threadline stores all data as JSON files in a local Git repository:
 
 Changes are committed locally on every action and pushed to a remote on a configurable debounce timer (default 10 seconds). The sync system uses the system's `git` CLI and existing SSH credentials.
 
+## Building for Distribution
+
+Threadline uses [electron-builder](https://www.electron.build/) to package the app for distribution.
+
+### 1. Install electron-builder
+
+```bash
+npm install --save-dev electron-builder
+```
+
+### 2. Add build configuration
+
+Add the following `build` section to `package.json`:
+
+```json
+{
+  "build": {
+    "appId": "com.threadline.app",
+    "productName": "Threadline",
+    "files": [
+      "src/main/**/*",
+      "dist/renderer/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Network;Feed"
+    },
+    "mac": {
+      "target": ["dmg"],
+      "category": "public.app-category.news"
+    },
+    "win": {
+      "target": ["nsis"]
+    }
+  }
+}
+```
+
+### 3. Add packaging scripts
+
+Add these scripts to the `scripts` section in `package.json`:
+
+```json
+{
+  "scripts": {
+    "dist": "npm run build && electron-builder",
+    "dist:linux": "npm run build && electron-builder --linux",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:win": "npm run build && electron-builder --win"
+  }
+}
+```
+
+### 4. Build the distributable
+
+```bash
+# Build for the current platform
+npm run dist
+
+# Or target a specific platform
+npm run dist:linux
+npm run dist:mac
+npm run dist:win
+```
+
+Output files are written to the `release/` directory (already in `.gitignore`).
+
+### Runtime requirements
+
+The packaged app requires **Git** to be installed on the end user's system for data sync to work. Threadline uses the system `git` CLI and existing SSH credentials.
+
 ## Tech Stack
 
 - **Electron** - Desktop runtime

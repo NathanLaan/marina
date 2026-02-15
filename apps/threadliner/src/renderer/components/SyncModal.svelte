@@ -1,8 +1,8 @@
 <script>
-  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import {
     syncStatus, lastSyncTime, lastError, syncConfig,
-    startPolling, stopPolling, loadSyncConfig, forcePush, forcePull,
+    loadSyncConfig, forcePush, forcePull,
   } from '../stores/sync.js';
 
   const dispatch = createEventDispatcher();
@@ -12,11 +12,6 @@
 
   onMount(() => {
     loadSyncConfig();
-    startPolling();
-  });
-
-  onDestroy(() => {
-    stopPolling();
   });
 
   async function handlePush() {

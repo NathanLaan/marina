@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import Toolbar from './components/Toolbar.svelte';
   import Sidebar from './components/Sidebar.svelte';
   import EntryList from './components/EntryList.svelte';
@@ -11,6 +11,7 @@
   import SetupDialog from './components/SetupDialog.svelte';
   import { loadFeeds, error, setupComplete, checkSetup } from './stores/app.js';
   import { loadTheme } from './stores/theme.js';
+  import { startPolling, stopPolling } from './stores/sync.js';
 
   let sidebarWidth = 240;
   let showAddModal = false;
@@ -24,14 +25,20 @@
     if (isReady) {
       await loadTheme();
       await loadFeeds();
+      startPolling();
     }
     loading = false;
+  });
+
+  onDestroy(() => {
+    stopPolling();
   });
 
   async function handleSetupComplete() {
     setupComplete.set(true);
     await loadTheme();
     await loadFeeds();
+    startPolling();
   }
 </script>
 
