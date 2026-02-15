@@ -1,5 +1,5 @@
 <script>
-  import { createEventDispatcher, onMount, afterUpdate, tick } from 'svelte';
+  import { createEventDispatcher, onMount, afterUpdate } from 'svelte';
   import {
     syncStatus, lastSyncTime, lastError, syncConfig, syncLog,
     loadSyncConfig, forcePush, forcePull, loadFullLog,
@@ -9,32 +9,19 @@
 
   let pushing = false;
   let pulling = false;
-  let activeTab = 'status';
-  let logLoaded = false;
   let logContainer;
 
   onMount(() => {
     loadSyncConfig();
+    loadFullLog();
   });
 
   // Auto-scroll log when new entries arrive
   afterUpdate(() => {
-    if (activeTab === 'log' && logContainer) {
+    if (logContainer) {
       logContainer.scrollTop = logContainer.scrollHeight;
     }
   });
-
-  async function switchToLog() {
-    activeTab = 'log';
-    if (!logLoaded) {
-      await loadFullLog();
-      logLoaded = true;
-      await tick();
-      if (logContainer) {
-        logContainer.scrollTop = logContainer.scrollHeight;
-      }
-    }
-  }
 
   async function handlePush() {
     pushing = true;
@@ -102,85 +89,73 @@
       </button>
     </div>
 
-    <div class="tab-bar">
-      <button
-        class="tab"
-        class:active={activeTab === 'status'}
-        on:click={() => activeTab = 'status'}
-      >Status</button>
-      <button
-        class="tab"
-        class:active={activeTab === 'log'}
-        on:click={switchToLog}
-      >Log</button>
-    </div>
-
     <div class="modal-body">
-      {#if activeTab === 'status'}
-        <div class="status-section">
-          <div class="status-row">
-            <span class="status-label">Status</span>
-            <span class="status-value" class:error={$syncStatus === 'error'}>
-              <i class="fas {statusIcon($syncStatus)}"></i>
-              {statusLabel($syncStatus)}
-            </span>
-          </div>
-
-          <div class="status-row">
-            <span class="status-label">Last Sync</span>
-            <span class="status-value">{formatTime($lastSyncTime)}</span>
-          </div>
-
-          {#if $syncConfig.remoteUrl}
-            <div class="status-row">
-              <span class="status-label">Remote</span>
-              <span class="status-value mono">{$syncConfig.remoteUrl}</span>
-            </div>
-          {:else}
-            <div class="status-row">
-              <span class="status-label">Remote</span>
-              <span class="status-value muted">Not configured (local only)</span>
-            </div>
-          {/if}
-
-          <div class="status-row">
-            <span class="status-label">Data Folder</span>
-            <span class="status-value mono">{$syncConfig.dataDir || 'Not set'}</span>
-          </div>
+      <div class="status-section">
+        <div class="status-row">
+          <span class="status-label">Status</span>
+          <span class="status-value" class:error={$syncStatus === 'error'}>
+            <i class="fas {statusIcon($syncStatus)}"></i>
+            {statusLabel($syncStatus)}
+          </span>
         </div>
 
-        {#if $lastError}
-          <div class="error-box">
-            <i class="fas fa-exclamation-triangle"></i>
-            <span>{$lastError}</span>
+        <div class="status-row">
+          <span class="status-label">Last Sync</span>
+          <span class="status-value">{formatTime($lastSyncTime)}</span>
+        </div>
+
+        {#if $syncConfig.remoteUrl}
+          <div class="status-row">
+            <span class="status-label">Remote</span>
+            <span class="status-value mono">{$syncConfig.remoteUrl}</span>
+          </div>
+        {:else}
+          <div class="status-row">
+            <span class="status-label">Remote</span>
+            <span class="status-value muted">Not configured (local only)</span>
           </div>
         {/if}
 
-        <div class="actions">
-          <button
-            class="btn btn-primary"
-            on:click={handlePush}
-            disabled={pushing || pulling || !$syncConfig.remoteUrl}
-          >
-            {#if pushing}
-              <i class="fas fa-spinner fa-spin"></i> Syncing...
-            {:else}
-              <i class="fas fa-cloud-arrow-up"></i> Sync Now
-            {/if}
-          </button>
-          <button
-            class="btn btn-secondary"
-            on:click={handlePull}
-            disabled={pushing || pulling || !$syncConfig.remoteUrl}
-          >
-            {#if pulling}
-              <i class="fas fa-spinner fa-spin"></i> Pulling...
-            {:else}
-              <i class="fas fa-cloud-arrow-down"></i> Pull Now
-            {/if}
-          </button>
+        <div class="status-row">
+          <span class="status-label">Data Folder</span>
+          <span class="status-value mono">{$syncConfig.dataDir || 'Not set'}</span>
         </div>
-      {:else}
+      </div>
+
+      {#if $lastError}
+        <div class="error-box">
+          <i class="fas fa-exclamation-triangle"></i>
+          <span>{$lastError}</span>
+        </div>
+      {/if}
+
+      <div class="actions">
+        <button
+          class="btn btn-primary"
+          on:click={handlePush}
+          disabled={pushing || pulling || !$syncConfig.remoteUrl}
+        >
+          {#if pushing}
+            <i class="fas fa-spinner fa-spin"></i> Syncing...
+          {:else}
+            <i class="fas fa-cloud-arrow-up"></i> Sync Now
+          {/if}
+        </button>
+        <button
+          class="btn btn-secondary"
+          on:click={handlePull}
+          disabled={pushing || pulling || !$syncConfig.remoteUrl}
+        >
+          {#if pulling}
+            <i class="fas fa-spinner fa-spin"></i> Pulling...
+          {:else}
+            <i class="fas fa-cloud-arrow-down"></i> Pull Now
+          {/if}
+        </button>
+      </div>
+
+      <div class="log-section">
+        <div class="log-header">Log</div>
         <div class="log-container" bind:this={logContainer}>
           {#if $syncLog.length === 0}
             <div class="log-empty">No sync activity yet.</div>
@@ -199,7 +174,7 @@
             {/each}
           {/if}
         </div>
-      {/if}
+      </div>
     </div>
   </div>
 </div>
@@ -219,7 +194,7 @@
     background-color: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: 10px;
-    width: 480px;
+    width: 960px;
     max-width: 90vw;
     overflow: hidden;
   }
@@ -229,7 +204,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 16px 20px;
-    border-bottom: none;
+    border-bottom: 1px solid var(--color-border);
   }
 
   h3 {
@@ -251,33 +226,6 @@
   .close-btn:hover {
     background-color: var(--color-surface-hover);
     color: var(--color-text);
-  }
-
-  .tab-bar {
-    display: flex;
-    gap: 0;
-    padding: 0 20px;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .tab {
-    padding: 8px 16px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--color-text-muted);
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    background: none;
-    cursor: pointer;
-  }
-
-  .tab:hover {
-    color: var(--color-text);
-  }
-
-  .tab.active {
-    color: var(--color-accent);
-    border-bottom-color: var(--color-accent);
   }
 
   .modal-body {
@@ -351,6 +299,7 @@
     display: flex;
     gap: 8px;
     justify-content: flex-end;
+    margin-bottom: 20px;
   }
 
   .btn {
@@ -384,6 +333,18 @@
   .btn:disabled {
     opacity: 0.5;
     cursor: default;
+  }
+
+  .log-section {
+    border-top: 1px solid var(--color-border);
+    padding-top: 16px;
+  }
+
+  .log-header {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    margin-bottom: 8px;
   }
 
   .log-container {
