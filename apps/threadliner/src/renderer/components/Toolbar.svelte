@@ -1,6 +1,11 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { selectedFeedId, removeFeed, refreshFeed, selectedFeed } from '../stores/app.js';
+  import {
+    selectedFeedId, selectedEntryId, selectedFeed,
+    removeFeed, refreshFeed,
+    markAllRead, markAllUnread,
+    markEntryRead, markEntryUnread,
+  } from '../stores/app.js';
 
   const dispatch = createEventDispatcher();
 
@@ -14,6 +19,24 @@
   function handleRefresh() {
     if ($selectedFeedId !== null) {
       refreshFeed($selectedFeedId);
+    }
+  }
+
+  function handleMarkRead() {
+    if ($selectedFeedId === null) return;
+    if ($selectedEntryId !== null) {
+      markEntryRead($selectedEntryId, $selectedFeedId);
+    } else {
+      markAllRead($selectedFeedId);
+    }
+  }
+
+  function handleMarkUnread() {
+    if ($selectedFeedId === null) return;
+    if ($selectedEntryId !== null) {
+      markEntryUnread($selectedEntryId, $selectedFeedId);
+    } else {
+      markAllUnread($selectedFeedId);
     }
   }
 </script>
@@ -47,8 +70,28 @@
     >
       <i class="fas fa-sync-alt"></i>
     </button>
+    <div class="toolbar-divider"></div>
+    <button
+      class="toolbar-btn"
+      title="Mark as Read"
+      disabled={$selectedFeedId === null}
+      on:click={handleMarkRead}
+    >
+      <i class="fas fa-check-double"></i>
+    </button>
+    <button
+      class="toolbar-btn"
+      title="Mark as Unread"
+      disabled={$selectedFeedId === null}
+      on:click={handleMarkUnread}
+    >
+      <i class="fas fa-rotate-left"></i>
+    </button>
   </div>
   <div class="toolbar-group">
+    <button class="toolbar-btn" title="Sync" on:click={() => dispatch('openSync')}>
+      <i class="fas fa-cloud"></i>
+    </button>
     <button class="toolbar-btn" title="Settings" on:click={() => dispatch('openSettings')}>
       <i class="fas fa-cog"></i>
     </button>
@@ -72,6 +115,13 @@
     flex-direction: column;
     align-items: center;
     gap: 6px;
+  }
+
+  .toolbar-divider {
+    width: 32px;
+    height: 1px;
+    background-color: var(--color-border);
+    margin: 4px 0;
   }
 
   .toolbar-btn {

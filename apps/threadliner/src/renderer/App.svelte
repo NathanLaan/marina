@@ -7,55 +7,90 @@
   import AddFeedModal from './components/AddFeedModal.svelte';
   import EditFeedModal from './components/EditFeedModal.svelte';
   import SettingsModal from './components/SettingsModal.svelte';
-  import { loadFeeds, error } from './stores/app.js';
+  import SyncModal from './components/SyncModal.svelte';
+  import SetupDialog from './components/SetupDialog.svelte';
+  import { loadFeeds, error, setupComplete, checkSetup } from './stores/app.js';
   import { loadTheme } from './stores/theme.js';
 
   let sidebarWidth = 240;
   let showAddModal = false;
   let showEditModal = false;
   let showSettingsModal = false;
+  let showSyncModal = false;
+  let loading = true;
 
-  onMount(() => {
-    loadTheme();
-    loadFeeds();
+  onMount(async () => {
+    const isReady = await checkSetup();
+    if (isReady) {
+      await loadTheme();
+      await loadFeeds();
+    }
+    loading = false;
   });
+
+  async function handleSetupComplete() {
+    setupComplete.set(true);
+    await loadTheme();
+    await loadFeeds();
+  }
 </script>
 
-<div class="app-shell">
-  <Toolbar
-    on:addFeed={() => (showAddModal = true)}
-    on:editFeed={() => (showEditModal = true)}
-    on:openSettings={() => (showSettingsModal = true)}
-  />
-  <div class="main-content">
-    <Sidebar bind:width={sidebarWidth} />
-    <EntryList />
-    <ContentViewer />
+{#if loading}
+  <div class="loading-screen">
+    <i class="fas fa-rss fa-3x"></i>
   </div>
-</div>
-
-{#if $error}
-  <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-  <div class="error-toast" role="alert" on:click={() => error.set(null)} on:keydown={(e) => e.key === 'Escape' && error.set(null)}>
-    <i class="fas fa-exclamation-circle"></i>
-    <span>{$error}</span>
-    <button class="error-dismiss" on:click|stopPropagation={() => error.set(null)}><i class="fas fa-times"></i></button>
+{:else if !$setupComplete}
+  <SetupDialog on:complete={handleSetupComplete} />
+{:else}
+  <div class="app-shell">
+    <Toolbar
+      on:addFeed={() => (showAddModal = true)}
+      on:editFeed={() => (showEditModal = true)}
+      on:openSettings={() => (showSettingsModal = true)}
+      on:openSync={() => (showSyncModal = true)}
+    />
+    <div class="main-content">
+      <Sidebar bind:width={sidebarWidth} />
+      <EntryList />
+      <ContentViewer />
+    </div>
   </div>
-{/if}
 
-{#if showAddModal}
-  <AddFeedModal on:close={() => (showAddModal = false)} />
-{/if}
+  {#if $error}
+    <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+    <div class="error-toast" role="alert" on:click={() => error.set(null)} on:keydown={(e) => e.key === 'Escape' && error.set(null)}>
+      <i class="fas fa-exclamation-circle"></i>
+      <span>{$error}</span>
+      <button class="error-dismiss" on:click|stopPropagation={() => error.set(null)}><i class="fas fa-times"></i></button>
+    </div>
+  {/if}
 
-{#if showEditModal}
-  <EditFeedModal on:close={() => (showEditModal = false)} />
-{/if}
+  {#if showAddModal}
+    <AddFeedModal on:close={() => (showAddModal = false)} />
+  {/if}
 
-{#if showSettingsModal}
-  <SettingsModal on:close={() => (showSettingsModal = false)} />
+  {#if showEditModal}
+    <EditFeedModal on:close={() => (showEditModal = false)} />
+  {/if}
+
+  {#if showSettingsModal}
+    <SettingsModal on:close={() => (showSettingsModal = false)} />
+  {/if}
+
+  {#if showSyncModal}
+    <SyncModal on:close={() => (showSyncModal = false)} />
+  {/if}
 {/if}
 
 <style>
+  .loading-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    color: var(--color-text-muted);
+  }
+
   .app-shell {
     display: flex;
     height: 100vh;

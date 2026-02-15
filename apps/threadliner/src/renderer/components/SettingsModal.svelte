@@ -1,16 +1,33 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { theme, setTheme } from '../stores/theme.js';
 
   const dispatch = createEventDispatcher();
 
   let activeTab = 'theme';
+  let syncWaitTime = '10';
 
   const themes = [
     { id: 'light', label: 'Light', description: 'Clean and bright' },
     { id: 'dark', label: 'Dark', description: 'Easy on the eyes' },
     { id: 'midnight', label: 'Midnight', description: 'Deep blue tones' },
   ];
+
+  const waitTimeOptions = [
+    { value: '5', label: '5 seconds' },
+    { value: '10', label: '10 seconds' },
+    { value: '30', label: '30 seconds' },
+    { value: '60', label: '60 seconds' },
+  ];
+
+  onMount(async () => {
+    const saved = await window.api.getSetting('syncWaitTime');
+    if (saved) syncWaitTime = String(saved);
+  });
+
+  async function handleWaitTimeChange() {
+    await window.api.setSetting('syncWaitTime', syncWaitTime);
+  }
 
   function handleKeydown(e) {
     if (e.key === 'Escape') dispatch('close');
@@ -35,6 +52,13 @@
           on:click={() => (activeTab = 'theme')}
         >
           <i class="fas fa-palette"></i> Theme
+        </button>
+        <button
+          class="tab"
+          class:active={activeTab === 'sync'}
+          on:click={() => (activeTab = 'sync')}
+        >
+          <i class="fas fa-cloud"></i> Sync
         </button>
       </div>
 
@@ -62,6 +86,20 @@
                 {/if}
               </button>
             {/each}
+          </div>
+        {/if}
+
+        {#if activeTab === 'sync'}
+          <div class="setting-group">
+            <label class="setting-label">
+              <span class="setting-title">Sync Wait Time</span>
+              <span class="setting-desc">How long to wait after a change before pushing to the remote repository.</span>
+              <select bind:value={syncWaitTime} on:change={handleWaitTimeChange}>
+                {#each waitTimeOptions as opt (opt.value)}
+                  <option value={opt.value}>{opt.label}</option>
+                {/each}
+              </select>
+            </label>
           </div>
         {/if}
       </div>
@@ -250,5 +288,46 @@
     right: 12px;
     color: var(--color-accent);
     font-size: 14px;
+  }
+
+  .setting-group {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .setting-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .setting-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text);
+  }
+
+  .setting-desc {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    margin-bottom: 4px;
+  }
+
+  select {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+    width: 100%;
+  }
+
+  select:focus {
+    border-color: var(--color-accent);
   }
 </style>

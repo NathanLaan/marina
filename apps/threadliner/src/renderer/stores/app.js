@@ -11,6 +11,7 @@ export const selectedEntryId = writable(null);
 // UI state
 export const isLoading = writable(false);
 export const error = writable(null);
+export const setupComplete = writable(false);
 
 // Derived: currently selected feed object
 export const selectedFeed = derived(
@@ -31,6 +32,12 @@ export const selectedEntry = derived(
 );
 
 // Actions
+export async function checkSetup() {
+  const complete = await window.api.isSetupComplete();
+  setupComplete.set(complete);
+  return complete;
+}
+
 export async function loadFeeds() {
   try {
     const result = await window.api.getFeeds();
@@ -62,16 +69,22 @@ export async function selectEntry(entryId) {
   selectedEntryId.set(entryId);
   if (entryId === null) return;
 
+  // Get the current feedId
+  let currentFeedId;
+  const unsub = selectedFeedId.subscribe((v) => (currentFeedId = v));
+  unsub();
+
+  if (!currentFeedId) return;
+
   // Mark as read
   try {
-    await window.api.markRead(entryId);
+    await window.api.markRead(entryId, currentFeedId);
     entries.update((items) =>
       items.map((e) => (e.id === entryId ? { ...e, is_read: 1 } : e))
     );
-    // Reload feeds to refresh unread counts
     loadFeeds();
   } catch (err) {
-    // Non-critical, don't block UI
+    // Non-critical
   }
 }
 
@@ -105,7 +118,6 @@ export async function removeFeed(id) {
   try {
     await window.api.removeFeed(id);
     feeds.update((items) => items.filter((f) => f.id !== id));
-    // If the removed feed was selected, clear selection and entries
     let currentFeedId;
     const unsub = selectedFeedId.subscribe((v) => (currentFeedId = v));
     unsub();
@@ -125,7 +137,6 @@ export async function refreshFeed(id) {
   try {
     await window.api.refreshFeed(id);
     await loadFeeds();
-    // If this feed is currently selected, reload its entries
     let currentFeedId;
     const unsub = selectedFeedId.subscribe((v) => (currentFeedId = v));
     unsub();
@@ -137,5 +148,57 @@ export async function refreshFeed(id) {
     error.set('Failed to refresh feed: ' + err.message);
   } finally {
     isLoading.set(false);
+  }
+}
+
+// Mark all / mark single read/unread
+
+export async function markAllRead(feedId) {
+  error.set(null);
+  try {
+    await window.api.markAllRead(feedId);
+    entries.update((items) =>
+      items.map((e) => ({ ...e, is_read: 1 }))
+    );
+    loadFeeds();
+  } catch (err) {
+    error.set('Failed to mark all read: ' + err.message);
+  }
+}
+
+export async function markAllUnread(feedId) {
+  error.set(null);
+  try {
+    await window.api.markAllUnread(feedId);
+    entries.update((items) =>
+      items.map((e) => ({ ...e, is_read: 0 }))
+    );
+    loadFeeds();
+  } catch (err) {
+    error.set('Failed to mark all unread: ' + err.message);
+  }
+}
+
+export async function markEntryRead(entryId, feedId) {
+  try {
+    await window.api.markRead(entryId, feedId);
+    entries.update((items) =>
+      items.map((e) => (e.id === entryId ? { ...e, is_read: 1 } : e))
+    );
+    loadFeeds();
+  } catch (err) {
+    // Non-critical
+  }
+}
+
+export async function markEntryUnread(entryId, feedId) {
+  try {
+    await window.api.markUnread(entryId, feedId);
+    entries.update((items) =>
+      items.map((e) => (e.id === entryId ? { ...e, is_read: 0 } : e))
+    );
+    loadFeeds();
+  } catch (err) {
+    // Non-critical
   }
 }
