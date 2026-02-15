@@ -8,8 +8,31 @@ let status = 'idle'; // idle | committing | waiting | pulling | pushing | error
 let lastError = null;
 let statusListeners = [];
 
+// Log buffer
+const MAX_LOG_ENTRIES = 200;
+let logEntries = [];
+let logIdCounter = 0;
+
 // Operation queue to serialize all git operations
 let operationQueue = Promise.resolve();
+
+function addLogEntry(level, message, detail) {
+  logIdCounter++;
+  const entry = {
+    id: logIdCounter,
+    timestamp: Date.now(),
+    level,
+    message,
+    detail: detail || null,
+  };
+  logEntries.push(entry);
+  if (logEntries.length > MAX_LOG_ENTRIES) {
+    logEntries = logEntries.slice(logEntries.length - MAX_LOG_ENTRIES);
+  }
+}
+
+// Commands to filter out of the log (plumbing / noise)
+const FILTERED_COMMANDS = ['config user.', 'rev-parse --git-dir'];
 
 function init(dir, waitTimeSeconds) {
   dataDir = dir;
@@ -19,16 +42,43 @@ function init(dir, waitTimeSeconds) {
   status = 'idle';
   lastError = null;
   operationQueue = Promise.resolve();
+  logEntries = [];
+  logIdCounter = 0;
+
+  gitSync.setLogCallback((event) => {
+    // Filter out plumbing commands
+    if (FILTERED_COMMANDS.some((f) => event.command.includes(f))) return;
+
+    if (event.type === 'cmd-start') {
+      addLogEntry('info', '$ ' + event.command);
+    } else if (event.type === 'cmd-ok') {
+      if (event.output) {
+        addLogEntry('info', event.output);
+      }
+    } else if (event.type === 'cmd-error') {
+      addLogEntry('error', event.message);
+    }
+  });
 }
 
-function getStatus() {
-  return {
+function getStatus(sinceLogId) {
+  const result = {
     status,
     lastSyncTime,
     lastError,
     waitTimeMs,
     remainingMs: pushTimer ? getRemainingTime() : null,
   };
+  if (sinceLogId) {
+    result.logEntries = logEntries.filter((e) => e.id > sinceLogId);
+  } else {
+    result.logEntries = [];
+  }
+  return result;
+}
+
+function getFullLog() {
+  return logEntries.slice();
 }
 
 // Track when the timer started and duration for countdown
@@ -41,9 +91,22 @@ function getRemainingTime() {
   return Math.max(0, timerDuration - elapsed);
 }
 
+const STATUS_LOG_MESSAGES = {
+  committing: 'Committing changes...',
+  pulling: 'Pulling from remote...',
+  pushing: 'Pushing to remote...',
+  waiting: 'Waiting to push...',
+  idle: 'Sync complete',
+};
+
 function setStatus(newStatus, error) {
   status = newStatus;
   lastError = error || null;
+  if (error) {
+    addLogEntry('error', error);
+  } else if (STATUS_LOG_MESSAGES[newStatus]) {
+    addLogEntry('info', STATUS_LOG_MESSAGES[newStatus]);
+  }
   notifyListeners();
 }
 
@@ -184,11 +247,13 @@ function destroy() {
   timerStartedAt = null;
   timerDuration = null;
   statusListeners = [];
+  gitSync.setLogCallback(null);
 }
 
 module.exports = {
   init,
   getStatus,
+  getFullLog,
   onStatusChange,
   notifyChange,
   forcePush,

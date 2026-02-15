@@ -33,7 +33,8 @@ contextBridge.exposeInMainWorld('api', {
   setSetting: (key, value) => ipcRenderer.invoke('settings:set', key, value),
 
   // Sync operations
-  getSyncStatus: () => ipcRenderer.invoke('sync:getStatus'),
+  getSyncStatus: (sinceLogId) => ipcRenderer.invoke('sync:getStatus', sinceLogId),
+  getSyncLog: () => ipcRenderer.invoke('sync:getLog'),
   forcePush: () => ipcRenderer.invoke('sync:forcePush'),
   forcePull: () => ipcRenderer.invoke('sync:forcePull'),
   getSyncConfig: () => ipcRenderer.invoke('sync:getConfig'),

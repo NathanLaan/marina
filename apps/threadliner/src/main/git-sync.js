@@ -1,7 +1,16 @@
 const { execFile } = require('child_process');
 const path = require('path');
 
+let logCallback = null;
+
+function setLogCallback(cb) {
+  logCallback = cb;
+}
+
 function exec(command, args, cwd) {
+  const cmdString = command + ' ' + args.join(' ');
+  if (logCallback) logCallback({ type: 'cmd-start', command: cmdString });
+
   return new Promise((resolve, reject) => {
     execFile(command, args, { cwd, timeout: 60000 }, (error, stdout, stderr) => {
       if (error) {
@@ -12,8 +21,11 @@ function exec(command, args, cwd) {
         if (error.killed) parts.push('Process killed (timeout)');
         if (error.signal) parts.push('Signal: ' + error.signal);
         if (parts.length === 0) parts.push(error.message);
-        reject(new Error(parts.join(' — ')));
+        const message = parts.join(' — ');
+        if (logCallback) logCallback({ type: 'cmd-error', command: cmdString, message });
+        reject(new Error(message));
       } else {
+        if (logCallback) logCallback({ type: 'cmd-ok', command: cmdString, output: stdout.trim() });
         resolve(stdout.trim());
       }
     });
@@ -202,4 +214,5 @@ module.exports = {
   getStatus,
   getRemoteUrl,
   getBranch,
+  setLogCallback,
 };

@@ -1,18 +1,40 @@
 <script>
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { createEventDispatcher, onMount, afterUpdate, tick } from 'svelte';
   import {
-    syncStatus, lastSyncTime, lastError, syncConfig,
-    loadSyncConfig, forcePush, forcePull,
+    syncStatus, lastSyncTime, lastError, syncConfig, syncLog,
+    loadSyncConfig, forcePush, forcePull, loadFullLog,
   } from '../stores/sync.js';
 
   const dispatch = createEventDispatcher();
 
   let pushing = false;
   let pulling = false;
+  let activeTab = 'status';
+  let logLoaded = false;
+  let logContainer;
 
   onMount(() => {
     loadSyncConfig();
   });
+
+  // Auto-scroll log when new entries arrive
+  afterUpdate(() => {
+    if (activeTab === 'log' && logContainer) {
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+  });
+
+  async function switchToLog() {
+    activeTab = 'log';
+    if (!logLoaded) {
+      await loadFullLog();
+      logLoaded = true;
+      await tick();
+      if (logContainer) {
+        logContainer.scrollTop = logContainer.scrollHeight;
+      }
+    }
+  }
 
   async function handlePush() {
     pushing = true;
@@ -34,6 +56,11 @@
     } catch {
       return 'Unknown';
     }
+  }
+
+  function formatLogTime(timestamp) {
+    const d = new Date(timestamp);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   }
 
   function statusLabel(s) {
@@ -75,70 +102,104 @@
       </button>
     </div>
 
+    <div class="tab-bar">
+      <button
+        class="tab"
+        class:active={activeTab === 'status'}
+        on:click={() => activeTab = 'status'}
+      >Status</button>
+      <button
+        class="tab"
+        class:active={activeTab === 'log'}
+        on:click={switchToLog}
+      >Log</button>
+    </div>
+
     <div class="modal-body">
-      <div class="status-section">
-        <div class="status-row">
-          <span class="status-label">Status</span>
-          <span class="status-value" class:error={$syncStatus === 'error'}>
-            <i class="fas {statusIcon($syncStatus)}"></i>
-            {statusLabel($syncStatus)}
-          </span>
-        </div>
-
-        <div class="status-row">
-          <span class="status-label">Last Sync</span>
-          <span class="status-value">{formatTime($lastSyncTime)}</span>
-        </div>
-
-        {#if $syncConfig.remoteUrl}
+      {#if activeTab === 'status'}
+        <div class="status-section">
           <div class="status-row">
-            <span class="status-label">Remote</span>
-            <span class="status-value mono">{$syncConfig.remoteUrl}</span>
+            <span class="status-label">Status</span>
+            <span class="status-value" class:error={$syncStatus === 'error'}>
+              <i class="fas {statusIcon($syncStatus)}"></i>
+              {statusLabel($syncStatus)}
+            </span>
           </div>
-        {:else}
+
           <div class="status-row">
-            <span class="status-label">Remote</span>
-            <span class="status-value muted">Not configured (local only)</span>
+            <span class="status-label">Last Sync</span>
+            <span class="status-value">{formatTime($lastSyncTime)}</span>
+          </div>
+
+          {#if $syncConfig.remoteUrl}
+            <div class="status-row">
+              <span class="status-label">Remote</span>
+              <span class="status-value mono">{$syncConfig.remoteUrl}</span>
+            </div>
+          {:else}
+            <div class="status-row">
+              <span class="status-label">Remote</span>
+              <span class="status-value muted">Not configured (local only)</span>
+            </div>
+          {/if}
+
+          <div class="status-row">
+            <span class="status-label">Data Folder</span>
+            <span class="status-value mono">{$syncConfig.dataDir || 'Not set'}</span>
+          </div>
+        </div>
+
+        {#if $lastError}
+          <div class="error-box">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>{$lastError}</span>
           </div>
         {/if}
 
-        <div class="status-row">
-          <span class="status-label">Data Folder</span>
-          <span class="status-value mono">{$syncConfig.dataDir || 'Not set'}</span>
+        <div class="actions">
+          <button
+            class="btn btn-primary"
+            on:click={handlePush}
+            disabled={pushing || pulling || !$syncConfig.remoteUrl}
+          >
+            {#if pushing}
+              <i class="fas fa-spinner fa-spin"></i> Syncing...
+            {:else}
+              <i class="fas fa-cloud-arrow-up"></i> Sync Now
+            {/if}
+          </button>
+          <button
+            class="btn btn-secondary"
+            on:click={handlePull}
+            disabled={pushing || pulling || !$syncConfig.remoteUrl}
+          >
+            {#if pulling}
+              <i class="fas fa-spinner fa-spin"></i> Pulling...
+            {:else}
+              <i class="fas fa-cloud-arrow-down"></i> Pull Now
+            {/if}
+          </button>
         </div>
-      </div>
-
-      {#if $lastError}
-        <div class="error-box">
-          <i class="fas fa-exclamation-triangle"></i>
-          <span>{$lastError}</span>
+      {:else}
+        <div class="log-container" bind:this={logContainer}>
+          {#if $syncLog.length === 0}
+            <div class="log-empty">No sync activity yet.</div>
+          {:else}
+            {#each $syncLog as entry (entry.id)}
+              <div class="log-entry" class:log-error={entry.level === 'error'}>
+                <span class="log-time">{formatLogTime(entry.timestamp)}</span>
+                <span class="log-message">{entry.message}</span>
+              </div>
+              {#if entry.detail}
+                <div class="log-entry log-detail">
+                  <span class="log-time"></span>
+                  <span class="log-message">{entry.detail}</span>
+                </div>
+              {/if}
+            {/each}
+          {/if}
         </div>
       {/if}
-
-      <div class="actions">
-        <button
-          class="btn btn-primary"
-          on:click={handlePush}
-          disabled={pushing || pulling || !$syncConfig.remoteUrl}
-        >
-          {#if pushing}
-            <i class="fas fa-spinner fa-spin"></i> Syncing...
-          {:else}
-            <i class="fas fa-cloud-arrow-up"></i> Sync Now
-          {/if}
-        </button>
-        <button
-          class="btn btn-secondary"
-          on:click={handlePull}
-          disabled={pushing || pulling || !$syncConfig.remoteUrl}
-        >
-          {#if pulling}
-            <i class="fas fa-spinner fa-spin"></i> Pulling...
-          {:else}
-            <i class="fas fa-cloud-arrow-down"></i> Pull Now
-          {/if}
-        </button>
-      </div>
     </div>
   </div>
 </div>
@@ -168,7 +229,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 16px 20px;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: none;
   }
 
   h3 {
@@ -190,6 +251,33 @@
   .close-btn:hover {
     background-color: var(--color-surface-hover);
     color: var(--color-text);
+  }
+
+  .tab-bar {
+    display: flex;
+    gap: 0;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .tab {
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    background: none;
+    cursor: pointer;
+  }
+
+  .tab:hover {
+    color: var(--color-text);
+  }
+
+  .tab.active {
+    color: var(--color-accent);
+    border-bottom-color: var(--color-accent);
   }
 
   .modal-body {
@@ -296,5 +384,48 @@
   .btn:disabled {
     opacity: 0.5;
     cursor: default;
+  }
+
+  .log-container {
+    height: 280px;
+    overflow-y: auto;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .log-empty {
+    color: var(--color-text-muted);
+    font-style: italic;
+    font-family: var(--font-sans, inherit);
+    font-size: 13px;
+    text-align: center;
+    padding-top: 40px;
+  }
+
+  .log-entry {
+    display: flex;
+    gap: 8px;
+    padding: 1px 0;
+  }
+
+  .log-time {
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+    user-select: none;
+  }
+
+  .log-message {
+    color: var(--color-text-muted);
+    word-break: break-all;
+  }
+
+  .log-error .log-message {
+    color: var(--color-danger);
+  }
+
+  .log-detail .log-message {
+    color: var(--color-text-muted);
+    opacity: 0.7;
   }
 </style>
