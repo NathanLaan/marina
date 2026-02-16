@@ -1,6 +1,8 @@
-# Threadline
+# ThreadLine
 
 A desktop RSS reader built with Electron, Svelte, and Git-synced JSON. Supports RSS 2.0, Atom, and JSON Feed formats.
+
+![Screenshot](screenshot-v0.3.1.png "ThreadLine Screenshot")
 
 ## Prerequisites
 

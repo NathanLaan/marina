@@ -4,20 +4,51 @@
 
   function sanitize(html) {
     if (!html) return '';
-    return DOMPurify.sanitize(html, {
+
+    // Extract images hidden inside <noscript> tags before sanitization
+    // (some feeds wrap the real <img> in noscript for JS lazy-loaders)
+    html = html.replace(/<noscript>\s*(<img\b[^>]*>)\s*<\/noscript>/gi, '$1');
+
+    const clean = DOMPurify.sanitize(html, {
       ALLOWED_TAGS: [
         'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
         'p', 'br', 'hr',
         'ul', 'ol', 'li',
         'a', 'strong', 'em', 'b', 'i', 'u', 's',
         'blockquote', 'pre', 'code',
-        'img', 'figure', 'figcaption',
+        'img', 'picture', 'source', 'figure', 'figcaption',
         'table', 'thead', 'tbody', 'tr', 'th', 'td',
         'div', 'span',
       ],
-      ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'target', 'rel', 'width', 'height'],
+      ALLOWED_ATTR: [
+        'href', 'src', 'alt', 'title', 'class', 'target', 'rel',
+        'width', 'height', 'srcset', 'sizes', 'loading',
+        'media', 'type',
+      ],
+      ALLOW_DATA_ATTR: true,
       ADD_ATTR: ['target'],
     });
+
+    // Fix lazy-loaded images: copy data-src → src when src is missing/placeholder
+    const template = document.createElement('template');
+    template.innerHTML = clean;
+    const fragment = template.content;
+
+    for (const img of fragment.querySelectorAll('img')) {
+      const src = img.getAttribute('src') || '';
+      const dataSrc = img.getAttribute('data-src') || img.getAttribute('data-lazy-src') || img.getAttribute('data-original');
+      if (dataSrc && (!src || src.startsWith('data:') || src.includes('placeholder') || src.includes('1x1'))) {
+        img.setAttribute('src', dataSrc);
+      }
+      const dataSrcset = img.getAttribute('data-srcset') || img.getAttribute('data-lazy-srcset');
+      if (dataSrcset && !img.getAttribute('srcset')) {
+        img.setAttribute('srcset', dataSrcset);
+      }
+    }
+
+    const div = document.createElement('div');
+    div.appendChild(fragment);
+    return div.innerHTML;
   }
 
   function formatDate(dateStr) {
@@ -189,6 +220,31 @@
     height: auto;
     border-radius: 6px;
     margin: 16px 0;
+    display: block;
+  }
+
+  .article-content :global(picture) {
+    display: block;
+    margin: 16px 0;
+  }
+
+  .article-content :global(picture img) {
+    margin: 0;
+  }
+
+  .article-content :global(figure) {
+    margin: 16px 0;
+  }
+
+  .article-content :global(figure img) {
+    margin: 0;
+  }
+
+  .article-content :global(figcaption) {
+    font-size: 13px;
+    color: var(--color-text-muted);
+    margin-top: 8px;
+    text-align: center;
   }
 
   .article-content :global(blockquote) {

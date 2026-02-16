@@ -1,6 +1,6 @@
 {
   "name": "threadline",
-  "version": "0.1.0",
+  "version": "0.3.1",
   "description": "A desktop RSS reader built with Electron, Svelte, and Git-synced JSON",
   "main": "src/main/main.js",
   "scripts": {

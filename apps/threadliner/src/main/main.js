@@ -229,6 +229,10 @@ function registerIpcHandlers() {
   });
 
   // Sync handlers
+  ipcMain.handle('app:getVersion', () => {
+    return app.getVersion();
+  });
+
   ipcMain.handle('sync:getStatus', (_event, sinceLogId) => {
     return syncManager.getStatus(sinceLogId);
   });

@@ -102,6 +102,9 @@
     <button class="toolbar-btn" title="Settings" on:click={() => dispatch('openSettings')}>
       <i class="fas fa-cog"></i>
     </button>
+    <button class="toolbar-btn" title="About" on:click={() => dispatch('openAbout')}>
+      <i class="fas fa-circle-info"></i>
+    </button>
   </div>
 </div>
 
