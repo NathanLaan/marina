@@ -1,6 +1,30 @@
 <script>
   import { entries, selectedEntryId, selectedFeedId, selectedFeed, isLoading, selectEntry } from '../stores/app.js';
 
+  export let width = 320;
+
+  let isResizing = false;
+
+  function startResize(e) {
+    isResizing = true;
+    const startX = e.clientX;
+    const startWidth = width;
+
+    function onMouseMove(e) {
+      const delta = e.clientX - startX;
+      width = Math.max(220, Math.min(600, startWidth + delta));
+    }
+
+    function onMouseUp() {
+      isResizing = false;
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    }
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  }
+
   function formatDate(dateStr) {
     if (!dateStr) return '';
     try {
@@ -16,7 +40,7 @@
   }
 </script>
 
-<div class="entry-list">
+<div class="entry-list" style="width: {width}px" class:resizing={isResizing}>
   <div class="entry-list-header">
     <h2>
       {#if $selectedFeed}
@@ -61,18 +85,23 @@
       {/each}
     {/if}
   </div>
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
+  <div class="resize-handle" on:mousedown={startResize}></div>
 </div>
 
 <style>
   .entry-list {
+    position: relative;
     display: flex;
     flex-direction: column;
-    width: 320px;
-    min-width: 250px;
     border-right: 1px solid var(--color-border);
     background-color: var(--color-surface);
     flex-shrink: 0;
     overflow: hidden;
+  }
+
+  .entry-list.resizing {
+    user-select: none;
   }
 
   .entry-list-header {
@@ -159,5 +188,20 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     max-width: 140px;
+  }
+
+  .resize-handle {
+    position: absolute;
+    right: -3px;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    cursor: col-resize;
+    z-index: 10;
+  }
+
+  .resize-handle:hover {
+    background-color: var(--color-accent);
+    opacity: 0.3;
   }
 </style>

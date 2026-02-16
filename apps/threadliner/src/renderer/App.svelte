@@ -15,6 +15,7 @@
   import { startPolling, stopPolling } from './stores/sync.js';
 
   let sidebarWidth = 240;
+  let entryListWidth = 320;
   let showAddModal = false;
   let showEditModal = false;
   let showSettingsModal = false;
@@ -63,7 +64,7 @@
     />
     <div class="main-content">
       <Sidebar bind:width={sidebarWidth} />
-      <EntryList />
+      <EntryList bind:width={entryListWidth} />
       <ContentViewer />
     </div>
   </div>

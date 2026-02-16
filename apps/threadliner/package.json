@@ -20,5 +20,28 @@
     "electron": "^28.0.0",
     "svelte": "^4.2.0",
     "vite": "^5.0.0"
+  },
+    "build": {
+    "appId": "com.threadline.app",
+    "productName": "Threadline",
+    "files": [
+      "src/main/**/*",
+      "dist/renderer/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Network;Feed"
+    },
+    "mac": {
+      "target": ["dmg"],
+      "category": "public.app-category.news"
+    },
+    "win": {
+      "target": ["nsis"]
+    }
   }
+  
 }
