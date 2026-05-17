@@ -1,15 +1,15 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
   import { selectedFeed, editFeed } from '../stores/app.js';
 
-  const dispatch = createEventDispatcher();
+  let { onClose } = $props();
 
-  let title = $selectedFeed?.title || '';
-  let url = $selectedFeed?.url || '';
-  let loading = false;
-  let errorMsg = '';
+  let title = $state($selectedFeed?.title || '');
+  let url = $state($selectedFeed?.url || '');
+  let loading = $state(false);
+  let errorMsg = $state('');
 
-  async function handleSubmit() {
+  async function handleSubmit(e) {
+    e.preventDefault();
     if (!title.trim() || !url.trim()) return;
     if (!$selectedFeed) return;
 
@@ -17,7 +17,7 @@
     errorMsg = '';
     try {
       await editFeed($selectedFeed.id, { title: title.trim(), url: url.trim() });
-      dispatch('close');
+      onClose();
     } catch (err) {
       errorMsg = err.message || 'Failed to edit feed';
     } finally {
@@ -26,19 +26,19 @@
   }
 
   function handleKeydown(e) {
-    if (e.key === 'Escape') dispatch('close');
+    if (e.key === 'Escape') onClose();
   }
 </script>
 
-<!-- svelte-ignore a11y-no-static-element-interactions -->
-<div class="modal-overlay" on:mousedown|self={() => dispatch('close')} on:keydown={handleKeydown}>
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="modal-overlay" onmousedown={(e) => { if (e.target === e.currentTarget) onClose(); }} onkeydown={handleKeydown}>
   <div class="modal">
     <h3>Edit Feed</h3>
     {#if $selectedFeed}
-      <form on:submit|preventDefault={handleSubmit}>
+      <form onsubmit={handleSubmit}>
         <label>
           <span>Title</span>
-          <!-- svelte-ignore a11y-autofocus -->
+          <!-- svelte-ignore a11y_autofocus -->
           <input type="text" bind:value={title} disabled={loading} autofocus />
         </label>
         <label>
@@ -49,7 +49,7 @@
           <p class="error">{errorMsg}</p>
         {/if}
         <div class="actions">
-          <button type="button" class="btn btn-secondary" on:click={() => dispatch('close')} disabled={loading}>
+          <button type="button" class="btn btn-secondary" onclick={onClose} disabled={loading}>
             Cancel
           </button>
           <button type="submit" class="btn btn-primary" disabled={loading || !title.trim() || !url.trim()}>
@@ -64,7 +64,7 @@
     {:else}
       <p class="empty">No feed selected.</p>
       <div class="actions">
-        <button class="btn btn-secondary" on:click={() => dispatch('close')}>Close</button>
+        <button class="btn btn-secondary" onclick={onClose}>Close</button>
       </div>
     {/if}
   </div>

@@ -1,5 +1,4 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
   import {
     selectedFeedId, selectedEntryId, selectedFeed,
     removeFeed, refreshFeed,
@@ -8,9 +7,16 @@
   } from '../stores/app.js';
   import { syncStatus } from '../stores/sync.js';
 
-  $: hasPendingSync = $syncStatus === 'committing' || $syncStatus === 'waiting';
+  let {
+    onAddFeed,
+    onEditFeed,
+    onOpenSettings,
+    onOpenSync,
+    onOpenTags,
+    onOpenAbout,
+  } = $props();
 
-  const dispatch = createEventDispatcher();
+  const hasPendingSync = $derived($syncStatus === 'committing' || $syncStatus === 'waiting');
 
   function handleRemove() {
     if ($selectedFeedId === null) return;
@@ -46,30 +52,33 @@
 
 <div class="toolbar">
   <div class="toolbar-group">
-    <button class="toolbar-btn" title="Add Feed" on:click={() => dispatch('addFeed')}>
+    <button class="toolbar-btn" title="Add Feed" aria-label="Add Feed" onclick={onAddFeed}>
       <i class="fas fa-plus"></i>
     </button>
     <button
       class="toolbar-btn"
       title="Edit Feed"
+      aria-label="Edit Feed"
       disabled={$selectedFeedId === null}
-      on:click={() => dispatch('editFeed')}
+      onclick={onEditFeed}
     >
       <i class="fas fa-pen"></i>
     </button>
     <button
       class="toolbar-btn"
       title="Remove Feed"
+      aria-label="Remove Feed"
       disabled={$selectedFeedId === null}
-      on:click={handleRemove}
+      onclick={handleRemove}
     >
       <i class="fas fa-trash"></i>
     </button>
     <button
       class="toolbar-btn"
       title="Refresh Feed"
+      aria-label="Refresh Feed"
       disabled={$selectedFeedId === null}
-      on:click={handleRefresh}
+      onclick={handleRefresh}
     >
       <i class="fas fa-sync-alt"></i>
     </button>
@@ -77,32 +86,34 @@
     <button
       class="toolbar-btn"
       title="Mark as Read"
+      aria-label="Mark as Read"
       disabled={$selectedFeedId === null}
-      on:click={handleMarkRead}
+      onclick={handleMarkRead}
     >
       <i class="fas fa-check-double"></i>
     </button>
     <button
       class="toolbar-btn"
       title="Mark as Unread"
+      aria-label="Mark as Unread"
       disabled={$selectedFeedId === null}
-      on:click={handleMarkUnread}
+      onclick={handleMarkUnread}
     >
       <i class="fas fa-rotate-left"></i>
     </button>
     <div class="toolbar-divider"></div>
-    <button class="toolbar-btn" title="Tags" on:click={() => dispatch('openTags')}>
+    <button class="toolbar-btn" title="Tags" aria-label="Tags" onclick={onOpenTags}>
       <i class="fas fa-tags"></i>
     </button>
   </div>
   <div class="toolbar-group">
-    <button class="toolbar-btn" class:sync-pending={hasPendingSync} title="Sync" on:click={() => dispatch('openSync')}>
+    <button class="toolbar-btn" class:sync-pending={hasPendingSync} title="Sync" aria-label="Sync" onclick={onOpenSync}>
       <i class="fas fa-cloud"></i>
     </button>
-    <button class="toolbar-btn" title="Settings" on:click={() => dispatch('openSettings')}>
+    <button class="toolbar-btn" title="Settings" aria-label="Settings" onclick={onOpenSettings}>
       <i class="fas fa-cog"></i>
     </button>
-    <button class="toolbar-btn" title="About" on:click={() => dispatch('openAbout')}>
+    <button class="toolbar-btn" title="About" aria-label="About" onclick={onOpenAbout}>
       <i class="fas fa-circle-info"></i>
     </button>
   </div>

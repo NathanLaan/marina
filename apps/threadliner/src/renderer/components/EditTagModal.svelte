@@ -1,20 +1,24 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
   import { tags, editTag } from '../stores/app.js';
 
-  export let tagId;
+  let { tagId, onClose } = $props();
 
-  const dispatch = createEventDispatcher();
+  let loading = $state(false);
+  let errorMsg = $state('');
 
-  let loading = false;
-  let errorMsg = '';
+  const tag = $derived($tags.find((t) => t.id === tagId) || null);
 
-  $: tag = $tags.find((t) => t.id === tagId) || null;
+  let name = $state('');
+  let initialized = false;
+  $effect(() => {
+    if (tag && !initialized) {
+      name = tag.name;
+      initialized = true;
+    }
+  });
 
-  let name = '';
-  $: if (tag && !name) name = tag.name;
-
-  async function handleSubmit() {
+  async function handleSubmit(e) {
+    e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
 
@@ -22,7 +26,7 @@
     errorMsg = '';
     try {
       await editTag(tagId, { name: trimmed });
-      dispatch('close');
+      onClose();
     } catch (err) {
       errorMsg = err.message || 'Failed to edit tag';
     } finally {
@@ -31,18 +35,18 @@
   }
 
   function handleKeydown(e) {
-    if (e.key === 'Escape') dispatch('close');
+    if (e.key === 'Escape') onClose();
   }
 </script>
 
-<!-- svelte-ignore a11y-no-static-element-interactions -->
-<div class="modal-overlay" on:mousedown|self={() => dispatch('close')} on:keydown={handleKeydown}>
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="modal-overlay" onmousedown={(e) => { if (e.target === e.currentTarget) onClose(); }} onkeydown={handleKeydown}>
   <div class="modal">
     <h3>Edit Tag</h3>
-    <form on:submit|preventDefault={handleSubmit}>
+    <form onsubmit={handleSubmit}>
       <label>
         <span>Tag Name</span>
-        <!-- svelte-ignore a11y-autofocus -->
+        <!-- svelte-ignore a11y_autofocus -->
         <input
           type="text"
           bind:value={name}
@@ -55,7 +59,7 @@
         <p class="error">{errorMsg}</p>
       {/if}
       <div class="actions">
-        <button type="button" class="btn btn-secondary" on:click={() => dispatch('close')} disabled={loading}>
+        <button type="button" class="btn btn-secondary" onclick={onClose} disabled={loading}>
           Cancel
         </button>
         <button type="submit" class="btn btn-primary" disabled={loading || !name.trim()}>

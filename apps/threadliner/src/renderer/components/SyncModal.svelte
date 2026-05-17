@@ -1,15 +1,15 @@
 <script>
-  import { createEventDispatcher, onMount, afterUpdate } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import {
     syncStatus, lastSyncTime, lastError, syncConfig, syncLog,
     loadSyncConfig, forcePush, forcePull, loadFullLog,
   } from '../stores/sync.js';
 
-  const dispatch = createEventDispatcher();
+  let { onClose } = $props();
 
-  let pushing = false;
-  let pulling = false;
-  let logContainer;
+  let pushing = $state(false);
+  let pulling = $state(false);
+  let logContainer = $state();
 
   onMount(() => {
     loadSyncConfig();
@@ -17,10 +17,14 @@
   });
 
   // Auto-scroll log when new entries arrive
-  afterUpdate(() => {
-    if (logContainer) {
-      logContainer.scrollTop = logContainer.scrollHeight;
-    }
+  $effect(() => {
+    // Subscribe to the log so this effect re-runs when entries are appended.
+    $syncLog;
+    tick().then(() => {
+      if (logContainer) {
+        logContainer.scrollTop = logContainer.scrollHeight;
+      }
+    });
   });
 
   async function handlePush() {
@@ -75,16 +79,16 @@
   }
 
   function handleKeydown(e) {
-    if (e.key === 'Escape') dispatch('close');
+    if (e.key === 'Escape') onClose();
   }
 </script>
 
-<!-- svelte-ignore a11y-no-static-element-interactions -->
-<div class="modal-overlay" on:mousedown|self={() => dispatch('close')} on:keydown={handleKeydown}>
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="modal-overlay" onmousedown={(e) => { if (e.target === e.currentTarget) onClose(); }} onkeydown={handleKeydown}>
   <div class="modal">
     <div class="modal-header">
       <h3>Sync</h3>
-      <button class="close-btn" on:click={() => dispatch('close')}>
+      <button class="close-btn" aria-label="Close" onclick={onClose}>
         <i class="fas fa-times"></i>
       </button>
     </div>
@@ -132,7 +136,7 @@
       <div class="actions">
         <button
           class="btn btn-primary"
-          on:click={handlePush}
+          onclick={handlePush}
           disabled={pushing || pulling || !$syncConfig.remoteUrl}
         >
           {#if pushing}
@@ -143,7 +147,7 @@
         </button>
         <button
           class="btn btn-secondary"
-          on:click={handlePull}
+          onclick={handlePull}
           disabled={pushing || pulling || !$syncConfig.remoteUrl}
         >
           {#if pulling}
