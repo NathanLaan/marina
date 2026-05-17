@@ -1,0 +1,17 @@
+{
+  "name": "@marina/desktop-ui-playground",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Renders every @marina/desktop-ui export so the library can be exercised without either consumer app.",
+  "main": "src/main/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "electron:dev": "node scripts/dev.js",
+    "start": "electron ."
+  },
+  "dependencies": {
+    "@marina/desktop-ui": "*",
+    "@fortawesome/fontawesome-free": "^6.5.1"
+  }
+}

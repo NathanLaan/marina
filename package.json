@@ -2,13 +2,14 @@
   "name": "marina",
   "version": "0.0.0",
   "private": true,
-  "workspaces": ["packages/*", "apps/*"],
+  "workspaces": ["packages/*", "packages/desktop-ui/examples/*", "apps/*"],
   "scripts": {
     "build":                "npm run build -ws --if-present",
     "dev:noteliner":        "npm run dev -w noteliner",
     "dev:threadliner":      "npm run dev -w threadliner",
     "electron:noteliner":   "npm run electron:dev -w noteliner",
     "electron:threadliner": "npm run electron:dev -w threadliner",
+    "playground":           "npm run electron:dev -w @marina/desktop-ui-playground",
     "build:noteliner":      "npm run build -w noteliner",
     "build:threadliner":    "npm run build -w threadliner"
   },
