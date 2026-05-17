@@ -15,6 +15,7 @@ const {
   registerWindowHandlers,
   registerUIPrefsHandlers,
 } = require('@marina/desktop-ui/electron-host');
+const { createSecondaryWindow } = require('@marina/desktop-ui/secondary-window');
 
 // Set app name early so Linux WM_CLASS is correct (for dock icon in dev mode)
 app.setName('NoteLiner');
@@ -96,7 +97,6 @@ function addRecentProject(folderPath) {
 }
 
 let mainWindow;
-let helpWindow = null;
 let gitService;
 let projectService;
 let linkGraphService;
@@ -501,49 +501,21 @@ ipcMain.handle('app:relaunch', () => {
 });
 
 // Help window — a separate, non-modal BrowserWindow that loads the
-// dedicated help.html renderer entry. Only one help window exists at a
-// time; subsequent calls focus the existing one rather than spawning more.
+// dedicated help.html renderer entry. The library's createSecondaryWindow
+// helper handles the singleton "focus if open, otherwise create" pattern,
+// the dev/prod URL switching, and 'closed' cleanup.
 function createHelpWindow() {
-  if (helpWindow && !helpWindow.isDestroyed()) {
-    if (helpWindow.isMinimized()) helpWindow.restore();
-    helpWindow.focus();
-    return helpWindow;
-  }
-
-  helpWindow = new BrowserWindow({
-    width: 1000,
-    height: 720,
-    minWidth: 560,
-    minHeight: 360,
+  return createSecondaryWindow({
+    id: 'help',
     title: 'NoteLiner Help',
     icon: path.join(__dirname, '..', '..', 'assets', 'icon.png'),
-    // Native OS frame — keeps the help window distinct from the main app's
-    // optional custom-titlebar style and gives users standard minimize /
-    // maximize / close affordances.
-    frame: true,
     parent: mainWindow,
-    modal: false,
-    autoHideMenuBar: true,
-    webPreferences: {
-      preload: path.join(__dirname, '..', '..', 'dist', 'preload.cjs'),
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
+    preload: path.join(__dirname, '..', '..', 'dist', 'preload.cjs'),
+    devUrl: 'http://localhost:5250/help.html',
+    prodFile: path.join(__dirname, '..', '..', 'dist', 'help.html'),
+    isDev: isDev && !isTest,
+    width: 1000, height: 720, minWidth: 560, minHeight: 360,
   });
-
-  helpWindow.setMenu(null);
-
-  if (isDev && !isTest) {
-    helpWindow.loadURL('http://localhost:5250/help.html');
-  } else {
-    helpWindow.loadFile(path.join(__dirname, '..', '..', 'dist', 'help.html'));
-  }
-
-  helpWindow.on('closed', () => {
-    helpWindow = null;
-  });
-
-  return helpWindow;
 }
 
 ipcMain.handle('help:open', () => {

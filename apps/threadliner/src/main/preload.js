@@ -63,4 +63,19 @@ contextBridge.exposeInMainWorld('api', {
 
   // Open an external URL in the user's default browser.
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+
+  // Help window
+  openHelpWindow: () => ipcRenderer.invoke('help:open'),
+
+  // Auto-updater. Mirrors NoteLiner's preload surface so the library's
+  // AboutModal (which accepts an `updateState` prop) can drive both apps.
+  getUpdateState:   () => ipcRenderer.invoke('update:getState'),
+  checkForUpdates:  () => ipcRenderer.invoke('update:checkNow'),
+  downloadUpdate:   () => ipcRenderer.invoke('update:downloadNow'),
+  installUpdate:    () => ipcRenderer.invoke('update:installNow'),
+  onUpdateState: (callback) => {
+    const listener = (_event, state) => callback(state);
+    ipcRenderer.on('update:state', listener);
+    return () => ipcRenderer.removeListener('update:state', listener);
+  },
 });

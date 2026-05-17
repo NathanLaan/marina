@@ -9,9 +9,62 @@ const {
   registerWindowHandlers,
   registerUIPrefsHandlers,
 } = require('@marina/desktop-ui/electron-host');
+const { createSecondaryWindow } = require('@marina/desktop-ui/secondary-window');
 
 let mainWindow;
 let uiPrefsApi;
+
+// --- Auto-updater ---
+
+let autoUpdaterModule = null;
+// Cached so the renderer can pick up the current update status when AboutModal
+// mounts after a startup check has already fired its events.
+let latestUpdateState = { state: 'idle' };
+
+function getAutoUpdater() {
+  if (autoUpdaterModule) return autoUpdaterModule;
+  try {
+    const { autoUpdater } = require('electron-updater');
+    // User-driven: surface "Update available" before bytes move (matters on
+    // metered connections). The renderer triggers downloadUpdate() explicitly.
+    autoUpdater.autoDownload = false;
+    // Continuous builds publish under the same `latest` channel as tagged
+    // releases but with a SemVer pre-release token; without this, the
+    // updater would skip them.
+    autoUpdater.allowPrerelease = true;
+    autoUpdaterModule = autoUpdater;
+    return autoUpdater;
+  } catch (err) {
+    console.warn('electron-updater unavailable:', err.message);
+    return null;
+  }
+}
+
+function sendUpdateState(state) {
+  latestUpdateState = state;
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update:state', state);
+  }
+}
+
+function initAutoUpdater() {
+  // Only run in packaged builds — there's nothing to update against in dev.
+  if (!app.isPackaged) return;
+  const u = getAutoUpdater();
+  if (!u) return;
+
+  u.on('checking-for-update', () => sendUpdateState({ state: 'checking' }));
+  u.on('update-available',    (i) => sendUpdateState({ state: 'available', version: i?.version, notes: i?.releaseNotes }));
+  u.on('update-not-available',(i) => sendUpdateState({ state: 'unavailable', version: i?.version }));
+  u.on('download-progress',   (p) => sendUpdateState({ state: 'downloading', percent: p?.percent || 0 }));
+  u.on('update-downloaded',   (i) => sendUpdateState({ state: 'downloaded', version: i?.version }));
+  u.on('error',               (err) => sendUpdateState({ state: 'error', error: err?.message || String(err) }));
+
+  // Startup check drives the same state machine. The dedicated
+  // checkForUpdatesAndNotify() native-notification path is intentionally not
+  // used — the in-app About modal status block replaces it.
+  u.checkForUpdates().catch((err) => sendUpdateState({ state: 'error', error: err?.message || String(err) }));
+}
 
 // --- App config (stored outside the git repo) ---
 
@@ -395,6 +448,69 @@ function registerIpcHandlers() {
   // Shell: route renderer-driven external links through Electron's shell so
   // they open in the user's browser instead of inside the Electron window.
   ipcMain.handle('shell:openExternal', (_event, url) => shell.openExternal(url));
+
+  // --- Help window ---
+
+  function createHelpWindow() {
+    return createSecondaryWindow({
+      id: 'help',
+      title: 'Threadliner Help',
+      parent: mainWindow,
+      preload: path.join(__dirname, '..', '..', 'dist', 'preload.cjs'),
+      devUrl: 'http://localhost:5251/help.html',
+      prodFile: path.join(__dirname, '..', '..', 'dist', 'renderer', 'help.html'),
+      isDev: process.env.NODE_ENV === 'development',
+      width: 1000, height: 720, minWidth: 560, minHeight: 360,
+    });
+  }
+
+  ipcMain.handle('help:open', () => {
+    createHelpWindow();
+    return true;
+  });
+
+  // --- Auto-update IPC ---
+
+  ipcMain.handle('update:getState', () => latestUpdateState);
+
+  ipcMain.handle('update:checkNow', async () => {
+    if (!app.isPackaged) {
+      sendUpdateState({ state: 'unavailable', reason: 'dev' });
+      return false;
+    }
+    const u = getAutoUpdater();
+    if (!u) {
+      sendUpdateState({ state: 'error', error: 'Updater not available in this build' });
+      return false;
+    }
+    try {
+      await u.checkForUpdates();
+      return true;
+    } catch (err) {
+      sendUpdateState({ state: 'error', error: err?.message || String(err) });
+      return false;
+    }
+  });
+
+  ipcMain.handle('update:downloadNow', async () => {
+    const u = getAutoUpdater();
+    if (!u) return false;
+    try {
+      await u.downloadUpdate();
+      return true;
+    } catch (err) {
+      sendUpdateState({ state: 'error', error: err?.message || String(err) });
+      return false;
+    }
+  });
+
+  ipcMain.handle('update:installNow', () => {
+    const u = getAutoUpdater();
+    if (!u) return false;
+    // quitAndInstall() exits the process — no further IPC will be served.
+    u.quitAndInstall();
+    return true;
+  });
 }
 
 // --- Startup ---
@@ -421,6 +537,7 @@ app.whenReady().then(async () => {
   }
 
   createWindow();
+  initAutoUpdater();
 });
 
 app.on('window-all-closed', () => {

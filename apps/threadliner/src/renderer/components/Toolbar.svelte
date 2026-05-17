@@ -17,6 +17,7 @@
     onOpenSync,
     onOpenTags,
     onOpenAbout,
+    onOpenHelp,
     syncOpen = false,
     settingsOpen = false,
     tagsOpen = false,
@@ -85,6 +86,7 @@
 
   <ToolbarDivider />
 
-  <ToolbarButton icon="fa-gear"        title="Settings" label="Settings" active={settingsOpen} onclick={onOpenSettings} />
-  <ToolbarButton icon="fa-circle-info" title="About"    label="About"    active={aboutOpen}    onclick={onOpenAbout} />
+  <ToolbarButton icon="fa-gear"            title="Settings" label="Settings" active={settingsOpen} onclick={onOpenSettings} />
+  <ToolbarButton icon="fa-circle-info"     title="About"    label="About"    active={aboutOpen}    onclick={onOpenAbout} />
+  <ToolbarButton icon="fa-circle-question" title="Help (F1)" label="Help"    onclick={onOpenHelp} />
 </ToolbarShell>

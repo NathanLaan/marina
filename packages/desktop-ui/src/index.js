@@ -16,3 +16,4 @@ export * from './theme/index.svelte.js';
 export * from './components/index.js';
 export * from './command-palette/index.js';
 export * from './settings/index.js';
+export * from './panels/index.js';

@@ -197,82 +197,56 @@ primary path with `sandbox: false` as a prototyping fallback.
 
 ## Phase C — Explicit deferrals from `plan-refactor-refresh-ui.md` §11
 
-These were called out as "out of scope" in the refresh-UI plan. Each is
-a substantial feature in its own right; treat as standalone projects
-when (and if) they're worth doing.
+**Status: done.** All three items landed. Summaries kept below as a paper
+trail; jump to the source files for the current shape.
 
-### C.1 Auto-updater for Threadliner
+### C.1 Auto-updater for Threadliner — done
 
-The library's `AboutModal` already accepts an optional `updateState`
-prop. NoteLiner provides one from `stores/update.svelte.js`, backed by
-`electron-updater` and IPC channels `update:getState` / `:checkNow` /
-`:downloadNow` / `:installNow` / event `update:state`.
+Ported NoteLiner's `update.svelte.js` store verbatim to
+`apps/threadliner/src/renderer/stores/`. Added `electron-updater` to
+deps. `apps/threadliner/src/main/main.js` now has the autoUpdater
+plumbing (`getAutoUpdater`, `sendUpdateState`, `initAutoUpdater`) and
+the four IPC handlers (`update:getState`, `update:checkNow`,
+`update:downloadNow`, `update:installNow`). Preload exposes
+`getUpdateState`, `checkForUpdates`, `downloadUpdate`, `installUpdate`,
+`onUpdateState`. `App.svelte` passes `updateState` into `<AboutModal>`.
 
-To add to Threadliner:
+`app.isPackaged` gates the startup check, so the dev experience is
+unchanged. When a packaged build runs, the About modal shows the
+Check / Download / Install buttons fed by electron-updater.
 
-1. Add `electron-updater` to `apps/threadliner/package.json` deps.
-2. Port the `update.svelte.js` store from NoteLiner. Mostly portable;
-   review `applies-to` checks for Threadliner-specific concerns.
-3. Wire the matching IPC handlers in `apps/threadliner/src/main/main.js`.
-4. Add the preload exposures.
-5. Pass `updateState={updateState}` into `<AboutModal>` in
-   `apps/threadliner/src/renderer/App.svelte`.
+The actual update feed (`build.publish` in electron-builder config) is
+not wired — there's no Threadliner release channel yet. Add when ready
+to ship.
 
-**Done when:** Threadliner About modal shows the Check / Download /
-Install buttons that NoteLiner already does, fed by a working
-electron-updater feed.
+### C.2 Paneable / reorderable sidebar — done
 
-**Commit:** `feat(threadliner): wire electron-updater + about modal flow`
+Extracted `PaneHost` to `@marina/desktop-ui/panels`. The library owns
+the layout chrome (header bar, drag-to-reorder, drag-to-resize,
+ResizeObserver-based height clamping); consumers provide pane content
+via `{ id, title, height, render: snippet, headerExtra?, closable? }`
+descriptors plus an `order` array and callbacks for resize/reorder/close.
 
-### C.2 Paneable / reorderable sidebar
+NoteLiner's `Sidebar.svelte` shrank from 454 to ~210 lines; pane
+content moved into local snippets, layout flows through `<PaneHost>`.
+Threadliner's sidebar is unchanged (Feeds + Tags is structurally
+simple; doesn't benefit from PaneHost).
 
-NoteLiner has a multi-pane drag-to-reorder sidebar
-(`apps/noteliner/src/renderer/components/Sidebar.svelte` + the
-`pane-header*` classes in `packages/desktop-ui/src/styles/global.css`).
-Threadliner has a fixed two-section sidebar (Feeds + Tags) — adequate
-for an RSS reader.
+### C.3 Help window pattern — done (option B)
 
-If we want pane-reorder to be a first-class library feature, lift
-NoteLiner's panel-host pattern into `@marina/desktop-ui/panels` (or
-similar). API sketch:
+Extracted `createSecondaryWindow` / `getSecondaryWindow` /
+`closeSecondaryWindow` to `@marina/desktop-ui/secondary-window`. The
+helper owns the singleton "focus if open, otherwise create" registry,
+sandbox-compatible webPreferences defaults, dev/prod URL switching,
+and 'closed' cleanup.
 
-```svelte
-<PanelHost {panes} bind:order />
-<!-- where each pane provides { id, label, render } -->
-```
-
-Threadliner's adoption is optional; even with the library API in place,
-its two-pane sidebar stays simple.
-
-**Done when:** the library exports a panel-host primitive and NoteLiner
-consumes it for its sidebar. (Threadliner stays as-is.)
-
-**Commit:** `feat(desktop-ui): extract paneable sidebar primitive`
-
-### C.3 Help window pattern
-
-NoteLiner has a separate help BrowserWindow loaded from `help.html`
-(see `apps/noteliner/src/renderer/help.js`, `HelpApp.svelte`, and the
-`help:open` IPC). It's NoteLiner-specific content but the
-"second-window with shared chrome" pattern is reusable.
-
-If/when Threadliner wants a help window, two options:
-
-- **A.** Quick port — copy the NoteLiner pattern, with Threadliner's
-  content. Limited code sharing.
-- **B.** Library-ize — add `@marina/desktop-ui/secondary-window` that
-  encapsulates the BrowserWindow + preload + theme bootstrapping for a
-  second window with arbitrary content. More work; cleaner long term.
-
-Pick A if Threadliner needs help text and that's it. Pick B if you
-anticipate a third surface (preferences-as-window, scratchpad, etc.)
-within the next year.
-
-**Done when:** whichever option you pick is live and the user can open
-a help window in Threadliner.
-
-**Commit:** `feat(threadliner): add help window` (option A) or
-`feat(desktop-ui): extract secondary-window helper` (option B)
+NoteLiner's `createHelpWindow` migrated to use the helper (consumes
+its own dogfood). Threadliner gained a help window: new `help.html`,
+`help.js`, `HelpApp.svelte` (Threadliner-flavoured help with
+Getting-started, Tags, Sync, Settings sections), `vite.config.mjs`
+updated with a second rollup entry, `help:open` IPC handler, preload
+binding, and a Help button at the bottom of the toolbar
+(`fa-circle-question`).
 
 ## Phase D — Future direction
 

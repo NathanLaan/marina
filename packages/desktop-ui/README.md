@@ -29,8 +29,10 @@ for production code.
 | `@marina/desktop-ui/styles` | The global stylesheet — scrollbars, modal/pane classes, `:root` fallbacks. Import once per renderer. |
 | `@marina/desktop-ui/components` | `TitleBar`, `Toolbar`, `ToolbarButton`, `ToolbarDivider`, `ToolbarSpacer`, `AboutModal` |
 | `@marina/desktop-ui/settings` | `SettingsShell`, `SettingGroup`, `ThemeList`, `ScaleList`, `ToggleOption`, `RestartBanner`, `ShortcutsList` |
+| `@marina/desktop-ui/panels` | `PaneHost` — vertical stack of drag-to-reorder, drag-to-resize panes; pane bodies come from consumer snippets |
 | `@marina/desktop-ui/command-palette` | `CommandPalette`, `commandRegistry`, `fuzzyScore` |
 | `@marina/desktop-ui/electron-host` | `registerWindowHandlers`, `registerUIPrefsHandlers`, `registerRelaunchHandler`, `applyFrameFromPrefs` — used from your app's `main.js` |
+| `@marina/desktop-ui/secondary-window` | `createSecondaryWindow`, `getSecondaryWindow`, `closeSecondaryWindow` — singleton non-modal BrowserWindow helper for help/preferences/scratchpad windows |
 | `@marina/desktop-ui/preload` | `exposeWindowApi`, `exposeUIPrefsApi` — used from your app's `preload.js` |
 
 Anything not listed in the `exports` map of `package.json` is **internal**

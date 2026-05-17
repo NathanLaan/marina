@@ -16,6 +16,7 @@
     selectedFeedId, refreshFeed,
   } from './stores/app.js';
   import { themeState } from '@marina/desktop-ui/theme';
+  import { updateState } from './stores/update.svelte.js';
   import { startPolling, stopPolling } from './stores/sync.js';
 
   let sidebarWidth = $state(240);
@@ -140,6 +141,7 @@
         onOpenSync={() => (showSyncModal = true)}
         onOpenTags={() => (showTagsModal = true)}
         onOpenAbout={() => (showAboutModal = true)}
+        onOpenHelp={() => window.api?.openHelpWindow?.()}
         syncOpen={showSyncModal}
         settingsOpen={showSettingsModal}
         tagsOpen={showTagsModal}
@@ -190,6 +192,7 @@
       repoUrl="https://github.com/NathanLaan/threadline"
       repoLabel="github.com/NathanLaan/threadline"
       iconClass="fa-rss"
+      {updateState}
       onClose={() => (showAboutModal = false)}
     />
   {/if}

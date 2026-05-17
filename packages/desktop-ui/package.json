@@ -12,9 +12,11 @@
     "./theme":           "./src/theme/index.svelte.js",
     "./components":      "./src/components/index.js",
     "./settings":        "./src/settings/index.js",
+    "./panels":          "./src/panels/index.js",
     "./command-palette": "./src/command-palette/index.js",
     "./electron-host":   "./src/electron-host/index.cjs",
-    "./preload":         "./src/preload/index.cjs"
+    "./preload":         "./src/preload/index.cjs",
+    "./secondary-window": "./src/secondary-window/index.cjs"
   },
   "peerDependencies": {
     "svelte":   "^5.0.0",
