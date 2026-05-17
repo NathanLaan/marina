@@ -10,5 +10,11 @@
     "build:noteliner":   "npm run build -w noteliner",
     "build:threadliner": "npm run build -w threadliner"
   },
-  "engines": { "node": ">=20" }
+  "engines": { "node": ">=20" },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^5.0.0",
+    "electron": "^41.2.0",
+    "svelte": "^5.0.0",
+    "vite": "^6.0.0"
+  }
 }

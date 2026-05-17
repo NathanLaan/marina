@@ -1,16 +1,15 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
   import { tags, removeTag } from '../stores/app.js';
   import AddTagModal from './AddTagModal.svelte';
   import EditTagModal from './EditTagModal.svelte';
 
-  const dispatch = createEventDispatcher();
+  let { onClose } = $props();
 
-  let selectedTagId = null;
-  let showAddModal = false;
-  let showEditModal = false;
+  let selectedTagId = $state(null);
+  let showAddModal = $state(false);
+  let showEditModal = $state(false);
 
-  $: selectedTag = $tags.find((t) => t.id === selectedTagId) || null;
+  const selectedTag = $derived($tags.find((t) => t.id === selectedTagId) || null);
 
   function handleDelete() {
     if (!selectedTag) return;
@@ -21,37 +20,39 @@
   }
 
   function handleKeydown(e) {
-    if (e.key === 'Escape') dispatch('close');
+    if (e.key === 'Escape') onClose();
   }
 </script>
 
-<!-- svelte-ignore a11y-no-static-element-interactions -->
-<div class="modal-overlay" on:mousedown|self={() => dispatch('close')} on:keydown={handleKeydown}>
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="modal-overlay" onmousedown={(e) => { if (e.target === e.currentTarget) onClose(); }} onkeydown={handleKeydown}>
   <div class="modal">
     <div class="modal-header">
       <h3>Tags</h3>
-      <button class="close-btn" on:click={() => dispatch('close')}>
+      <button class="close-btn" aria-label="Close" onclick={onClose}>
         <i class="fas fa-times"></i>
       </button>
     </div>
     <div class="modal-body">
       <div class="actions-col">
-        <button class="action-btn" title="Add Tag" on:click={() => (showAddModal = true)}>
+        <button class="action-btn" title="Add Tag" aria-label="Add Tag" onclick={() => (showAddModal = true)}>
           <i class="fas fa-plus"></i>
         </button>
         <button
           class="action-btn"
           title="Edit Tag"
+          aria-label="Edit Tag"
           disabled={!selectedTag}
-          on:click={() => (showEditModal = true)}
+          onclick={() => (showEditModal = true)}
         >
           <i class="fas fa-pen"></i>
         </button>
         <button
           class="action-btn"
           title="Delete Tag"
+          aria-label="Delete Tag"
           disabled={!selectedTag}
-          on:click={handleDelete}
+          onclick={handleDelete}
         >
           <i class="fas fa-trash"></i>
         </button>
@@ -64,7 +65,7 @@
             <button
               class="tag-item"
               class:active={selectedTagId === tag.id}
-              on:click={() => (selectedTagId = tag.id)}
+              onclick={() => (selectedTagId = tag.id)}
             >
               {tag.name}
             </button>
@@ -76,11 +77,11 @@
 </div>
 
 {#if showAddModal}
-  <AddTagModal on:close={() => (showAddModal = false)} />
+  <AddTagModal onClose={() => (showAddModal = false)} />
 {/if}
 
 {#if showEditModal && selectedTag}
-  <EditTagModal tagId={selectedTagId} on:close={() => (showEditModal = false)} />
+  <EditTagModal tagId={selectedTagId} onClose={() => (showEditModal = false)} />
 {/if}
 
 <style>

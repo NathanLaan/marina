@@ -1,11 +1,11 @@
 <script>
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import { theme, setTheme } from '../stores/theme.js';
 
-  const dispatch = createEventDispatcher();
+  let { onClose } = $props();
 
-  let activeTab = 'theme';
-  let syncWaitTime = '10';
+  let activeTab = $state('theme');
+  let syncWaitTime = $state('10');
 
   const themes = [
     { id: 'light', label: 'Light', description: 'Clean and bright' },
@@ -30,16 +30,16 @@
   }
 
   function handleKeydown(e) {
-    if (e.key === 'Escape') dispatch('close');
+    if (e.key === 'Escape') onClose();
   }
 </script>
 
-<!-- svelte-ignore a11y-no-static-element-interactions -->
-<div class="modal-overlay" on:mousedown|self={() => dispatch('close')} on:keydown={handleKeydown}>
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="modal-overlay" onmousedown={(e) => { if (e.target === e.currentTarget) onClose(); }} onkeydown={handleKeydown}>
   <div class="modal">
     <div class="modal-header">
       <h3>Settings</h3>
-      <button class="close-btn" on:click={() => dispatch('close')}>
+      <button class="close-btn" aria-label="Close" onclick={onClose}>
         <i class="fas fa-times"></i>
       </button>
     </div>
@@ -49,14 +49,14 @@
         <button
           class="tab"
           class:active={activeTab === 'theme'}
-          on:click={() => (activeTab = 'theme')}
+          onclick={() => (activeTab = 'theme')}
         >
           <i class="fas fa-palette"></i> Theme
         </button>
         <button
           class="tab"
           class:active={activeTab === 'sync'}
-          on:click={() => (activeTab = 'sync')}
+          onclick={() => (activeTab = 'sync')}
         >
           <i class="fas fa-cloud"></i> Sync
         </button>
@@ -69,7 +69,7 @@
               <button
                 class="theme-card"
                 class:selected={$theme === t.id}
-                on:click={() => setTheme(t.id)}
+                onclick={() => setTheme(t.id)}
               >
                 <div class="theme-preview" data-theme={t.id}>
                   <div class="preview-toolbar"></div>
@@ -94,7 +94,7 @@
             <label class="setting-label">
               <span class="setting-title">Sync Wait Time</span>
               <span class="setting-desc">How long to wait after a change before pushing to the remote repository.</span>
-              <select bind:value={syncWaitTime} on:change={handleWaitTimeChange}>
+              <select bind:value={syncWaitTime} onchange={handleWaitTimeChange}>
                 {#each waitTimeOptions as opt (opt.value)}
                   <option value={opt.value}>{opt.label}</option>
                 {/each}

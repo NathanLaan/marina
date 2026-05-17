@@ -1,9 +1,9 @@
 <script>
   import { feeds, selectedFeedId, selectFeed, tags, selectedFeedTagIds, assignTagToFeed, unassignTagFromFeed } from '../stores/app.js';
 
-  export let width = 240;
+  let { width = $bindable(240) } = $props();
 
-  let isResizing = false;
+  let isResizing = $state(false);
 
   function startResize(e) {
     isResizing = true;
@@ -51,7 +51,7 @@
         <button
           class="feed-item"
           class:active={$selectedFeedId === feed.id}
-          on:click={() => handleFeedClick(feed.id)}
+          onclick={() => handleFeedClick(feed.id)}
         >
           <span class="feed-title">{feed.title}</span>
           {#if feed.unread_count > 0}
@@ -72,7 +72,7 @@
             class="tag-toggle"
             class:assigned={$selectedFeedTagIds.includes(tag.id)}
             disabled={$selectedFeedId === null}
-            on:click={() => handleTagToggle(tag.id)}
+            onclick={() => handleTagToggle(tag.id)}
           >
             <i class="fas" class:fa-square-check={$selectedFeedTagIds.includes(tag.id)} class:fa-square={!$selectedFeedTagIds.includes(tag.id)}></i>
             <span class="tag-name">{tag.name}</span>
@@ -81,8 +81,8 @@
       </div>
     </div>
   {/if}
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div class="resize-handle" on:mousedown={startResize}></div>
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="resize-handle" onmousedown={startResize}></div>
 </div>
 
 <style>

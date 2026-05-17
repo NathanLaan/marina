@@ -1,9 +1,9 @@
 <script>
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { onMount } from 'svelte';
 
-  const dispatch = createEventDispatcher();
+  let { onClose } = $props();
 
-  let version = '';
+  let version = $state('');
 
   onMount(async () => {
     try {
@@ -14,16 +14,16 @@
   });
 
   function handleKeydown(e) {
-    if (e.key === 'Escape') dispatch('close');
+    if (e.key === 'Escape') onClose();
   }
 </script>
 
-<!-- svelte-ignore a11y-no-static-element-interactions -->
-<div class="modal-overlay" on:mousedown|self={() => dispatch('close')} on:keydown={handleKeydown}>
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="modal-overlay" onmousedown={(e) => { if (e.target === e.currentTarget) onClose(); }} onkeydown={handleKeydown}>
   <div class="modal">
     <div class="modal-header">
       <h3>About</h3>
-      <button class="close-btn" on:click={() => dispatch('close')}>
+      <button class="close-btn" aria-label="Close" onclick={onClose}>
         <i class="fas fa-times"></i>
       </button>
     </div>

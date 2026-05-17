@@ -15,15 +15,15 @@
   import { loadTheme } from './stores/theme.js';
   import { startPolling, stopPolling } from './stores/sync.js';
 
-  let sidebarWidth = 240;
-  let entryListWidth = 320;
-  let showAddModal = false;
-  let showEditModal = false;
-  let showSettingsModal = false;
-  let showSyncModal = false;
-  let showTagsModal = false;
-  let showAboutModal = false;
-  let loading = true;
+  let sidebarWidth = $state(240);
+  let entryListWidth = $state(320);
+  let showAddModal = $state(false);
+  let showEditModal = $state(false);
+  let showSettingsModal = $state(false);
+  let showSyncModal = $state(false);
+  let showTagsModal = $state(false);
+  let showAboutModal = $state(false);
+  let loading = $state(true);
 
   onMount(async () => {
     const isReady = await checkSetup();
@@ -54,16 +54,16 @@
     <i class="fas fa-rss fa-3x"></i>
   </div>
 {:else if !$setupComplete}
-  <SetupDialog on:complete={handleSetupComplete} />
+  <SetupDialog onComplete={handleSetupComplete} />
 {:else}
   <div class="app-shell">
     <Toolbar
-      on:addFeed={() => (showAddModal = true)}
-      on:editFeed={() => (showEditModal = true)}
-      on:openSettings={() => (showSettingsModal = true)}
-      on:openSync={() => (showSyncModal = true)}
-      on:openTags={() => (showTagsModal = true)}
-      on:openAbout={() => (showAboutModal = true)}
+      onAddFeed={() => (showAddModal = true)}
+      onEditFeed={() => (showEditModal = true)}
+      onOpenSettings={() => (showSettingsModal = true)}
+      onOpenSync={() => (showSyncModal = true)}
+      onOpenTags={() => (showTagsModal = true)}
+      onOpenAbout={() => (showAboutModal = true)}
     />
     <div class="main-content">
       <Sidebar bind:width={sidebarWidth} />
@@ -73,36 +73,36 @@
   </div>
 
   {#if $error}
-    <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-    <div class="error-toast" role="alert" on:click={() => error.set(null)} on:keydown={(e) => e.key === 'Escape' && error.set(null)}>
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <div class="error-toast" role="alert" onclick={() => error.set(null)} onkeydown={(e) => e.key === 'Escape' && error.set(null)}>
       <i class="fas fa-exclamation-circle"></i>
       <span>{$error}</span>
-      <button class="error-dismiss" on:click|stopPropagation={() => error.set(null)}><i class="fas fa-times"></i></button>
+      <button class="error-dismiss" aria-label="Dismiss" onclick={(e) => { e.stopPropagation(); error.set(null); }}><i class="fas fa-times"></i></button>
     </div>
   {/if}
 
   {#if showAddModal}
-    <AddFeedModal on:close={() => (showAddModal = false)} />
+    <AddFeedModal onClose={() => (showAddModal = false)} />
   {/if}
 
   {#if showEditModal}
-    <EditFeedModal on:close={() => (showEditModal = false)} />
+    <EditFeedModal onClose={() => (showEditModal = false)} />
   {/if}
 
   {#if showSettingsModal}
-    <SettingsModal on:close={() => (showSettingsModal = false)} />
+    <SettingsModal onClose={() => (showSettingsModal = false)} />
   {/if}
 
   {#if showSyncModal}
-    <SyncModal on:close={() => (showSyncModal = false)} />
+    <SyncModal onClose={() => (showSyncModal = false)} />
   {/if}
 
   {#if showTagsModal}
-    <TagsModal on:close={() => (showTagsModal = false)} />
+    <TagsModal onClose={() => (showTagsModal = false)} />
   {/if}
 
   {#if showAboutModal}
-    <AboutModal on:close={() => (showAboutModal = false)} />
+    <AboutModal onClose={() => (showAboutModal = false)} />
   {/if}
 {/if}
 

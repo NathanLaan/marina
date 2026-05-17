@@ -1,14 +1,14 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
   import { addTag } from '../stores/app.js';
 
-  const dispatch = createEventDispatcher();
+  let { onClose } = $props();
 
-  let name = '';
-  let loading = false;
-  let errorMsg = '';
+  let name = $state('');
+  let loading = $state(false);
+  let errorMsg = $state('');
 
-  async function handleSubmit() {
+  async function handleSubmit(e) {
+    e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
 
@@ -16,7 +16,7 @@
     errorMsg = '';
     try {
       await addTag(trimmed);
-      dispatch('close');
+      onClose();
     } catch (err) {
       errorMsg = err.message || 'Failed to add tag';
     } finally {
@@ -25,18 +25,18 @@
   }
 
   function handleKeydown(e) {
-    if (e.key === 'Escape') dispatch('close');
+    if (e.key === 'Escape') onClose();
   }
 </script>
 
-<!-- svelte-ignore a11y-no-static-element-interactions -->
-<div class="modal-overlay" on:mousedown|self={() => dispatch('close')} on:keydown={handleKeydown}>
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="modal-overlay" onmousedown={(e) => { if (e.target === e.currentTarget) onClose(); }} onkeydown={handleKeydown}>
   <div class="modal">
     <h3>Add Tag</h3>
-    <form on:submit|preventDefault={handleSubmit}>
+    <form onsubmit={handleSubmit}>
       <label>
         <span>Tag Name</span>
-        <!-- svelte-ignore a11y-autofocus -->
+        <!-- svelte-ignore a11y_autofocus -->
         <input
           type="text"
           bind:value={name}
@@ -49,7 +49,7 @@
         <p class="error">{errorMsg}</p>
       {/if}
       <div class="actions">
-        <button type="button" class="btn btn-secondary" on:click={() => dispatch('close')} disabled={loading}>
+        <button type="button" class="btn btn-secondary" onclick={onClose} disabled={loading}>
           Cancel
         </button>
         <button type="submit" class="btn btn-primary" disabled={loading || !name.trim()}>

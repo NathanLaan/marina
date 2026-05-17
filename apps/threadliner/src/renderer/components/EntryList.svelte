@@ -1,9 +1,9 @@
 <script>
   import { entries, selectedEntryId, selectedFeedId, selectedFeed, isLoading, selectEntry } from '../stores/app.js';
 
-  export let width = 320;
+  let { width = $bindable(320) } = $props();
 
-  let isResizing = false;
+  let isResizing = $state(false);
 
   function startResize(e) {
     isResizing = true;
@@ -70,7 +70,7 @@
           class="entry-item"
           class:active={$selectedEntryId === entry.id}
           class:unread={!entry.is_read}
-          on:click={() => selectEntry(entry.id)}
+          onclick={() => selectEntry(entry.id)}
         >
           <span class="entry-title">{entry.title || '(Untitled)'}</span>
           <span class="entry-meta">
@@ -85,8 +85,8 @@
       {/each}
     {/if}
   </div>
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div class="resize-handle" on:mousedown={startResize}></div>
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="resize-handle" onmousedown={startResize}></div>
 </div>
 
 <style>

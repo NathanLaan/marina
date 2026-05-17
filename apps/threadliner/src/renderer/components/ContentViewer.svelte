@@ -66,7 +66,7 @@
     }
   }
 
-  $: sanitizedContent = $selectedEntry ? sanitize($selectedEntry.content) : '';
+  const sanitizedContent = $derived($selectedEntry ? sanitize($selectedEntry.content) : '');
 </script>
 
 <div class="content-viewer">

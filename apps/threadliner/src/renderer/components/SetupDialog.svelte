@@ -1,13 +1,11 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
+  let { onComplete } = $props();
 
-  const dispatch = createEventDispatcher();
-
-  let dataDir = '';
-  let remoteUrl = '';
-  let step = 1;
-  let loading = false;
-  let errorMsg = '';
+  let dataDir = $state('');
+  let remoteUrl = $state('');
+  let step = $state(1);
+  let loading = $state(false);
+  let errorMsg = $state('');
 
   async function handleBrowse() {
     try {
@@ -30,7 +28,7 @@
     errorMsg = '';
     try {
       await window.api.setupInit(dataDir.trim(), remoteUrl.trim() || null);
-      dispatch('complete');
+      onComplete();
     } catch (err) {
       errorMsg = err.message || 'Setup failed';
     } finally {
@@ -60,7 +58,7 @@
               disabled={loading}
               readonly
             />
-            <button class="btn btn-secondary" on:click={handleBrowse} disabled={loading}>
+            <button class="btn btn-secondary" onclick={handleBrowse} disabled={loading}>
               Browse...
             </button>
           </div>
@@ -82,7 +80,7 @@
         {/if}
 
         <div class="actions">
-          <button class="btn btn-primary" on:click={handleSubmit} disabled={loading || !dataDir.trim()}>
+          <button class="btn btn-primary" onclick={handleSubmit} disabled={loading || !dataDir.trim()}>
             {#if loading}
               <i class="fas fa-spinner fa-spin"></i> Setting up...
             {:else}
