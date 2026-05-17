@@ -1,7 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { projectState } from '../stores/project.svelte.js';
-  import { themeState } from '../stores/theme.svelte.js';
+  import { themeState } from '@marina/desktop-ui/theme';
   import { logState } from '../stores/log.svelte.js';
   import { EditorView, basicSetup } from 'codemirror';
   import { keymap } from '@codemirror/view';

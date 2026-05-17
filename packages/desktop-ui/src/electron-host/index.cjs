@@ -39,7 +39,10 @@ function registerWindowHandlers({ getWindow }) {
   });
 }
 
-function registerUIPrefsHandlers({ prefsPath, defaults = {} }) {
+// onChange (optional): called with (patch, mergedPrefs) AFTER persistence.
+// Consumers use it to react to specific pref changes — starting/stopping a
+// service, broadcasting to the renderer, etc.
+function registerUIPrefsHandlers({ prefsPath, defaults = {}, onChange } = {}) {
   function load() {
     try {
       const raw = JSON.parse(fs.readFileSync(prefsPath, 'utf-8'));
@@ -55,9 +58,12 @@ function registerUIPrefsHandlers({ prefsPath, defaults = {} }) {
   let prefs = load();
 
   ipcMain.handle('ui:getPrefs', () => prefs);
-  ipcMain.handle('ui:setPrefs', (_e, patch) => {
+  ipcMain.handle('ui:setPrefs', async (_e, patch) => {
     prefs = { ...prefs, ...(patch || {}) };
     save(prefs);
+    if (onChange) {
+      try { await onChange(patch || {}, prefs); } catch { /* don't fail the IPC */ }
+    }
     return prefs;
   });
 

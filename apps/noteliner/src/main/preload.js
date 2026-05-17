@@ -1,6 +1,14 @@
 const { contextBridge, ipcRenderer } = require('electron');
+const { exposeWindowApi, exposeUIPrefsApi } = require('@marina/desktop-ui/preload');
 
 contextBridge.exposeInMainWorld('api', {
+  // Window controls + UI prefs + relaunch — all wired through the shared
+  // library so renderer-side imports of @marina/desktop-ui talk to the same
+  // IPC surface registered by registerWindowHandlers / registerUIPrefsHandlers
+  // in main.js.
+  ...exposeWindowApi(ipcRenderer),
+  ...exposeUIPrefsApi(ipcRenderer),
+
   // Dialog
   openFolderDialog: () => ipcRenderer.invoke('dialog:openFolder'),
 
@@ -75,10 +83,6 @@ contextBridge.exposeInMainWorld('api', {
   saveWindowState: (folderPath, layout) => ipcRenderer.invoke('window-state:saveLayout', folderPath, layout),
   restoreWindowBounds: (folderPath) => ipcRenderer.invoke('window-state:restoreBounds', folderPath),
 
-  // UI preferences (global, persisted to ui-preferences.json)
-  getUIPrefs: () => ipcRenderer.invoke('ui:getPrefs'),
-  setUIPrefs: (prefs) => ipcRenderer.invoke('ui:setPrefs', prefs),
-
   // MCP server status (for Settings -> MCP tab)
   getMcpStatus: () => ipcRenderer.invoke('mcp:getStatus'),
 
@@ -91,9 +95,6 @@ contextBridge.exposeInMainWorld('api', {
     return () => ipcRenderer.removeListener('mcp:confirm-request', listener);
   },
   respondMcpConfirm: (id, decision) => ipcRenderer.invoke('mcp:confirm-response', id, decision),
-
-  // App lifecycle
-  relaunchApp: () => ipcRenderer.invoke('app:relaunch'),
 
   // Auto-updater
   getUpdateState: () => ipcRenderer.invoke('update:getState'),
@@ -108,17 +109,6 @@ contextBridge.exposeInMainWorld('api', {
 
   // Help window (separate non-modal BrowserWindow)
   openHelpWindow: () => ipcRenderer.invoke('help:open'),
-
-  // Custom window controls
-  windowMinimize: () => ipcRenderer.invoke('window:minimize'),
-  windowMaximize: () => ipcRenderer.invoke('window:maximize'),
-  windowClose: () => ipcRenderer.invoke('window:close'),
-  windowIsMaximized: () => ipcRenderer.invoke('window:isMaximized'),
-  onWindowMaximizedChange: (callback) => {
-    const listener = (_event, value) => callback(value);
-    ipcRenderer.on('window:maximized', listener);
-    return () => ipcRenderer.removeListener('window:maximized', listener);
-  },
 
   // Events
   onGitLog: (callback) => {

@@ -11,6 +11,10 @@ const { McpService } = require('./mcp-service');
 const perf = require('./perf');
 const { marked } = require('marked');
 const pkg = require('../../package.json');
+const {
+  registerWindowHandlers,
+  registerUIPrefsHandlers,
+} = require('@marina/desktop-ui/electron-host');
 
 // Set app name early so Linux WM_CLASS is correct (for dock icon in dev mode)
 app.setName('NoteLiner');
@@ -169,8 +173,11 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
-    }
+      nodeIntegration: false,
+      // Required for the preload to require('@marina/desktop-ui/preload') —
+      // see that module's header for the rationale.
+      sandbox: false,
+    },
   });
 
   Menu.setApplicationMenu(null);
@@ -241,14 +248,15 @@ function createWindow() {
 
   mainWindow.on('resize', saveBoundsDebounced);
   mainWindow.on('move', saveBoundsDebounced);
+  // The library's registerWindowHandlers broadcasts 'window:maximized-change'
+  // for us via an app.on('browser-window-created') hook; we keep these local
+  // listeners only for the windowStateService bounds-save side effect.
   mainWindow.on('maximize', () => {
-    mainWindow.webContents.send('window:maximized', true);
     if (projectService.projectPath) {
       windowStateService.setBounds(projectService.projectPath, mainWindow.getNormalBounds(), true);
     }
   });
   mainWindow.on('unmaximize', () => {
-    mainWindow.webContents.send('window:maximized', false);
     if (projectService.projectPath) {
       const bounds = mainWindow.getBounds();
       windowStateService.setBounds(projectService.projectPath, bounds, false);
@@ -312,25 +320,35 @@ app.on('before-quit', () => {
 
 // --- IPC Handlers ---
 
-ipcMain.handle('ui:getPrefs', () => loadUIPrefs());
-ipcMain.handle('ui:setPrefs', async (_event, prefs) => {
-  const current = loadUIPrefs();
-  const next = { ...current, ...prefs };
-  saveUIPrefs(next);
-  if (projectService && typeof prefs?.writeFrontmatter === 'boolean') {
-    projectService.setWriteFrontmatter(prefs.writeFrontmatter);
-  }
-  // React to MCP toggle immediately so the user sees status update without
-  // reopening the project.
-  if (typeof prefs?.mcpEnabled === 'boolean') {
-    if (prefs.mcpEnabled) {
-      await maybeStartMcp();
-    } else {
-      await mcpService?.stop();
+// Window controls, UI-prefs persistence, and app relaunch all come from the
+// shared library. The onChange callback replays the NoteLiner-specific side
+// effects (writeFrontmatter propagation, MCP toggle) that used to live in
+// the local ui:setPrefs handler.
+registerUIPrefsHandlers({
+  prefsPath: getUIPrefsPath(),
+  defaults: {
+    customTitlebar: false,
+    writeFrontmatter: true,
+    mcpEnabled: false,
+    mcpConfirmWrites: false,
+    mcpDisabledTools: [],
+  },
+  onChange: async (patch) => {
+    if (projectService && typeof patch?.writeFrontmatter === 'boolean') {
+      projectService.setWriteFrontmatter(patch.writeFrontmatter);
     }
-  }
-  return true;
+    if (typeof patch?.mcpEnabled === 'boolean') {
+      if (patch.mcpEnabled) {
+        await maybeStartMcp();
+      } else {
+        await mcpService?.stop();
+      }
+    }
+  },
 });
+// NOTE: app:relaunch stays a local handler (further down this file). NoteLiner
+// uses a window-recreate dance instead of app.relaunch() so the dev-mode Vite
+// orchestrator isn't torn down — see that handler's comment for details.
 
 // --- MCP ---
 
@@ -510,6 +528,7 @@ function createHelpWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: false,
     },
   });
 
@@ -532,14 +551,9 @@ ipcMain.handle('help:open', () => {
   createHelpWindow();
 });
 
-ipcMain.handle('window:minimize', () => mainWindow?.minimize());
-ipcMain.handle('window:maximize', () => {
-  if (!mainWindow) return;
-  if (mainWindow.isMaximized()) mainWindow.unmaximize();
-  else mainWindow.maximize();
-});
-ipcMain.handle('window:close', () => mainWindow?.close());
-ipcMain.handle('window:isMaximized', () => !!mainWindow?.isMaximized());
+// Window controls (minimize/maximize/close/isMaximized) + the
+// window:maximized-change broadcast come from the shared library now.
+registerWindowHandlers({ getWindow: () => mainWindow });
 
 ipcMain.handle('dialog:openFolder', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {

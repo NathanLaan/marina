@@ -1,7 +1,10 @@
 <script>
   import { onMount } from 'svelte';
-  import { themeState } from '../stores/theme.svelte.js';
-  import { commandRegistry } from '../stores/commands.svelte.js';
+  import {
+    SettingsShell, SettingGroup, ThemeList, ScaleList, ToggleOption,
+    RestartBanner, ShortcutsList,
+  } from '@marina/desktop-ui/settings';
+  import { commandRegistry } from '@marina/desktop-ui/command-palette';
   import McpWalkthroughModal from './McpWalkthroughModal.svelte';
 
   let { onClose } = $props();
@@ -41,21 +44,24 @@
     prefsLoaded = true;
   });
 
-  async function toggleCustomTitlebar() {
-    customTitlebar = !customTitlebar;
+  // Refresh MCP status whenever the user lands on the MCP tab — the previous
+  // top-tab onclick handler did this inline; we replicate it as an effect so
+  // the new bind:activeTab in SettingsShell stays the source of truth.
+  $effect(() => {
+    if (activeTab === 'mcp') refreshMcpStatus();
+  });
+
+  async function setCustomTitlebar(next) {
+    customTitlebar = next;
     if (window.api?.setUIPrefs) {
-      try {
-        await window.api.setUIPrefs({ customTitlebar });
-      } catch { /* ignore */ }
+      try { await window.api.setUIPrefs({ customTitlebar }); } catch { /* ignore */ }
     }
   }
 
-  async function toggleWriteFrontmatter() {
-    writeFrontmatter = !writeFrontmatter;
+  async function setWriteFrontmatter(next) {
+    writeFrontmatter = next;
     if (window.api?.setUIPrefs) {
-      try {
-        await window.api.setUIPrefs({ writeFrontmatter });
-      } catch { /* ignore */ }
+      try { await window.api.setUIPrefs({ writeFrontmatter }); } catch { /* ignore */ }
     }
   }
 
@@ -64,17 +70,13 @@
     // The toggle only commits if the user clicks "Enable" inside the modal.
     // Off-direction (disabling) flips silently — no value in nagging there.
     if (!mcpEnabled) {
-      // Make sure mcpStatus.bridgePath is populated before opening — the
-      // walkthrough's config snippet depends on it.
       if (!mcpStatus?.bridgePath) await refreshMcpStatus();
       showMcpWalkthrough = true;
       return;
     }
     mcpEnabled = false;
     if (window.api?.setUIPrefs) {
-      try {
-        await window.api.setUIPrefs({ mcpEnabled: false });
-      } catch { /* ignore */ }
+      try { await window.api.setUIPrefs({ mcpEnabled: false }); } catch { /* ignore */ }
     }
     await refreshMcpStatus();
   }
@@ -83,24 +85,19 @@
     showMcpWalkthrough = false;
     mcpEnabled = true;
     if (window.api?.setUIPrefs) {
-      try {
-        await window.api.setUIPrefs({ mcpEnabled: true });
-      } catch { /* ignore */ }
+      try { await window.api.setUIPrefs({ mcpEnabled: true }); } catch { /* ignore */ }
     }
     await refreshMcpStatus();
   }
 
   function handleWalkthroughCancel() {
-    // Toggle stays off — the modal acts purely as a consent gate.
     showMcpWalkthrough = false;
   }
 
-  async function toggleMcpConfirmWrites() {
-    mcpConfirmWrites = !mcpConfirmWrites;
+  async function setMcpConfirmWrites(next) {
+    mcpConfirmWrites = next;
     if (window.api?.setUIPrefs) {
-      try {
-        await window.api.setUIPrefs({ mcpConfirmWrites });
-      } catch { /* ignore */ }
+      try { await window.api.setUIPrefs({ mcpConfirmWrites }); } catch { /* ignore */ }
     }
   }
 
@@ -111,9 +108,7 @@
       mcpDisabledTools = [...mcpDisabledTools, tool];
     }
     if (window.api?.setUIPrefs) {
-      try {
-        await window.api.setUIPrefs({ mcpDisabledTools });
-      } catch { /* ignore */ }
+      try { await window.api.setUIPrefs({ mcpDisabledTools }); } catch { /* ignore */ }
     }
   }
 
@@ -122,8 +117,6 @@
   let readTools = $derived(mcpStatus?.tools?.read || []);
   let writeTools = $derived(mcpStatus?.tools?.write || []);
 
-  // Sample config snippet — uses the resolved bridge path so a paste works
-  // verbatim. node-style spawn is the universal denominator across clients.
   let mcpConfigSnippet = $derived(mcpStatus?.bridgePath
     ? JSON.stringify({
         mcpServers: {
@@ -171,279 +164,171 @@
     { keys: 'Ctrl+Shift+F', action: 'Find in File', section: 'Editor' },
   ];
 
-  function focusOnMount(node) {
-    node.focus();
-  }
+  const allShortcuts = $derived([...shortcuts, ...editorShortcuts]);
 
-  function handleKeydown(e) {
-    if (e.key === 'Escape' || e.key === 'Enter') onClose();
-  }
+  const tabs = [
+    { id: 'ui',        label: 'UI',                 render: uiTab },
+    { id: 'mcp',       label: 'MCP',                render: mcpTab },
+    { id: 'shortcuts', label: 'Keyboard Shortcuts', render: shortcutsTab },
+  ];
 </script>
 
-<div class="modal-overlay" use:focusOnMount onclick={(e) => { if (e.target === e.currentTarget) onClose(); }} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
-  <div class="modal">
-    <div class="modal-header">
-      <h2>Settings</h2>
+{#snippet uiTab()}
+  <SettingGroup label="Theme">
+    <ThemeList />
+  </SettingGroup>
+
+  <SettingGroup label="UI Scale">
+    <ScaleList />
+  </SettingGroup>
+
+  <SettingGroup label="Window">
+    <ToggleOption
+      label="Custom Window Titlebar"
+      checked={customTitlebar}
+      disabled={!prefsLoaded}
+      onchange={setCustomTitlebar}
+    />
+    {#if restartPending}
+      <RestartBanner
+        message="Restart required to apply titlebar change."
+        onRestart={applyRestart}
+      />
+    {/if}
+  </SettingGroup>
+
+  <SettingGroup
+    label="Storage"
+    help="Mirrors id, name, and tags into a YAML block at the top of each note so external tools can read them. Applies to future saves; files are reconciled on next project open."
+  >
+    <ToggleOption
+      label="Write YAML frontmatter to .md files"
+      checked={writeFrontmatter}
+      disabled={!prefsLoaded}
+      onchange={setWriteFrontmatter}
+    />
+  </SettingGroup>
+{/snippet}
+
+{#snippet mcpTab()}
+  <SettingGroup
+    label="Model Context Protocol Server"
+    help="Lets external AI assistants (Claude Code, Claude Desktop, Cursor) list, read, search, and write notes in the currently-open project. All writes go through the normal save path and are committed to git. The server is local-only — no network port is opened."
+  >
+    <ToggleOption
+      label="Enable MCP server"
+      checked={mcpEnabled}
+      disabled={!prefsLoaded}
+      onchange={toggleMcp}
+    />
+  </SettingGroup>
+
+  <SettingGroup label="Status">
+    <div class="mcp-status-row">
+      <span class="mcp-status-dot" class:running={mcpStatus?.running}></span>
+      <span class="mcp-status-text">{mcpStatusText}</span>
+      <button class="link-btn" onclick={refreshMcpStatus}>Refresh</button>
     </div>
+    {#if mcpStatus?.socketPath}
+      <div class="mcp-kv">
+        <span class="mcp-k">Socket</span>
+        <code class="mcp-v">{mcpStatus.socketPath}</code>
+      </div>
+    {/if}
+    {#if mcpStatus?.bridgePath}
+      <div class="mcp-kv">
+        <span class="mcp-k">Bridge</span>
+        <code class="mcp-v">{mcpStatus.bridgePath}</code>
+      </div>
+    {/if}
+  </SettingGroup>
 
-    <div class="tab-bar">
-      <button class="tab" class:active={activeTab === 'ui'} onclick={() => activeTab = 'ui'}>UI</button>
-      <button class="tab" class:active={activeTab === 'mcp'} onclick={() => { activeTab = 'mcp'; refreshMcpStatus(); }}>MCP</button>
-      <button class="tab" class:active={activeTab === 'shortcuts'} onclick={() => activeTab = 'shortcuts'}>Keyboard Shortcuts</button>
-    </div>
+  {#if mcpEnabled && mcpConfigSnippet}
+    <SettingGroup label="Client Configuration">
+      <p class="setting-help">
+        Paste this into your MCP client's config file (for Claude Code:
+        <code>.mcp.json</code> in the project; for Claude Desktop:
+        <code>claude_desktop_config.json</code>).
+      </p>
+      <div class="snippet-wrap">
+        <pre class="snippet">{mcpConfigSnippet}</pre>
+        <button class="snippet-copy" onclick={copyMcpConfig}>
+          {copiedConfig ? 'Copied' : 'Copy'}
+        </button>
+      </div>
+    </SettingGroup>
+  {/if}
 
-    <div class="modal-body">
-      {#if activeTab === 'ui'}
-        <div class="setting-group">
-          <span class="setting-label">Theme</span>
-          <div class="theme-list">
-            {#each themeState.list as theme (theme.id)}
-              <button
-                class="theme-option"
-                class:active={themeState.current === theme.id}
-                onclick={() => themeState.set(theme.id)}
-              >
-                <span class="theme-radio">
-                  {#if themeState.current === theme.id}
-                    <i class="fas fa-circle-check"></i>
-                  {:else}
-                    <i class="far fa-circle"></i>
-                  {/if}
-                </span>
-                {theme.name}
-              </button>
-            {/each}
-          </div>
-        </div>
+  <SettingGroup
+    label="Safety"
+    help={`When enabled, NoteLiner asks for permission before running write tools (create_note, update_note, delete_note, etc.). Read tools are never gated. "Allow for session" remembers your choice until the project closes.`}
+  >
+    <ToggleOption
+      label="Ask before write operations"
+      checked={mcpConfirmWrites}
+      disabled={!prefsLoaded || !mcpEnabled}
+      onchange={setMcpConfirmWrites}
+    />
+  </SettingGroup>
 
-        <div class="setting-group">
-          <span class="setting-label">UI Scale</span>
-          <div class="scale-list">
-            {#each themeState.scaleList as scale (scale.id)}
-              <button
-                class="scale-option"
-                class:active={themeState.scale === scale.id}
-                onclick={() => themeState.setScale(scale.id)}
-              >
-                {scale.label}
-              </button>
-            {/each}
-          </div>
-        </div>
-
-        <div class="setting-group">
-          <span class="setting-label">Window</span>
+  {#if mcpStatus?.tools}
+    <SettingGroup
+      label="Tool Access"
+      help="Untick to disable individual tools. Disabled tools return an error to the MCP client. This applies to both read and write tools — handy for restricting an agent's reach without turning the whole server off."
+    >
+      <div class="tool-section">
+        <span class="tool-section-label">Read</span>
+        {#each readTools as tool (tool)}
+          {@const disabled = mcpDisabledTools.includes(tool)}
           <button
-            class="toggle-option"
-            class:active={customTitlebar}
-            onclick={toggleCustomTitlebar}
-            disabled={!prefsLoaded}
-          >
-            <span class="toggle-radio">
-              {#if customTitlebar}
-                <i class="fas fa-square-check"></i>
-              {:else}
-                <i class="far fa-square"></i>
-              {/if}
-            </span>
-            Custom Window Titlebar
-          </button>
-          {#if restartPending}
-            <div class="restart-banner">
-              <span>Restart required to apply titlebar change.</span>
-              <button class="restart-btn" onclick={applyRestart}>Restart now</button>
-            </div>
-          {/if}
-        </div>
-
-        <div class="setting-group">
-          <span class="setting-label">Storage</span>
-          <button
-            class="toggle-option"
-            class:active={writeFrontmatter}
-            onclick={toggleWriteFrontmatter}
-            disabled={!prefsLoaded}
-          >
-            <span class="toggle-radio">
-              {#if writeFrontmatter}
-                <i class="fas fa-square-check"></i>
-              {:else}
-                <i class="far fa-square"></i>
-              {/if}
-            </span>
-            Write YAML frontmatter to .md files
-          </button>
-          <p class="setting-help">
-            Mirrors id, name, and tags into a YAML block at the top of each
-            note so external tools can read them. Applies to future saves;
-            files are reconciled on next project open.
-          </p>
-        </div>
-      {:else if activeTab === 'mcp'}
-        <div class="setting-group">
-          <span class="setting-label">Model Context Protocol Server</span>
-          <button
-            class="toggle-option"
-            class:active={mcpEnabled}
-            onclick={toggleMcp}
-            disabled={!prefsLoaded}
-          >
-            <span class="toggle-radio">
-              {#if mcpEnabled}
-                <i class="fas fa-square-check"></i>
-              {:else}
-                <i class="far fa-square"></i>
-              {/if}
-            </span>
-            Enable MCP server
-          </button>
-          <p class="setting-help">
-            Lets external AI assistants (Claude Code, Claude Desktop, Cursor)
-            list, read, search, and write notes in the currently-open project.
-            All writes go through the normal save path and are committed to
-            git. The server is local-only — no network port is opened.
-          </p>
-        </div>
-
-        <div class="setting-group">
-          <span class="setting-label">Status</span>
-          <div class="mcp-status-row">
-            <span class="mcp-status-dot" class:running={mcpStatus?.running}></span>
-            <span class="mcp-status-text">{mcpStatusText}</span>
-            <button class="link-btn" onclick={refreshMcpStatus}>Refresh</button>
-          </div>
-          {#if mcpStatus?.socketPath}
-            <div class="mcp-kv">
-              <span class="mcp-k">Socket</span>
-              <code class="mcp-v">{mcpStatus.socketPath}</code>
-            </div>
-          {/if}
-          {#if mcpStatus?.bridgePath}
-            <div class="mcp-kv">
-              <span class="mcp-k">Bridge</span>
-              <code class="mcp-v">{mcpStatus.bridgePath}</code>
-            </div>
-          {/if}
-        </div>
-
-        {#if mcpEnabled && mcpConfigSnippet}
-          <div class="setting-group">
-            <span class="setting-label">Client Configuration</span>
-            <p class="setting-help">
-              Paste this into your MCP client's config file (for Claude Code:
-              <code>.mcp.json</code> in the project; for Claude Desktop:
-              <code>claude_desktop_config.json</code>).
-            </p>
-            <div class="snippet-wrap">
-              <pre class="snippet">{mcpConfigSnippet}</pre>
-              <button class="snippet-copy" onclick={copyMcpConfig}>
-                {copiedConfig ? 'Copied' : 'Copy'}
-              </button>
-            </div>
-          </div>
-        {/if}
-
-        <div class="setting-group">
-          <span class="setting-label">Safety</span>
-          <button
-            class="toggle-option"
-            class:active={mcpConfirmWrites}
-            onclick={toggleMcpConfirmWrites}
+            class="tool-row"
+            class:disabled
+            onclick={() => toggleToolDisabled(tool)}
             disabled={!prefsLoaded || !mcpEnabled}
           >
-            <span class="toggle-radio">
-              {#if mcpConfirmWrites}
+            <span class="tool-check">
+              {#if !disabled}
                 <i class="fas fa-square-check"></i>
               {:else}
                 <i class="far fa-square"></i>
               {/if}
             </span>
-            Ask before write operations
+            <code class="tool-name">{tool}</code>
           </button>
-          <p class="setting-help">
-            When enabled, NoteLiner asks for permission before running write
-            tools (<code>create_note</code>, <code>update_note</code>,
-            <code>delete_note</code>, etc.). Read tools are never gated.
-            "Allow for session" remembers your choice until the project closes.
-          </p>
-        </div>
+        {/each}
+      </div>
 
-        {#if mcpStatus?.tools}
-          <div class="setting-group">
-            <span class="setting-label">Tool Access</span>
-            <p class="setting-help">
-              Untick to disable individual tools. Disabled tools return an
-              error to the MCP client. This applies to both read and write
-              tools — handy for restricting an agent's reach without turning
-              the whole server off.
-            </p>
+      <div class="tool-section">
+        <span class="tool-section-label">Write</span>
+        {#each writeTools as tool (tool)}
+          {@const disabled = mcpDisabledTools.includes(tool)}
+          <button
+            class="tool-row"
+            class:disabled
+            onclick={() => toggleToolDisabled(tool)}
+            disabled={!prefsLoaded || !mcpEnabled}
+          >
+            <span class="tool-check">
+              {#if !disabled}
+                <i class="fas fa-square-check"></i>
+              {:else}
+                <i class="far fa-square"></i>
+              {/if}
+            </span>
+            <code class="tool-name">{tool}</code>
+            <span class="tool-tag">write</span>
+          </button>
+        {/each}
+      </div>
+    </SettingGroup>
+  {/if}
+{/snippet}
 
-            <div class="tool-section">
-              <span class="tool-section-label">Read</span>
-              {#each readTools as tool (tool)}
-                {@const disabled = mcpDisabledTools.includes(tool)}
-                <button
-                  class="tool-row"
-                  class:disabled
-                  onclick={() => toggleToolDisabled(tool)}
-                  disabled={!prefsLoaded || !mcpEnabled}
-                >
-                  <span class="tool-check">
-                    {#if !disabled}
-                      <i class="fas fa-square-check"></i>
-                    {:else}
-                      <i class="far fa-square"></i>
-                    {/if}
-                  </span>
-                  <code class="tool-name">{tool}</code>
-                </button>
-              {/each}
-            </div>
+{#snippet shortcutsTab()}
+  <ShortcutsList shortcuts={allShortcuts} />
+{/snippet}
 
-            <div class="tool-section">
-              <span class="tool-section-label">Write</span>
-              {#each writeTools as tool (tool)}
-                {@const disabled = mcpDisabledTools.includes(tool)}
-                <button
-                  class="tool-row"
-                  class:disabled
-                  onclick={() => toggleToolDisabled(tool)}
-                  disabled={!prefsLoaded || !mcpEnabled}
-                >
-                  <span class="tool-check">
-                    {#if !disabled}
-                      <i class="fas fa-square-check"></i>
-                    {:else}
-                      <i class="far fa-square"></i>
-                    {/if}
-                  </span>
-                  <code class="tool-name">{tool}</code>
-                  <span class="tool-tag">write</span>
-                </button>
-              {/each}
-            </div>
-          </div>
-        {/if}
-      {:else if activeTab === 'shortcuts'}
-        <div class="shortcuts-list">
-          {#each [...shortcuts, ...editorShortcuts] as shortcut, i (shortcut.section + '|' + shortcut.keys + '|' + i)}
-            {#if i === 0 || shortcut.section !== [...shortcuts, ...editorShortcuts][i - 1].section}
-              <div class="shortcut-section">{shortcut.section}</div>
-            {/if}
-            <div class="shortcut-row">
-              <span class="shortcut-action">{shortcut.action}</span>
-              <kbd class="shortcut-keys">{shortcut.keys}</kbd>
-            </div>
-          {/each}
-        </div>
-      {/if}
-    </div>
-
-    <div class="modal-footer">
-      <button class="close-btn" onclick={onClose}>OK</button>
-    </div>
-  </div>
-</div>
+<SettingsShell {tabs} bind:activeTab {onClose} />
 
 {#if showMcpWalkthrough}
   <McpWalkthroughModal
@@ -454,234 +339,11 @@
 {/if}
 
 <style>
-  .tab-bar {
-    display: flex;
-    border-bottom: 1px solid var(--border);
-    padding: 0 24px;
-    gap: 0;
-    flex-shrink: 0;
-  }
-
-  .tab {
-    padding: 10px 16px;
-    font-size: 13px;
-    color: var(--text-muted);
-    border-bottom: 2px solid transparent;
-    transition: color 0.15s, border-color 0.15s;
-    margin-bottom: -1px;
-  }
-
-  .tab:hover {
-    color: var(--text-primary);
-  }
-
-  .tab.active {
-    color: var(--accent);
-    border-bottom-color: var(--accent);
-  }
-
-  .modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    padding: 12px 24px;
-    border-top: 1px solid var(--border);
-  }
-
-  .setting-group {
-    margin-bottom: 24px;
-  }
-
-  .setting-label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-muted);
-    display: block;
-    margin-bottom: 10px;
-  }
-
-  .theme-list {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .theme-option {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    background: var(--bg-button);
-    color: var(--text-primary);
-    border-radius: 6px;
-    font-size: 14px;
-    text-align: left;
-    transition: background 0.15s;
-  }
-
-  .theme-option:hover {
-    background: var(--bg-button-hover);
-  }
-
-  .theme-option.active {
-    background: var(--bg-selected);
-    outline: 1px solid var(--accent);
-  }
-
-  .theme-radio {
-    color: var(--text-muted);
-    font-size: 15px;
-    width: 18px;
-    text-align: center;
-  }
-
-  .theme-option.active .theme-radio {
-    color: var(--accent);
-  }
-
-  .scale-list {
-    display: flex;
-    gap: 4px;
-  }
-
-  .scale-option {
-    padding: 8px 14px;
-    background: var(--bg-button);
-    color: var(--text-primary);
-    border-radius: 6px;
-    font-size: 13px;
-    transition: background 0.15s;
-  }
-
-  .scale-option:hover {
-    background: var(--bg-button-hover);
-  }
-
-  .scale-option.active {
-    background: var(--bg-selected);
-    outline: 1px solid var(--accent);
-    color: var(--accent);
-  }
-
-  .shortcuts-list {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .shortcut-section {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-muted);
-    padding: 12px 12px 4px;
-  }
-
-  .shortcut-section:first-child {
-    padding-top: 0;
-  }
-
-  .shortcut-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
-    border-radius: 6px;
-  }
-
-  .shortcut-row:nth-child(odd) {
-    background: var(--bg-base);
-  }
-
-  .shortcut-action {
-    font-size: 13px;
-    color: var(--text-primary);
-  }
-
-  .shortcut-keys {
-    font-size: 12px;
-    font-family: monospace;
-    color: var(--text-secondary);
-    background: var(--bg-button);
-    padding: 3px 8px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
-  }
-
-  .toggle-option {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 14px;
-    background: var(--bg-button);
-    color: var(--text-primary);
-    border-radius: 6px;
-    font-size: 14px;
-    text-align: left;
-    transition: background 0.15s;
-    width: 100%;
-  }
-
-  .toggle-option:hover:not(:disabled) {
-    background: var(--bg-button-hover);
-  }
-
-  .toggle-option.active {
-    background: var(--bg-selected);
-    outline: 1px solid var(--accent);
-  }
-
-  .toggle-option:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
-
-  .toggle-radio {
-    color: var(--text-muted);
-    font-size: 15px;
-    width: 18px;
-    text-align: center;
-  }
-
-  .toggle-option.active .toggle-radio {
-    color: var(--accent);
-  }
-
   .setting-help {
     margin: 8px 2px 0;
     font-size: 12px;
     line-height: 1.4;
     color: var(--text-muted);
-  }
-
-  .restart-banner {
-    margin-top: 10px;
-    padding: 10px 14px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    background: var(--bg-selected);
-    border: 1px solid var(--accent);
-    border-radius: 6px;
-    font-size: 13px;
-    color: var(--text-primary);
-  }
-
-  .restart-btn {
-    padding: 6px 14px;
-    background: var(--accent);
-    color: var(--accent-on);
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
-    transition: background 0.15s;
-  }
-
-  .restart-btn:hover {
-    background: var(--accent-hover);
   }
 
   .mcp-status-row {
@@ -840,19 +502,5 @@
     background: var(--bg-base);
     padding: 1px 6px;
     border-radius: 3px;
-  }
-
-  .close-btn {
-    padding: 8px 24px;
-    background: var(--bg-selected);
-    outline: 1px solid var(--accent);
-    color: var(--accent);
-    border-radius: 6px;
-    transition: background 0.15s, color 0.15s;
-  }
-
-  .close-btn:hover {
-    background: var(--accent);
-    color: var(--accent-on);
   }
 </style>

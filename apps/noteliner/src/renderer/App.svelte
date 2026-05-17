@@ -1,13 +1,13 @@
 <script>
   import { onMount } from 'svelte';
+  import appIconSvg from '../../assets/icon-hexagon.svg?raw';
   import Toolbar from './components/Toolbar.svelte';
-  import TitleBar from './components/TitleBar.svelte';
+  import { TitleBar, AboutModal } from '@marina/desktop-ui/components';
   import Sidebar from './components/Sidebar.svelte';
   import Editor from './components/Editor.svelte';
   import Preview from './components/Preview.svelte';
   import LogPanel from './components/LogPanel.svelte';
   import OpenScreen from './components/OpenScreen.svelte';
-  import AboutModal from './components/AboutModal.svelte';
   import SetupModal from './components/SetupModal.svelte';
   import SettingsModal from './components/SettingsModal.svelte';
   import ProjectSettingsModal from './components/ProjectSettingsModal.svelte';
@@ -21,11 +21,12 @@
   import McpConfirmModal from './components/McpConfirmModal.svelte';
   import HistoryPanel from './components/HistoryPanel.svelte';
   import AttachmentPanel from './components/AttachmentPanel.svelte';
-  import CommandPalette from './components/CommandPalette.svelte';
+  import { CommandPalette, fuzzyScore } from '@marina/desktop-ui/command-palette';
   import { projectState } from './stores/project.svelte.js';
-  import { themeState } from './stores/theme.svelte.js';
+  import { themeState } from '@marina/desktop-ui/theme';
   import { logState } from './stores/log.svelte.js';
-  import { commandRegistry } from './stores/commands.svelte.js';
+  import { updateState } from './stores/update.svelte.js';
+  import { commandRegistry } from '@marina/desktop-ui/command-palette';
   import { installTestHelpers } from './test-helpers.js';
 
   const VALID_PANE_KEYS = ['files', 'tagGroups', 'outline', 'tags', 'search', 'backlinks'];
@@ -230,7 +231,7 @@
     C({ id: 'app.commandPalette', label: 'Command Palette', section: 'App', shortcut: 'Ctrl+K',
         matches: (e) => ctrl(e) && !e.altKey
           && ((!e.shiftKey && (e.key === 'k' || e.key === 'K')) || (e.shiftKey && e.code === 'KeyP')),
-        run: () => { showPalette = true; } });
+        run: () => { openPalette(); } });
   }
 
   // Persist recently-used command ids back to ui-preferences (debounced).
@@ -619,17 +620,131 @@
       await window.api.saveIndex($state.snapshot(projectState.index));
     }
   }
+
+  // Recent projects are fetched lazily — the palette opens often, so we
+  // refresh whenever it's about to be shown rather than polling.
+  let recentProjects = $state([]);
+  async function refreshRecentProjects() {
+    try {
+      recentProjects = (await window.api?.getRecentProjects?.()) || [];
+    } catch {
+      recentProjects = [];
+    }
+  }
+
+  function shortPath(p) {
+    if (!p) return '';
+    const parts = p.split(/[\\/]/).filter(Boolean);
+    if (parts.length <= 2) return p;
+    return '.../' + parts.slice(-2).join('/');
+  }
+
+  // Extra items the library palette merges with its built-in commands list.
+  // Notes/tags appear only when a project is open and the user has typed a
+  // query; recent projects appear when no project is open OR when typing.
+  function paletteExtras({ query }) {
+    const q = query;
+    const out = [];
+
+    if (q && projectState.isOpen) {
+      for (const tag of projectState.allTags) {
+        const score = fuzzyScore(tag, q);
+        if (score === 0) continue;
+        const files = projectState.getFilesWithTag(tag);
+        out.push({
+          kind: 'tag',
+          id: 'tag:' + tag,
+          label: '#' + tag,
+          sub: files.length + (files.length === 1 ? ' note' : ' notes'),
+          section: 'Tag',
+          score,
+          run: () => { if (files[0]) projectState.selectFile(files[0].id); },
+        });
+      }
+
+      for (const f of projectState.index.files) {
+        const score = fuzzyScore(f.name, q);
+        if (score === 0) continue;
+        out.push({
+          kind: 'note',
+          id: 'note:' + f.id,
+          label: f.name,
+          sub: f.filename,
+          section: 'Note',
+          score,
+          run: () => projectState.selectFile(f.id),
+        });
+      }
+    }
+
+    if (!projectState.isOpen || q) {
+      for (const r of recentProjects) {
+        const score = fuzzyScore(r.name, q);
+        if (q && score === 0) continue;
+        out.push({
+          kind: 'recent',
+          id: 'rp:' + r.path,
+          label: r.name,
+          sub: shortPath(r.path),
+          section: 'Recent',
+          score: score + (q ? 0 : 200),
+          run: () => { showPalette = false; handleOpenRecent(r.path); },
+        });
+      }
+    }
+
+    return out;
+  }
+
+  async function openPalette() {
+    await refreshRecentProjects();
+    showPalette = true;
+  }
 </script>
 
 {#if showPalette}
   <CommandPalette
     onClose={() => showPalette = false}
-    onOpenRecent={async (path) => { showPalette = false; await handleOpenRecent(path); }}
+    extraItemsProvider={paletteExtras}
+    placeholder="Type a command or note name..."
   />
 {/if}
 
+{#snippet titlebarActions()}
+  <button
+    class="title-action"
+    class:active={!projectState.isOpen}
+    onclick={handleGoHome}
+    disabled={!projectState.isOpen}
+    aria-label="Home"
+    title="Home"
+  >
+    <i class="fas fa-house"></i>
+  </button>
+  <button class="title-action" onclick={handleOpenFolder} aria-label="Open Folder" title="Open Folder (Ctrl+O)">
+    <i class="fas fa-folder-open"></i>
+  </button>
+  {#if projectState.isOpen}
+    <button class="title-action" onclick={handleNewFile} aria-label="New File" title="New File (Ctrl+N)">
+      <i class="fas fa-file-circle-plus"></i>
+    </button>
+    <button class="title-action" onclick={handleImportDocument} aria-label="Import Document" title="Import Document (Ctrl+Shift+I)">
+      <i class="fas fa-file-import"></i>
+    </button>
+  {/if}
+{/snippet}
+
 {#if showAbout}
-  <AboutModal onClose={() => showAbout = false} />
+  <AboutModal
+    appName="NoteLiner"
+    version={__APP_VERSION__}
+    description="An outliner-style note-taking application built with Electron and Svelte."
+    repoUrl="https://github.com/NathanLaan/noteliner"
+    repoLabel="github.com/NathanLaan/noteliner"
+    iconSvg={appIconSvg}
+    {updateState}
+    onClose={() => showAbout = false}
+  />
 {/if}
 
 {#if showSetup}
@@ -705,13 +820,10 @@
 <div class="app-layout">
   {#if customTitlebar}
     <TitleBar
+      appName="NoteLiner"
       onToggleToolbar={handleToggleToolbar}
       toolbarVisible={layout.showToolbar}
-      onGoHome={handleGoHome}
-      onOpenFolder={handleOpenFolder}
-      onNewFile={handleNewFile}
-      onImportDocument={handleImportDocument}
-      projectOpen={projectState.isOpen}
+      actions={titlebarActions}
     />
   {/if}
 
@@ -880,6 +992,40 @@
     height: var(--ui-zoom-height, 100vh);
     width: var(--ui-zoom-width, 100vw);
     overflow: hidden;
+  }
+
+  /* Match the look of the library's .titlebar-btn for action buttons we
+     inject through the <TitleBar actions={...}> snippet. The library scopes
+     its own .titlebar-btn rules to its component, so we restate them here. */
+  .title-action {
+    -webkit-app-region: no-drag;
+    width: 48px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-on);
+    opacity: 0.75;
+    font-size: 12px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+  }
+
+  .title-action:hover:not(:disabled) {
+    background: rgba(0, 0, 0, 0.18);
+    opacity: 1;
+  }
+
+  .title-action:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  .title-action.active {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.12);
   }
 
   .app-body {
