@@ -251,6 +251,12 @@ class ThemeState {
     this.current = themeId;
     this.apply();
     localStorage.setItem(this.themeKey, themeId);
+    // Mirror to the app's settings store if one is exposed — lets apps with a
+    // git-synced data dir (Threadliner) carry the choice across machines.
+    // Apps without setSetting (NoteLiner) skip cleanly through the ?.
+    if (window.api?.setSetting) {
+      window.api.setSetting('theme', themeId).catch(() => { /* non-critical */ });
+    }
   }
 
   setScale(scaleId) {
@@ -259,6 +265,9 @@ class ThemeState {
     this.scale = scaleId;
     this.applyScale();
     localStorage.setItem(this.scaleKey, scaleId);
+    if (window.api?.setSetting) {
+      window.api.setSetting('scale', scaleId).catch(() => { /* non-critical */ });
+    }
   }
 
   zoomIn() {
@@ -292,6 +301,23 @@ class ThemeState {
       root.style.setProperty(key, value);
     }
     this.applyScale();
+  }
+
+  // Async backfill: when localStorage is empty (e.g. fresh install pointing
+  // at a git-synced data dir) but the app's settings store has a saved value,
+  // adopt it. No-op if window.api.getSetting isn't exposed.
+  async hydrateFromSettings() {
+    if (!window.api?.getSetting) return;
+    try {
+      if (!localStorage.getItem(this.themeKey)) {
+        const themeId = await window.api.getSetting('theme');
+        if (themeId && THEMES[themeId]) this.set(themeId);
+      }
+      if (!localStorage.getItem(this.scaleKey)) {
+        const scaleId = await window.api.getSetting('scale');
+        if (scaleId && UI_SCALES.find((s) => s.id === scaleId)) this.setScale(scaleId);
+      }
+    } catch { /* non-critical */ }
   }
 
   init(opts) {

@@ -67,11 +67,22 @@ function createWindow() {
   // window:maximized-change broadcasts come from the library's
   // registerWindowHandlers via its app.on('browser-window-created') hook.
 
+  // Forward renderer console + uncaught errors to the terminal so runtime
+  // failures are debuggable without manually opening DevTools.
+  mainWindow.webContents.on('console-message', (event) => {
+    const level = ['debug', 'log', 'warn', 'error'][event.level] || 'log';
+    console.log(`[renderer ${level}] ${event.message}`);
+  });
+  mainWindow.webContents.on('render-process-gone', (_e, details) => {
+    console.error('[renderer gone]', details);
+  });
+
   // scripts/dev.js sets NODE_ENV=development when it spawns Electron after
   // Vite is ready; the renderer is then served from the dev server with HMR.
   // Anything else (npm run start, packaged builds) loads the built file.
   if (process.env.NODE_ENV === 'development') {
     mainWindow.loadURL('http://localhost:5251');
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
     const indexPath = path.join(__dirname, '../../dist/renderer/index.html');
     mainWindow.loadFile(indexPath);
