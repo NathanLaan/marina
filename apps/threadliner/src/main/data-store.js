@@ -393,6 +393,10 @@ function getAllTagsForRenderer() {
 // --- Settings operations ---
 
 function getAllSettings() {
+  // The store may be queried before init() (e.g. themeState.hydrateFromSettings()
+  // runs on every renderer mount, including before the user has completed
+  // setup). Return an empty object instead of throwing on a null dataDir.
+  if (!dataDir) return {};
   return readJson(getSettingsPath()) || {};
 }
 
@@ -402,6 +406,7 @@ function getSetting(key) {
 }
 
 function setSetting(key, value) {
+  if (!dataDir) return;
   const settings = getAllSettings();
   settings[key] = value;
   writeJsonAtomic(getSettingsPath(), settings);
