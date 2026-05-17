@@ -12,7 +12,7 @@
   import TagsModal from './components/TagsModal.svelte';
   import AboutModal from './components/AboutModal.svelte';
   import { loadFeeds, loadTags, error, setupComplete, checkSetup } from './stores/app.js';
-  import { loadTheme } from './stores/theme.js';
+  import { themeState } from './stores/theme.svelte.js';
   import { startPolling, stopPolling } from './stores/sync.js';
 
   let sidebarWidth = $state(240);
@@ -26,9 +26,12 @@
   let loading = $state(true);
 
   onMount(async () => {
+    // Theme has been applied synchronously from localStorage in main.js;
+    // hydrate from settings so a fresh install on a synced data dir picks up
+    // the saved value too.
+    themeState.hydrateFromSettings();
     const isReady = await checkSetup();
     if (isReady) {
-      await loadTheme();
       await loadFeeds();
       await loadTags();
       startPolling();
@@ -42,7 +45,7 @@
 
   async function handleSetupComplete() {
     setupComplete.set(true);
-    await loadTheme();
+    themeState.hydrateFromSettings();
     await loadFeeds();
     await loadTags();
     startPolling();
@@ -64,6 +67,10 @@
       onOpenSync={() => (showSyncModal = true)}
       onOpenTags={() => (showTagsModal = true)}
       onOpenAbout={() => (showAboutModal = true)}
+      syncOpen={showSyncModal}
+      settingsOpen={showSettingsModal}
+      tagsOpen={showTagsModal}
+      aboutOpen={showAboutModal}
     />
     <div class="main-content">
       <Sidebar bind:width={sidebarWidth} />
@@ -112,7 +119,7 @@
     align-items: center;
     justify-content: center;
     height: 100vh;
-    color: var(--color-text-muted);
+    color: var(--text-muted);
   }
 
   .app-shell {
@@ -136,7 +143,7 @@
     align-items: center;
     gap: 8px;
     padding: 10px 16px;
-    background-color: var(--color-danger);
+    background-color: var(--danger);
     color: white;
     border-radius: 8px;
     font-size: 13px;

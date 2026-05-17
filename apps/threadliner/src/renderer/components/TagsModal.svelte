@@ -19,58 +19,68 @@
     }
   }
 
+  function focusOnMount(node) {
+    node.focus();
+  }
+
   function handleKeydown(e) {
     if (e.key === 'Escape') onClose();
   }
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="modal-overlay" onmousedown={(e) => { if (e.target === e.currentTarget) onClose(); }} onkeydown={handleKeydown}>
-  <div class="modal">
+<div
+  class="modal-overlay-compact"
+  use:focusOnMount
+  onmousedown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+  onkeydown={handleKeydown}
+  role="dialog"
+  aria-modal="true"
+  tabindex="-1"
+>
+  <div class="modal-compact tags-modal">
     <div class="modal-header">
-      <h3>Tags</h3>
-      <button class="close-btn" aria-label="Close" onclick={onClose}>
-        <i class="fas fa-times"></i>
-      </button>
+      <h2>Tags</h2>
     </div>
     <div class="modal-body">
-      <div class="actions-col">
-        <button class="action-btn" title="Add Tag" aria-label="Add Tag" onclick={() => (showAddModal = true)}>
-          <i class="fas fa-plus"></i>
-        </button>
-        <button
-          class="action-btn"
-          title="Edit Tag"
-          aria-label="Edit Tag"
-          disabled={!selectedTag}
-          onclick={() => (showEditModal = true)}
-        >
-          <i class="fas fa-pen"></i>
-        </button>
-        <button
-          class="action-btn"
-          title="Delete Tag"
-          aria-label="Delete Tag"
-          disabled={!selectedTag}
-          onclick={handleDelete}
-        >
-          <i class="fas fa-trash"></i>
-        </button>
-      </div>
-      <div class="tag-list">
-        {#if $tags.length === 0}
-          <p class="empty-text">No tags created yet.</p>
-        {:else}
-          {#each $tags as tag (tag.id)}
-            <button
-              class="tag-item"
-              class:active={selectedTagId === tag.id}
-              onclick={() => (selectedTagId = tag.id)}
-            >
-              {tag.name}
-            </button>
-          {/each}
-        {/if}
+      <div class="body-grid">
+        <div class="actions-col">
+          <button class="action-btn" title="Add Tag" aria-label="Add Tag" onclick={() => (showAddModal = true)}>
+            <i class="fas fa-plus"></i>
+          </button>
+          <button
+            class="action-btn"
+            title="Edit Tag"
+            aria-label="Edit Tag"
+            disabled={!selectedTag}
+            onclick={() => (showEditModal = true)}
+          >
+            <i class="fas fa-pen"></i>
+          </button>
+          <button
+            class="action-btn"
+            title="Delete Tag"
+            aria-label="Delete Tag"
+            disabled={!selectedTag}
+            onclick={handleDelete}
+          >
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+        <div class="tag-list">
+          {#if $tags.length === 0}
+            <p class="empty-text">No tags created yet.</p>
+          {:else}
+            {#each $tags as tag (tag.id)}
+              <button
+                class="tag-item"
+                class:active={selectedTagId === tag.id}
+                onclick={() => (selectedTagId = tag.id)}
+              >
+                {tag.name}
+              </button>
+            {/each}
+          {/if}
+        </div>
       </div>
     </div>
   </div>
@@ -85,61 +95,21 @@
 {/if}
 
 <style>
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
+  .tags-modal {
+    min-width: 420px;
+    max-width: 560px;
   }
 
-  .modal {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
-    width: 420px;
-    max-width: 90vw;
-    max-height: 60vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+  /* Override the default modal-body padding so the action column and list
+     can flush against the modal edges. */
+  .tags-modal .modal-body {
+    padding: 0;
   }
 
-  .modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  h3 {
-    font-size: 16px;
-    font-weight: 600;
-  }
-
-  .close-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    color: var(--color-text-muted);
-    font-size: 14px;
-  }
-
-  .close-btn:hover {
-    background-color: var(--color-surface-hover);
-    color: var(--color-text);
-  }
-
-  .modal-body {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
+  .body-grid {
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    max-height: 50vh;
   }
 
   .actions-col {
@@ -147,8 +117,7 @@
     flex-direction: column;
     gap: 4px;
     padding: 8px;
-    border-right: 1px solid var(--color-border);
-    flex-shrink: 0;
+    border-right: 1px solid var(--border);
   }
 
   .action-btn {
@@ -158,13 +127,14 @@
     width: 32px;
     height: 32px;
     border-radius: 6px;
-    color: var(--color-text-muted);
+    color: var(--text-muted);
     font-size: 13px;
+    transition: background 0.15s, color 0.15s;
   }
 
   .action-btn:hover:not(:disabled) {
-    background-color: var(--color-surface-hover);
-    color: var(--color-text);
+    background: var(--bg-button-hover);
+    color: var(--text-primary);
   }
 
   .action-btn:disabled {
@@ -173,7 +143,6 @@
   }
 
   .tag-list {
-    flex: 1;
     overflow-y: auto;
     padding: 4px 0;
   }
@@ -184,22 +153,23 @@
     padding: 8px 16px;
     text-align: left;
     font-size: 13px;
-    color: var(--color-text);
-    border-radius: 0;
-    transition: background-color 0.1s;
+    color: var(--text-primary);
+    transition: background 0.15s;
   }
 
   .tag-item:hover {
-    background-color: var(--color-surface-hover);
+    background: var(--bg-item-hover);
   }
 
   .tag-item.active {
-    background-color: var(--color-surface-active);
+    background: var(--bg-selected);
+    outline: 1px solid var(--accent);
+    outline-offset: -1px;
   }
 
   .empty-text {
     padding: 16px;
-    color: var(--color-text-muted);
+    color: var(--text-muted);
     font-size: 13px;
     text-align: center;
   }

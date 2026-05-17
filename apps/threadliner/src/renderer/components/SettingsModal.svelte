@@ -1,23 +1,23 @@
 <script>
   import { onMount } from 'svelte';
-  import { theme, setTheme } from '../stores/theme.js';
+  import { themeState } from '../stores/theme.svelte.js';
 
   let { onClose } = $props();
 
-  let activeTab = $state('theme');
+  let activeTab = $state('ui');
   let syncWaitTime = $state('10');
-
-  const themes = [
-    { id: 'light', label: 'Light', description: 'Clean and bright' },
-    { id: 'dark', label: 'Dark', description: 'Easy on the eyes' },
-    { id: 'midnight', label: 'Midnight', description: 'Deep blue tones' },
-  ];
 
   const waitTimeOptions = [
     { value: '5', label: '5 seconds' },
     { value: '10', label: '10 seconds' },
     { value: '30', label: '30 seconds' },
     { value: '60', label: '60 seconds' },
+  ];
+
+  // Static list — keyboard bindings beyond Escape aren't wired yet; this will
+  // populate from a command registry in a follow-up stage (see plan §11).
+  const shortcuts = [
+    { keys: 'Esc', action: 'Close modal', section: 'General' },
   ];
 
   onMount(async () => {
@@ -29,297 +29,184 @@
     await window.api.setSetting('syncWaitTime', syncWaitTime);
   }
 
+  function focusOnMount(node) {
+    node.focus();
+  }
+
   function handleKeydown(e) {
-    if (e.key === 'Escape') onClose();
+    if (e.key === 'Escape' || e.key === 'Enter') onClose();
   }
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="modal-overlay" onmousedown={(e) => { if (e.target === e.currentTarget) onClose(); }} onkeydown={handleKeydown}>
+<div class="modal-overlay" use:focusOnMount onclick={(e) => { if (e.target === e.currentTarget) onClose(); }} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
   <div class="modal">
     <div class="modal-header">
-      <h3>Settings</h3>
-      <button class="close-btn" aria-label="Close" onclick={onClose}>
-        <i class="fas fa-times"></i>
-      </button>
+      <h2>Settings</h2>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab" class:active={activeTab === 'ui'} onclick={() => (activeTab = 'ui')}>UI</button>
+      <button class="tab" class:active={activeTab === 'sync'} onclick={() => (activeTab = 'sync')}>Sync</button>
+      <button class="tab" class:active={activeTab === 'shortcuts'} onclick={() => (activeTab = 'shortcuts')}>Keyboard Shortcuts</button>
     </div>
 
     <div class="modal-body">
-      <div class="tabs">
-        <button
-          class="tab"
-          class:active={activeTab === 'theme'}
-          onclick={() => (activeTab = 'theme')}
-        >
-          <i class="fas fa-palette"></i> Theme
-        </button>
-        <button
-          class="tab"
-          class:active={activeTab === 'sync'}
-          onclick={() => (activeTab = 'sync')}
-        >
-          <i class="fas fa-cloud"></i> Sync
-        </button>
-      </div>
-
-      <div class="tab-content">
-        {#if activeTab === 'theme'}
-          <div class="theme-grid">
-            {#each themes as t (t.id)}
+      {#if activeTab === 'ui'}
+        <div class="setting-group">
+          <span class="setting-label">Theme</span>
+          <div class="theme-list">
+            {#each themeState.list as t (t.id)}
               <button
-                class="theme-card"
-                class:selected={$theme === t.id}
-                onclick={() => setTheme(t.id)}
+                class="theme-option"
+                class:active={themeState.current === t.id}
+                onclick={() => themeState.set(t.id)}
               >
-                <div class="theme-preview" data-theme={t.id}>
-                  <div class="preview-toolbar"></div>
-                  <div class="preview-sidebar"></div>
-                  <div class="preview-content">
-                    <div class="preview-line"></div>
-                    <div class="preview-line short"></div>
-                  </div>
-                </div>
-                <span class="theme-label">{t.label}</span>
-                <span class="theme-desc">{t.description}</span>
-                {#if $theme === t.id}
-                  <i class="fas fa-check theme-check"></i>
-                {/if}
+                <span class="theme-radio">
+                  {#if themeState.current === t.id}
+                    <i class="fas fa-circle-check"></i>
+                  {:else}
+                    <i class="far fa-circle"></i>
+                  {/if}
+                </span>
+                {t.name}
               </button>
             {/each}
           </div>
-        {/if}
+        </div>
+      {:else if activeTab === 'sync'}
+        <div class="setting-group">
+          <span class="setting-label">Sync Wait Time</span>
+          <p class="setting-help">
+            How long to wait after a local change before pushing to the remote
+            repository.
+          </p>
+          <select bind:value={syncWaitTime} onchange={handleWaitTimeChange}>
+            {#each waitTimeOptions as opt (opt.value)}
+              <option value={opt.value}>{opt.label}</option>
+            {/each}
+          </select>
+        </div>
+      {:else if activeTab === 'shortcuts'}
+        <div class="shortcuts-list">
+          {#each shortcuts as shortcut, i (shortcut.section + '|' + shortcut.keys + '|' + i)}
+            {#if i === 0 || shortcut.section !== shortcuts[i - 1].section}
+              <div class="shortcut-section">{shortcut.section}</div>
+            {/if}
+            <div class="shortcut-row">
+              <span class="shortcut-action">{shortcut.action}</span>
+              <kbd class="shortcut-keys">{shortcut.keys}</kbd>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
 
-        {#if activeTab === 'sync'}
-          <div class="setting-group">
-            <label class="setting-label">
-              <span class="setting-title">Sync Wait Time</span>
-              <span class="setting-desc">How long to wait after a change before pushing to the remote repository.</span>
-              <select bind:value={syncWaitTime} onchange={handleWaitTimeChange}>
-                {#each waitTimeOptions as opt (opt.value)}
-                  <option value={opt.value}>{opt.label}</option>
-                {/each}
-              </select>
-            </label>
-          </div>
-        {/if}
-      </div>
+    <div class="modal-footer">
+      <button class="close-btn" onclick={onClose}>OK</button>
     </div>
   </div>
 </div>
 
 <style>
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+  .tab-bar {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-  }
-
-  .modal {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
-    width: 520px;
-    max-width: 90vw;
-    max-height: 80vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  h3 {
-    font-size: 16px;
-    font-weight: 600;
-  }
-
-  .close-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    color: var(--color-text-muted);
-    font-size: 14px;
-  }
-
-  .close-btn:hover {
-    background-color: var(--color-surface-hover);
-    color: var(--color-text);
-  }
-
-  .modal-body {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-  }
-
-  .tabs {
-    display: flex;
-    flex-direction: column;
-    width: 140px;
-    padding: 8px;
-    border-right: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    gap: 0;
     flex-shrink: 0;
   }
 
   .tab {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border-radius: 6px;
+    padding: 10px 16px;
     font-size: 13px;
-    color: var(--color-text-muted);
-    text-align: left;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+    margin-bottom: -1px;
   }
 
   .tab:hover {
-    background-color: var(--color-surface-hover);
-    color: var(--color-text);
+    color: var(--text-primary);
   }
 
   .tab.active {
-    background-color: var(--color-surface-active);
-    color: var(--color-text);
-    font-weight: 500;
+    color: var(--accent);
+    border-bottom-color: var(--accent);
   }
 
-  .tab-content {
-    flex: 1;
-    padding: 20px;
-    overflow-y: auto;
-  }
-
-  .theme-grid {
+  .modal-footer {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .theme-card {
-    position: relative;
-    display: grid;
-    grid-template-columns: 80px 1fr;
-    grid-template-rows: auto auto;
-    gap: 2px 12px;
-    align-items: center;
-    padding: 12px;
-    border-radius: 8px;
-    border: 2px solid var(--color-border);
-    text-align: left;
-    transition: border-color 0.15s;
-  }
-
-  .theme-card:hover {
-    border-color: var(--color-text-muted);
-  }
-
-  .theme-card.selected {
-    border-color: var(--color-accent);
-  }
-
-  .theme-preview {
-    grid-row: 1 / 3;
-    display: flex;
-    height: 48px;
-    border-radius: 4px;
-    overflow: hidden;
-    border: 1px solid var(--color-border);
-  }
-
-  .preview-toolbar {
-    width: 8px;
-    background-color: var(--color-toolbar-bg);
-  }
-
-  .preview-sidebar {
-    width: 18px;
-    background-color: var(--color-sidebar-bg);
-    border-right: 1px solid var(--color-border);
-  }
-
-  .preview-content {
-    flex: 1;
-    background-color: var(--color-bg);
-    padding: 8px 6px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    justify-content: center;
-  }
-
-  .preview-line {
-    height: 3px;
-    border-radius: 1px;
-    background-color: var(--color-text-muted);
-    opacity: 0.4;
-  }
-
-  .preview-line.short {
-    width: 60%;
-  }
-
-  .theme-label {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--color-text);
-  }
-
-  .theme-desc {
-    font-size: 12px;
-    color: var(--color-text-muted);
-  }
-
-  .theme-check {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    color: var(--color-accent);
-    font-size: 14px;
+    justify-content: flex-end;
+    padding: 12px 24px;
+    border-top: 1px solid var(--border);
   }
 
   .setting-group {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+    margin-bottom: 24px;
   }
 
   .setting-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 10px;
+  }
+
+  .setting-help {
+    margin: 0 2px 8px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--text-muted);
+  }
+
+  .theme-list {
     display: flex;
     flex-direction: column;
     gap: 4px;
   }
 
-  .setting-title {
+  .theme-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg-button);
+    color: var(--text-primary);
+    border-radius: 6px;
     font-size: 14px;
-    font-weight: 500;
-    color: var(--color-text);
+    text-align: left;
+    transition: background 0.15s;
   }
 
-  .setting-desc {
-    font-size: 12px;
-    color: var(--color-text-muted);
-    margin-bottom: 4px;
+  .theme-option:hover {
+    background: var(--bg-button-hover);
+  }
+
+  .theme-option.active {
+    background: var(--bg-selected);
+    outline: 1px solid var(--accent);
+  }
+
+  .theme-radio {
+    color: var(--text-muted);
+    font-size: 15px;
+    width: 18px;
+    text-align: center;
+  }
+
+  .theme-option.active .theme-radio {
+    color: var(--accent);
   }
 
   select {
     padding: 8px 12px;
     border-radius: 6px;
-    border: 1px solid var(--color-border);
-    background-color: var(--color-bg);
-    color: var(--color-text);
+    border: 1px solid var(--input-border);
+    background-color: var(--input-bg);
+    color: var(--text-primary);
     font-family: inherit;
     font-size: 13px;
     outline: none;
@@ -328,6 +215,66 @@
   }
 
   select:focus {
-    border-color: var(--color-accent);
+    border-color: var(--input-border-focus);
+  }
+
+  .shortcuts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .shortcut-section {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    padding: 12px 12px 4px;
+  }
+
+  .shortcut-section:first-child {
+    padding-top: 0;
+  }
+
+  .shortcut-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-radius: 6px;
+  }
+
+  .shortcut-row:nth-child(odd) {
+    background: var(--bg-base);
+  }
+
+  .shortcut-action {
+    font-size: 13px;
+    color: var(--text-primary);
+  }
+
+  .shortcut-keys {
+    font-size: 12px;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    background: var(--bg-button);
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+
+  .close-btn {
+    padding: 8px 24px;
+    background: var(--bg-selected);
+    outline: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .close-btn:hover {
+    background: var(--accent);
+    color: var(--accent-on);
   }
 </style>

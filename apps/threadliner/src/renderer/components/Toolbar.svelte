@@ -14,6 +14,10 @@
     onOpenSync,
     onOpenTags,
     onOpenAbout,
+    syncOpen = false,
+    settingsOpen = false,
+    tagsOpen = false,
+    aboutOpen = false,
   } = $props();
 
   const hasPendingSync = $derived($syncStatus === 'committing' || $syncStatus === 'waiting');
@@ -51,115 +55,117 @@
 </script>
 
 <div class="toolbar">
-  <div class="toolbar-group">
-    <button class="toolbar-btn" title="Add Feed" aria-label="Add Feed" onclick={onAddFeed}>
-      <i class="fas fa-plus"></i>
-    </button>
-    <button
-      class="toolbar-btn"
-      title="Edit Feed"
-      aria-label="Edit Feed"
-      disabled={$selectedFeedId === null}
-      onclick={onEditFeed}
-    >
-      <i class="fas fa-pen"></i>
-    </button>
-    <button
-      class="toolbar-btn"
-      title="Remove Feed"
-      aria-label="Remove Feed"
-      disabled={$selectedFeedId === null}
-      onclick={handleRemove}
-    >
-      <i class="fas fa-trash"></i>
-    </button>
-    <button
-      class="toolbar-btn"
-      title="Refresh Feed"
-      aria-label="Refresh Feed"
-      disabled={$selectedFeedId === null}
-      onclick={handleRefresh}
-    >
-      <i class="fas fa-sync-alt"></i>
-    </button>
-    <div class="toolbar-divider"></div>
-    <button
-      class="toolbar-btn"
-      title="Mark as Read"
-      aria-label="Mark as Read"
-      disabled={$selectedFeedId === null}
-      onclick={handleMarkRead}
-    >
-      <i class="fas fa-check-double"></i>
-    </button>
-    <button
-      class="toolbar-btn"
-      title="Mark as Unread"
-      aria-label="Mark as Unread"
-      disabled={$selectedFeedId === null}
-      onclick={handleMarkUnread}
-    >
-      <i class="fas fa-rotate-left"></i>
-    </button>
-    <div class="toolbar-divider"></div>
-    <button class="toolbar-btn" title="Tags" aria-label="Tags" onclick={onOpenTags}>
-      <i class="fas fa-tags"></i>
-    </button>
-  </div>
-  <div class="toolbar-group">
-    <button class="toolbar-btn" class:sync-pending={hasPendingSync} title="Sync" aria-label="Sync" onclick={onOpenSync}>
-      <i class="fas fa-cloud"></i>
-    </button>
-    <button class="toolbar-btn" title="Settings" aria-label="Settings" onclick={onOpenSettings}>
-      <i class="fas fa-cog"></i>
-    </button>
-    <button class="toolbar-btn" title="About" aria-label="About" onclick={onOpenAbout}>
-      <i class="fas fa-circle-info"></i>
-    </button>
-  </div>
+  <button class="toolbar-btn" title="Add Feed" aria-label="Add Feed" onclick={onAddFeed}>
+    <i class="fas fa-plus"></i>
+  </button>
+  <button
+    class="toolbar-btn"
+    title="Edit Feed"
+    aria-label="Edit Feed"
+    disabled={$selectedFeedId === null}
+    onclick={onEditFeed}
+  >
+    <i class="fas fa-pen"></i>
+  </button>
+  <button
+    class="toolbar-btn"
+    title="Remove Feed"
+    aria-label="Remove Feed"
+    disabled={$selectedFeedId === null}
+    onclick={handleRemove}
+  >
+    <i class="fas fa-trash"></i>
+  </button>
+  <button
+    class="toolbar-btn"
+    title="Refresh Feed"
+    aria-label="Refresh Feed"
+    disabled={$selectedFeedId === null}
+    onclick={handleRefresh}
+  >
+    <i class="fas fa-arrows-rotate"></i>
+  </button>
+
+  <div class="toolbar-divider"></div>
+
+  <button
+    class="toolbar-btn"
+    title="Mark as Read"
+    aria-label="Mark as Read"
+    disabled={$selectedFeedId === null}
+    onclick={handleMarkRead}
+  >
+    <i class="fas fa-check-double"></i>
+  </button>
+  <button
+    class="toolbar-btn"
+    title="Mark as Unread"
+    aria-label="Mark as Unread"
+    disabled={$selectedFeedId === null}
+    onclick={handleMarkUnread}
+  >
+    <i class="fas fa-rotate-left"></i>
+  </button>
+
+  <div class="toolbar-divider"></div>
+
+  <button class="toolbar-btn" class:active={tagsOpen} title="Tags" aria-label="Tags" onclick={onOpenTags}>
+    <i class="fas fa-tags"></i>
+  </button>
+
+  <div class="toolbar-spacer"></div>
+
+  <button
+    class="toolbar-btn"
+    class:active={syncOpen}
+    class:sync-pending={hasPendingSync && !syncOpen}
+    title="Remote Sync"
+    aria-label="Sync"
+    onclick={onOpenSync}
+  >
+    <i class="fas fa-cloud-arrow-up"></i>
+  </button>
+
+  <div class="toolbar-divider"></div>
+
+  <button class="toolbar-btn" class:active={settingsOpen} title="Settings" aria-label="Settings" onclick={onOpenSettings}>
+    <i class="fas fa-gear"></i>
+  </button>
+
+  <button class="toolbar-btn" class:active={aboutOpen} title="About" aria-label="About" onclick={onOpenAbout}>
+    <i class="fas fa-circle-info"></i>
+  </button>
 </div>
 
 <style>
   .toolbar {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    width: 72px;
-    background-color: var(--color-toolbar-bg);
-    border-right: 1px solid var(--color-border);
-    padding: 12px 0;
-    flex-shrink: 0;
-  }
-
-  .toolbar-group {
-    display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 6px;
-  }
-
-  .toolbar-divider {
-    width: 32px;
-    height: 1px;
-    background-color: var(--color-border);
-    margin: 4px 0;
+    width: 48px;
+    background: var(--bg-overlay);
+    border-right: 1px solid var(--border);
+    padding: 8px 0;
+    flex-shrink: 0;
+    gap: 4px;
   }
 
   .toolbar-btn {
+    position: relative;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 54px;
-    height: 54px;
-    border-radius: 9px;
-    color: var(--color-text-muted);
-    font-size: 21px;
-    transition: background-color 0.15s, color 0.15s;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 16px;
+    transition: background 0.15s, color 0.15s;
   }
 
   .toolbar-btn:hover:not(:disabled) {
-    background-color: var(--color-surface-hover);
-    color: var(--color-text);
+    background: var(--bg-button);
+    color: var(--text-primary);
   }
 
   .toolbar-btn:disabled {
@@ -167,7 +173,30 @@
     cursor: default;
   }
 
+  .toolbar-btn:disabled:hover {
+    background: none;
+    color: var(--text-secondary);
+  }
+
+  .toolbar-btn.active {
+    background: var(--bg-selected);
+    outline: 1px solid var(--accent);
+    color: var(--accent);
+  }
+
+  /* Pending sync state — accent tint without the full active outline. */
   .toolbar-btn.sync-pending {
-    color: var(--color-accent);
+    color: var(--accent);
+  }
+
+  .toolbar-divider {
+    width: 24px;
+    height: 1px;
+    background: var(--border);
+    margin: 2px 0;
+  }
+
+  .toolbar-spacer {
+    flex: 1;
   }
 </style>

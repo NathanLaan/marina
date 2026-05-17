@@ -84,16 +84,16 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="modal-overlay" onmousedown={(e) => { if (e.target === e.currentTarget) onClose(); }} onkeydown={handleKeydown}>
-  <div class="modal">
-    <div class="modal-header">
+<div class="legacy-overlay" onmousedown={(e) => { if (e.target === e.currentTarget) onClose(); }} onkeydown={handleKeydown}>
+  <div class="legacy-modal">
+    <div class="legacy-modal-header">
       <h3>Sync</h3>
       <button class="close-btn" aria-label="Close" onclick={onClose}>
         <i class="fas fa-times"></i>
       </button>
     </div>
 
-    <div class="modal-body">
+    <div class="legacy-modal-body">
       <div class="status-section">
         <div class="status-row">
           <span class="status-label">Status</span>
@@ -184,7 +184,7 @@
 </div>
 
 <style>
-  .modal-overlay {
+  .legacy-overlay {
     position: fixed;
     inset: 0;
     background-color: rgba(0, 0, 0, 0.5);
@@ -194,21 +194,21 @@
     z-index: 100;
   }
 
-  .modal {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
+  .legacy-modal {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
     border-radius: 10px;
     width: 960px;
     max-width: 90vw;
     overflow: hidden;
   }
 
-  .modal-header {
+  .legacy-modal-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 16px 20px;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--border);
   }
 
   h3 {
@@ -223,16 +223,16 @@
     width: 28px;
     height: 28px;
     border-radius: 6px;
-    color: var(--color-text-muted);
+    color: var(--text-muted);
     font-size: 14px;
   }
 
   .close-btn:hover {
-    background-color: var(--color-surface-hover);
-    color: var(--color-text);
+    background-color: var(--bg-button-hover);
+    color: var(--text-primary);
   }
 
-  .modal-body {
+  .legacy-modal-body {
     padding: 20px;
   }
 
@@ -252,7 +252,7 @@
 
   .status-label {
     font-size: 13px;
-    color: var(--color-text-muted);
+    color: var(--text-muted);
     flex-shrink: 0;
     min-width: 80px;
   }
@@ -264,11 +264,11 @@
   }
 
   .status-value.error {
-    color: var(--color-danger);
+    color: var(--danger);
   }
 
   .status-value.muted {
-    color: var(--color-text-muted);
+    color: var(--text-muted);
     font-style: italic;
   }
 
@@ -287,9 +287,9 @@
     gap: 8px;
     padding: 10px 12px;
     background-color: rgba(224, 96, 112, 0.1);
-    border: 1px solid var(--color-danger);
+    border: 1px solid var(--danger);
     border-radius: 6px;
-    color: var(--color-danger);
+    color: var(--danger);
     font-size: 12px;
     margin-bottom: 16px;
   }
@@ -317,21 +317,21 @@
   }
 
   .btn-secondary {
-    background-color: var(--color-surface-hover);
-    color: var(--color-text);
+    background-color: var(--bg-button-hover);
+    color: var(--text-primary);
   }
 
   .btn-secondary:hover:not(:disabled) {
-    background-color: var(--color-surface-active);
+    background-color: var(--bg-selected);
   }
 
   .btn-primary {
-    background-color: var(--color-accent);
+    background-color: var(--accent);
     color: white;
   }
 
   .btn-primary:hover:not(:disabled) {
-    background-color: var(--color-accent-hover);
+    background-color: var(--accent-hover);
   }
 
   .btn:disabled {
@@ -340,14 +340,14 @@
   }
 
   .log-section {
-    border-top: 1px solid var(--color-border);
+    border-top: 1px solid var(--border);
     padding-top: 16px;
   }
 
   .log-header {
     font-size: 13px;
     font-weight: 600;
-    color: var(--color-text-muted);
+    color: var(--text-muted);
     margin-bottom: 8px;
   }
 
@@ -360,7 +360,7 @@
   }
 
   .log-empty {
-    color: var(--color-text-muted);
+    color: var(--text-muted);
     font-style: italic;
     font-family: var(--font-sans, inherit);
     font-size: 13px;
@@ -375,22 +375,22 @@
   }
 
   .log-time {
-    color: var(--color-text-muted);
+    color: var(--text-muted);
     flex-shrink: 0;
     user-select: none;
   }
 
   .log-message {
-    color: var(--color-text-muted);
+    color: var(--text-muted);
     word-break: break-all;
   }
 
   .log-error .log-message {
-    color: var(--color-danger);
+    color: var(--danger);
   }
 
   .log-detail .log-message {
-    color: var(--color-text-muted);
+    color: var(--text-muted);
     opacity: 0.7;
   }
 </style>
