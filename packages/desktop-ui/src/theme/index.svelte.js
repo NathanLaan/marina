@@ -227,7 +227,10 @@ class ThemeState {
   }
 
   get list() {
-    return Object.entries(THEMES).map(([id, t]) => ({ id, name: t.name }));
+    const ids = this.themeAllowlist || Object.keys(THEMES);
+    return ids
+      .filter((id) => THEMES[id])
+      .map((id) => ({ id, name: THEMES[id].name }));
   }
 
   get scaleList() {
@@ -237,10 +240,16 @@ class ThemeState {
   // Consumers configure their localStorage prefix once at startup
   // (e.g. themeState.configure({ appId: 'noteliner' })) so different apps
   // sharing this library on one machine don't clobber each other.
+  // Optional `themes` array pins the visible theme list to a subset —
+  // useful when a consumer ships fewer themes than the library defines.
   appId = 'desktop-ui';
+  themeAllowlist = null;
 
-  configure({ appId } = {}) {
+  configure({ appId, themes } = {}) {
     if (appId) this.appId = appId;
+    if (Array.isArray(themes) && themes.length > 0) {
+      this.themeAllowlist = themes.filter((id) => THEMES[id]);
+    }
   }
 
   get themeKey() { return `${this.appId}-theme`; }

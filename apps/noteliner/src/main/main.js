@@ -171,12 +171,12 @@ function createWindow() {
     icon: path.join(__dirname, '..', '..', 'assets', 'icon.png'),
     frame: !uiPrefs.customTitlebar,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      // Bundled by `npm run bundle:preload` (esbuild). The bundle inlines
+      // @marina/desktop-ui/preload so the preload has no runtime require of
+      // third-party packages and works in Electron's default sandbox.
+      preload: path.join(__dirname, '..', '..', 'dist', 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      // Required for the preload to require('@marina/desktop-ui/preload') —
-      // see that module's header for the rationale.
-      sandbox: false,
     },
   });
 
@@ -525,10 +525,9 @@ function createHelpWindow() {
     modal: false,
     autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, '..', '..', 'dist', 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
     },
   });
 

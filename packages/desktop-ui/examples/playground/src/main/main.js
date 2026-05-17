@@ -19,13 +19,12 @@ function createWindow() {
       width: 1100,
       height: 720,
       webPreferences: {
-        preload: path.join(__dirname, 'preload.js'),
+        // Bundled by `npm run bundle:preload` (esbuild) so the preload has
+        // no runtime require of third-party packages and works in
+        // Electron's default sandbox.
+        preload: path.join(__dirname, '..', '..', 'dist', 'preload.cjs'),
         contextIsolation: true,
         nodeIntegration: false,
-        // sandbox defaults to true when contextIsolation + !nodeIntegration,
-        // which restricts preload requires to a small Electron allowlist —
-        // we need a full Node require to pull in @marina/desktop-ui/preload.
-        sandbox: false,
       },
     },
     uiPrefs,

@@ -123,15 +123,33 @@ contextBridge.exposeInMainWorld('api', {
 
 ## Conventions you must follow
 
-### `webPreferences.sandbox: false`
+### Preload must be bundled (or `sandbox: false`)
 
 Modern Electron defaults `sandbox` to `true` when `contextIsolation: true` +
 `nodeIntegration: false`. A sandboxed preload can't `require()` third-party
-packages (the allowlist is `electron`, `events`, `timers`, `url` only).
-`require('@marina/desktop-ui/preload')` will fail loudly there.
+packages (the allowlist is `electron`, `events`, `timers`, `url` only) —
+plain `require('@marina/desktop-ui/preload')` fails there.
 
-Always set `sandbox: false` on every `BrowserWindow` whose preload uses this
-library.
+Two ways to handle this:
+
+- **(Recommended) Bundle the preload.** Inline `@marina/desktop-ui/preload`
+  into a single self-contained file at build time. The Marina monorepo's
+  three apps use esbuild via a one-line npm script:
+
+  ```jsonc
+  "scripts": {
+    "bundle:preload": "esbuild src/main/preload.js --bundle --platform=node --target=node20 --external:electron --outfile=dist/preload.cjs",
+    "prebuild": "npm run bundle:preload"
+  }
+  ```
+
+  Then point `webPreferences.preload` at the bundled output
+  (`dist/preload.cjs`) instead of the source file, and Electron's default
+  sandbox stays on.
+
+- **Set `sandbox: false`.** Simpler for prototyping; opts that renderer
+  out of Chromium's sandbox. Avoid for production windows that load
+  untrusted content.
 
 ### `themeState.init({ appId })`
 

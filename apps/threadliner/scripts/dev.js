@@ -1,15 +1,30 @@
-const { spawn } = require('child_process');
+const { spawn, execFileSync } = require('child_process');
 const path = require('path');
 const os = require('os');
 
 const isWindows = os.platform() === 'win32';
+const APP_ROOT = path.resolve(__dirname, '..');
+
+// Bundle the preload first — the renderer is loaded via HMR but the preload
+// is loaded once when Electron creates each BrowserWindow, and it require()s
+// @marina/desktop-ui/preload which only resolves once bundled.
+console.log('Bundling preload...');
+execFileSync('npx', [
+  'esbuild',
+  'src/main/preload.js',
+  '--bundle',
+  '--platform=node',
+  '--target=node20',
+  '--external:electron',
+  '--outfile=dist/preload.cjs',
+], { cwd: APP_ROOT, stdio: 'inherit', shell: isWindows });
 
 // Start Vite dev server.
 // `detached: true` on Unix makes the shell a process-group leader, so we can
 // later signal the whole group (shell + npx + vite) at once. Without this,
 // killing the shell leaves npx+vite orphaned and holding port 5251.
 const vite = spawn('npx', ['vite'], {
-  cwd: path.resolve(__dirname, '..'),
+  cwd: APP_ROOT,
   stdio: 'pipe',
   shell: true,
   detached: !isWindows,
@@ -40,7 +55,7 @@ vite.stdout.on('data', (data) => {
   if (output.includes('Local:')) {
     console.log('\nStarting Electron...\n');
     const electron = spawn('npx', ['electron', '--class=Threadliner', '.'], {
-      cwd: path.resolve(__dirname, '..'),
+      cwd: APP_ROOT,
       stdio: 'inherit',
       shell: true,
       env: { ...process.env, NODE_ENV: 'development' },

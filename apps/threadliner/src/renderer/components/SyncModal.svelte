@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { loadSyncConfig } from '../stores/sync.js';
+  import { loadFeeds, loadTags, selectFeed } from '../stores/app.js';
 
   let { onClose } = $props();
 
@@ -133,6 +134,12 @@
     operating = 'Resetting...';
     try {
       await window.api.gitResetToRemote();
+      // The disk is now the remote's view, but the renderer's stores still
+      // hold pre-reset feeds/entries/tags. Drop the selection (the old
+      // selected feed may no longer exist) and reload from the freshly
+      // rewritten data dir.
+      selectFeed(null);
+      await Promise.all([loadFeeds(), loadTags()]);
       await refreshStatus();
     } catch (err) {
       errorMsg = `Reset failed: ${err.message}`;

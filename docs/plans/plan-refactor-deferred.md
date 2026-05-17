@@ -188,22 +188,12 @@ themes; NoteLiner still shows six.
 
 ### B.3 Bundle the preload to drop the `sandbox: false` requirement
 
-Both consumer apps + the playground set `webPreferences.sandbox: false`
-on every BrowserWindow because `require('@marina/desktop-ui/preload')`
-doesn't resolve in a sandboxed preload (third-party require restriction).
-
-Proper fix: bundle each app's preload into a single self-contained file
-so the preload has no runtime `require()` of third-party packages.
-electron-vite, esbuild, or a small Vite preload pipeline all work.
-Then drop `sandbox: false` from `webPreferences` and the library's
-preload header note.
-
-**Done when:** all three Electron apps run with `sandbox: true` (the
-modern default) and the library's preload README section is updated.
-
-**Commit:** `chore: bundle preload scripts; restore default sandbox`
-
-Optional. Security improvement, not a correctness issue.
+**Status: done.** esbuild bundles each app's preload into
+`dist/preload.cjs` via a `bundle:preload` npm script (run as a `prebuild`
+hook and from each `scripts/dev.js` orchestrator before Electron starts).
+All three apps now run with Electron's default sandbox enabled. Library
+preload header + README updated to describe the bundling pattern as the
+primary path with `sandbox: false` as a prototyping fallback.
 
 ## Phase C — Explicit deferrals from `plan-refactor-refresh-ui.md` §11
 

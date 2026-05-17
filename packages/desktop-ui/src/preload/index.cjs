@@ -3,14 +3,24 @@
 // payload — that way the bindings live alongside whatever app-specific
 // methods the consumer also exposes.
 //
-// IMPORTANT: requires `webPreferences.sandbox: false` on the BrowserWindow.
-// In modern Electron, sandbox defaults to `true` whenever
-// `contextIsolation: true` + `nodeIntegration: false`, and a sandboxed
-// preload's require() is restricted to a small allowlist (electron, events,
-// timers, url) — third-party packages like this one won't resolve there.
-// Explicit `sandbox: false` opts back into full Node require resolution.
+// SANDBOX NOTE: a sandboxed preload (Electron's default when
+// `contextIsolation: true` + `nodeIntegration: false`) can only require()
+// from a small allowlist (electron, events, timers, url). Plain
+// `require('@marina/desktop-ui/preload')` fails there. Two ways to consume
+// this module safely:
 //
-// Usage in an app's preload.js:
+//   1. (Recommended) Bundle your preload — esbuild, electron-vite, or any
+//      bundler that inlines third-party requires into a single file. The
+//      Marina monorepo's apps and playground use esbuild via a
+//      `bundle:preload` npm script; their main.js points at the bundled
+//      output and the default sandbox stays on.
+//
+//   2. Set `webPreferences.sandbox: false` on every BrowserWindow that
+//      loads a preload using this module. Simpler, but disables Chromium's
+//      sandbox for that renderer process. Use for prototyping or when the
+//      renderer can't run untrusted content.
+//
+// Usage in an app's preload.js (before bundling):
 //
 //   const { contextBridge, ipcRenderer } = require('electron');
 //   const { exposeWindowApi, exposeUIPrefsApi }
