@@ -1,22 +1,23 @@
 <script>
-  import { onMount } from 'svelte';
-  import { commandRegistry } from '../stores/commands.svelte.js';
-  import { projectState } from '../stores/project.svelte.js';
+  import { commandRegistry } from './registry.svelte.js';
   import { fuzzyScore } from '../lib/fuzzy.js';
 
-  let { onClose, onOpenRecent } = $props();
+  // Generic palette. Consumers can extend the visible list by passing
+  // `extraItemsProvider({ query })` — a function that returns an array of
+  // items shaped like `{ kind, id, label, sub, section, score, run }`. The
+  // library merges them with commands, sorts by score, and renders the
+  // result. Apps wire their own domain results (notes, tags, recent files,
+  // etc.) through this provider — none of that lives in the library.
+  let {
+    onClose,
+    extraItemsProvider = null,
+    placeholder = 'Type a command...',
+  } = $props();
 
   let query = $state('');
   let selectedIndex = $state(0);
-  let recentProjects = $state([]);
   let inputEl;
   let listEl;
-
-  onMount(() => {
-    window.api?.getRecentProjects?.()
-      .then((list) => { recentProjects = list || []; })
-      .catch(() => {});
-  });
 
   // Highlights the matched substring in `label` for the current query.
   // Returns segments [{text, match}]; the template wraps matches in <mark>.
@@ -32,21 +33,10 @@
     ];
   }
 
-  // Trim a recent-project path to its last two segments for compactness.
-  function shortPath(p) {
-    if (!p) return '';
-    const parts = p.split(/[\\/]/).filter(Boolean);
-    if (parts.length <= 2) return p;
-    return '.../' + parts.slice(-2).join('/');
-  }
-
-  // Result item shape: { kind, id, label, sub, section, score, run }
-  // kind = 'command' | 'note' | 'tag' | 'recent'
   const items = $derived.by(() => {
     const q = query.trim();
     const out = [];
 
-    // Commands — always shown; with empty query, sorted by registry recency.
     const cmds = commandRegistry.applicableCommands();
     for (const c of cmds) {
       const score = fuzzyScore(c.label, q);
@@ -62,58 +52,11 @@
       });
     }
 
-    // Tags — only when a query is present and a project is open.
-    if (q && projectState.isOpen) {
-      for (const tag of projectState.allTags) {
-        const score = fuzzyScore(tag, q);
-        if (score === 0) continue;
-        const files = projectState.getFilesWithTag(tag);
-        out.push({
-          kind: 'tag',
-          id: 'tag:' + tag,
-          label: '#' + tag,
-          sub: files.length + (files.length === 1 ? ' note' : ' notes'),
-          section: 'Tag',
-          score,
-          run: () => { if (files[0]) projectState.selectFile(files[0].id); },
-        });
-      }
-    }
-
-    // Notes — only when a query is present and a project is open.
-    if (q && projectState.isOpen) {
-      for (const f of projectState.index.files) {
-        const score = fuzzyScore(f.name, q);
-        if (score === 0) continue;
-        out.push({
-          kind: 'note',
-          id: 'note:' + f.id,
-          label: f.name,
-          sub: f.filename,
-          section: 'Note',
-          score,
-          run: () => projectState.selectFile(f.id),
-        });
-      }
-    }
-
-    // Recent projects — show always when no project is open (palette replaces
-    // OpenScreen for keyboard users). When a project is open, show only on
-    // query so they don't clutter the empty-query view.
-    if (!projectState.isOpen || q) {
-      for (const r of recentProjects) {
-        const score = fuzzyScore(r.name, q);
-        if (q && score === 0) continue;
-        out.push({
-          kind: 'recent',
-          id: 'rp:' + r.path,
-          label: r.name,
-          sub: shortPath(r.path),
-          section: 'Recent',
-          score: score + (q ? 0 : 200),
-          run: () => onOpenRecent && onOpenRecent(r.path),
-        });
-      }
+    if (extraItemsProvider) {
+      try {
+        const extras = extraItemsProvider({ query: q }) || [];
+        for (const it of extras) out.push(it);
+      } catch { /* provider error — skip extras */ }
     }
 
     out.sort((a, b) => b.score - a.score);
@@ -121,7 +64,6 @@
   });
 
   $effect(() => {
-    // Reset selection whenever the visible list shape changes.
     void items;
     selectedIndex = 0;
   });
@@ -180,6 +122,16 @@
     it.run();
     onClose();
   }
+
+  function kindIcon(kind) {
+    switch (kind) {
+      case 'command': return 'fa-bolt';
+      case 'note':    return 'fa-file-lines';
+      case 'tag':     return 'fa-tag';
+      case 'recent':  return 'fa-folder';
+      default:        return 'fa-circle';
+    }
+  }
 </script>
 
 <div
@@ -196,7 +148,7 @@
       <input
         bind:this={inputEl}
         bind:value={query}
-        placeholder="Type a command or note name..."
+        {placeholder}
         spellcheck="false"
         autocomplete="off"
         use:focusOnMount
@@ -204,7 +156,7 @@
     </div>
     <ul class="palette-list" bind:this={listEl}>
       {#if items.length === 0}
-        <li class="palette-empty">No matching commands or notes.</li>
+        <li class="palette-empty">No matching commands.</li>
       {:else}
         {#each items as it, i (it.id)}
           {#if i > 0 && items[i - 1].kind !== it.kind}
@@ -213,20 +165,10 @@
           <li
             class="palette-row"
             class:selected={i === selectedIndex}
-            onmouseenter={() => selectedIndex = i}
+            onmouseenter={() => (selectedIndex = i)}
             onclick={() => activate(it)}
           >
-            <span class="palette-kind">
-              {#if it.kind === 'command'}
-                <i class="fas fa-bolt"></i>
-              {:else if it.kind === 'note'}
-                <i class="fas fa-file-lines"></i>
-              {:else if it.kind === 'tag'}
-                <i class="fas fa-tag"></i>
-              {:else if it.kind === 'recent'}
-                <i class="fas fa-folder"></i>
-              {/if}
-            </span>
+            <span class="palette-kind"><i class="fas {kindIcon(it.kind)}"></i></span>
             <span class="palette-label">
               {#each highlight(it.label, query) as seg}
                 {#if seg.match}<mark>{seg.text}</mark>{:else}{seg.text}{/if}
@@ -264,8 +206,6 @@
     flex-direction: column;
     background: var(--bg-surface);
     border-radius: 10px;
-    /* Hard 1px ring + deep shadow lift the palette off the page so editor
-       text behind the backdrop never visually competes with palette rows. */
     box-shadow:
       0 0 0 1px var(--border),
       0 16px 48px rgba(0, 0, 0, 0.55);
@@ -316,8 +256,6 @@
     align-items: center;
     gap: 12px;
     padding: 10px 18px;
-    /* Reserve 3px for the selected-state accent bar so labels don't shift
-       horizontally when the selection moves between rows. */
     border-left: 3px solid transparent;
     cursor: pointer;
     color: var(--text-primary);

@@ -1,5 +1,8 @@
 <script>
   import {
+    Toolbar as ToolbarShell, ToolbarButton, ToolbarDivider, ToolbarSpacer,
+  } from '@marina/desktop-ui/components';
+  import {
     selectedFeedId, selectedEntryId, selectedFeed,
     removeFeed, refreshFeed,
     markAllRead, markAllUnread,
@@ -14,6 +17,11 @@
     onOpenSync,
     onOpenTags,
     onOpenAbout,
+    onOpenHelp,
+    syncOpen = false,
+    settingsOpen = false,
+    tagsOpen = false,
+    aboutOpen = false,
   } = $props();
 
   const hasPendingSync = $derived($syncStatus === 'committing' || $syncStatus === 'waiting');
@@ -50,124 +58,35 @@
   }
 </script>
 
-<div class="toolbar">
-  <div class="toolbar-group">
-    <button class="toolbar-btn" title="Add Feed" aria-label="Add Feed" onclick={onAddFeed}>
-      <i class="fas fa-plus"></i>
-    </button>
-    <button
-      class="toolbar-btn"
-      title="Edit Feed"
-      aria-label="Edit Feed"
-      disabled={$selectedFeedId === null}
-      onclick={onEditFeed}
-    >
-      <i class="fas fa-pen"></i>
-    </button>
-    <button
-      class="toolbar-btn"
-      title="Remove Feed"
-      aria-label="Remove Feed"
-      disabled={$selectedFeedId === null}
-      onclick={handleRemove}
-    >
-      <i class="fas fa-trash"></i>
-    </button>
-    <button
-      class="toolbar-btn"
-      title="Refresh Feed"
-      aria-label="Refresh Feed"
-      disabled={$selectedFeedId === null}
-      onclick={handleRefresh}
-    >
-      <i class="fas fa-sync-alt"></i>
-    </button>
-    <div class="toolbar-divider"></div>
-    <button
-      class="toolbar-btn"
-      title="Mark as Read"
-      aria-label="Mark as Read"
-      disabled={$selectedFeedId === null}
-      onclick={handleMarkRead}
-    >
-      <i class="fas fa-check-double"></i>
-    </button>
-    <button
-      class="toolbar-btn"
-      title="Mark as Unread"
-      aria-label="Mark as Unread"
-      disabled={$selectedFeedId === null}
-      onclick={handleMarkUnread}
-    >
-      <i class="fas fa-rotate-left"></i>
-    </button>
-    <div class="toolbar-divider"></div>
-    <button class="toolbar-btn" title="Tags" aria-label="Tags" onclick={onOpenTags}>
-      <i class="fas fa-tags"></i>
-    </button>
-  </div>
-  <div class="toolbar-group">
-    <button class="toolbar-btn" class:sync-pending={hasPendingSync} title="Sync" aria-label="Sync" onclick={onOpenSync}>
-      <i class="fas fa-cloud"></i>
-    </button>
-    <button class="toolbar-btn" title="Settings" aria-label="Settings" onclick={onOpenSettings}>
-      <i class="fas fa-cog"></i>
-    </button>
-    <button class="toolbar-btn" title="About" aria-label="About" onclick={onOpenAbout}>
-      <i class="fas fa-circle-info"></i>
-    </button>
-  </div>
-</div>
+<ToolbarShell>
+  <ToolbarButton icon="fa-plus"        title="Add Feed"     label="Add Feed"     onclick={onAddFeed} />
+  <ToolbarButton icon="fa-pen"         title="Edit Feed"    label="Edit Feed"    disabled={$selectedFeedId === null} onclick={onEditFeed} />
+  <ToolbarButton icon="fa-trash"       title="Remove Feed"  label="Remove Feed"  disabled={$selectedFeedId === null} onclick={handleRemove} />
+  <ToolbarButton icon="fa-arrows-rotate" title="Refresh Feed" label="Refresh Feed" disabled={$selectedFeedId === null} onclick={handleRefresh} />
 
-<style>
-  .toolbar {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    width: 72px;
-    background-color: var(--color-toolbar-bg);
-    border-right: 1px solid var(--color-border);
-    padding: 12px 0;
-    flex-shrink: 0;
-  }
+  <ToolbarDivider />
 
-  .toolbar-group {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-  }
+  <ToolbarButton icon="fa-check-double" title="Mark as Read"   label="Mark as Read"   disabled={$selectedFeedId === null} onclick={handleMarkRead} />
+  <ToolbarButton icon="fa-rotate-left"  title="Mark as Unread" label="Mark as Unread" disabled={$selectedFeedId === null} onclick={handleMarkUnread} />
 
-  .toolbar-divider {
-    width: 32px;
-    height: 1px;
-    background-color: var(--color-border);
-    margin: 4px 0;
-  }
+  <ToolbarDivider />
 
-  .toolbar-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 54px;
-    height: 54px;
-    border-radius: 9px;
-    color: var(--color-text-muted);
-    font-size: 21px;
-    transition: background-color 0.15s, color 0.15s;
-  }
+  <ToolbarButton icon="fa-tags" title="Tags" label="Tags" active={tagsOpen} onclick={onOpenTags} />
 
-  .toolbar-btn:hover:not(:disabled) {
-    background-color: var(--color-surface-hover);
-    color: var(--color-text);
-  }
+  <ToolbarSpacer />
 
-  .toolbar-btn:disabled {
-    opacity: 0.3;
-    cursor: default;
-  }
+  <ToolbarButton
+    icon="fa-cloud-arrow-up"
+    title="Remote Sync"
+    label="Sync"
+    active={syncOpen}
+    extraClass={hasPendingSync && !syncOpen ? 'sync-pending' : ''}
+    onclick={onOpenSync}
+  />
 
-  .toolbar-btn.sync-pending {
-    color: var(--color-accent);
-  }
-</style>
+  <ToolbarDivider />
+
+  <ToolbarButton icon="fa-gear"            title="Settings" label="Settings" active={settingsOpen} onclick={onOpenSettings} />
+  <ToolbarButton icon="fa-circle-info"     title="About"    label="About"    active={aboutOpen}    onclick={onOpenAbout} />
+  <ToolbarButton icon="fa-circle-question" title="Help (F1)" label="Help"    onclick={onOpenHelp} />
+</ToolbarShell>

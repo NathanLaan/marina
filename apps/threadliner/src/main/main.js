@@ -1,12 +1,70 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const dataStore = require('./data-store');
 const feedParser = require('./feed-parser');
 const gitSync = require('./git-sync');
 const syncManager = require('./sync-manager');
+const {
+  registerWindowHandlers,
+  registerUIPrefsHandlers,
+} = require('@marina/desktop-ui/electron-host');
+const { createSecondaryWindow } = require('@marina/desktop-ui/secondary-window');
 
 let mainWindow;
+let uiPrefsApi;
+
+// --- Auto-updater ---
+
+let autoUpdaterModule = null;
+// Cached so the renderer can pick up the current update status when AboutModal
+// mounts after a startup check has already fired its events.
+let latestUpdateState = { state: 'idle' };
+
+function getAutoUpdater() {
+  if (autoUpdaterModule) return autoUpdaterModule;
+  try {
+    const { autoUpdater } = require('electron-updater');
+    // User-driven: surface "Update available" before bytes move (matters on
+    // metered connections). The renderer triggers downloadUpdate() explicitly.
+    autoUpdater.autoDownload = false;
+    // Continuous builds publish under the same `latest` channel as tagged
+    // releases but with a SemVer pre-release token; without this, the
+    // updater would skip them.
+    autoUpdater.allowPrerelease = true;
+    autoUpdaterModule = autoUpdater;
+    return autoUpdater;
+  } catch (err) {
+    console.warn('electron-updater unavailable:', err.message);
+    return null;
+  }
+}
+
+function sendUpdateState(state) {
+  latestUpdateState = state;
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update:state', state);
+  }
+}
+
+function initAutoUpdater() {
+  // Only run in packaged builds — there's nothing to update against in dev.
+  if (!app.isPackaged) return;
+  const u = getAutoUpdater();
+  if (!u) return;
+
+  u.on('checking-for-update', () => sendUpdateState({ state: 'checking' }));
+  u.on('update-available',    (i) => sendUpdateState({ state: 'available', version: i?.version, notes: i?.releaseNotes }));
+  u.on('update-not-available',(i) => sendUpdateState({ state: 'unavailable', version: i?.version }));
+  u.on('download-progress',   (p) => sendUpdateState({ state: 'downloading', percent: p?.percent || 0 }));
+  u.on('update-downloaded',   (i) => sendUpdateState({ state: 'downloaded', version: i?.version }));
+  u.on('error',               (err) => sendUpdateState({ state: 'error', error: err?.message || String(err) }));
+
+  // Startup check drives the same state machine. The dedicated
+  // checkForUpdatesAndNotify() native-notification path is intentionally not
+  // used — the in-app About modal status block replaces it.
+  u.checkForUpdates().catch((err) => sendUpdateState({ state: 'error', error: err?.message || String(err) }));
+}
 
 // --- App config (stored outside the git repo) ---
 
@@ -31,23 +89,46 @@ function isSetupComplete() {
   return !!(config.dataDir && fs.existsSync(config.dataDir));
 }
 
+// --- UI prefs path (loaded by the library helper in registerIpcHandlers) ---
+
+function getUIPrefsPath() {
+  return path.join(app.getPath('userData'), 'ui-preferences.json');
+}
+
 // --- Window ---
 
 function createWindow() {
+  const uiPrefs = uiPrefsApi.read();
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 800,
     minHeight: 500,
+    // frame can only be set at construction time — that's why the
+    // customTitlebar toggle requires a restart.
+    frame: !uiPrefs.customTitlebar,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      // Bundled by `npm run bundle:preload` (esbuild). The bundle inlines
+      // @marina/desktop-ui/preload, so the preload has no runtime require
+      // of third-party packages and works in Electron's default sandbox.
+      preload: path.join(__dirname, '../../dist/preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
     },
   });
 
-  const indexPath = path.join(__dirname, '../../dist/renderer/index.html');
-  mainWindow.loadFile(indexPath);
+  // window:maximized-change broadcasts come from the library's
+  // registerWindowHandlers via its app.on('browser-window-created') hook.
+
+  // scripts/dev.js sets NODE_ENV=development when it spawns Electron after
+  // Vite is ready; the renderer is then served from the dev server with HMR.
+  // Anything else (npm run start, packaged builds) loads the built file.
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.loadURL('http://localhost:5251');
+  } else {
+    const indexPath = path.join(__dirname, '../../dist/renderer/index.html');
+    mainWindow.loadFile(indexPath);
+  }
 }
 
 // --- IPC Handlers ---
@@ -258,6 +339,178 @@ function registerIpcHandlers() {
       remoteUrl: config.remoteUrl || null,
     };
   });
+
+  // Window control, UI-prefs persistence, and the window:maximized-change
+  // broadcast all come from the shared library.
+  registerWindowHandlers({ getWindow: () => mainWindow });
+  uiPrefsApi = registerUIPrefsHandlers({
+    prefsPath: getUIPrefsPath(),
+    defaults: { customTitlebar: false },
+  });
+
+  // The library's registerRelaunchHandler does `app.relaunch(); app.exit(0)`,
+  // which in dev tears down scripts/dev.js (and therefore Vite) along with
+  // Electron. Do a soft restart instead: open a new window that re-reads
+  // prefs through uiPrefsApi.read(), then close the old one. Works the same
+  // way in production builds — there's no orchestrator to confuse.
+  ipcMain.handle('app:relaunch', () => {
+    const old = mainWindow;
+    createWindow();
+    if (old && !old.isDestroyed()) old.close();
+  });
+
+  // Git operations (manual, NoteLiner-style sync UI).
+  // These run alongside the auto-sync engine in sync-manager; in practice the
+  // user can only invoke them while a modal is open, and races would at worst
+  // surface as a transient error.
+  function getDataDir() {
+    const config = readConfig();
+    return config.dataDir || null;
+  }
+
+  ipcMain.handle('git:getRemoteUrl', () => {
+    const dir = getDataDir();
+    if (!dir) return null;
+    return gitSync.getRemoteUrl(dir);
+  });
+
+  ipcMain.handle('git:setRemoteUrl', async (_event, url) => {
+    const dir = getDataDir();
+    if (!dir) throw new Error('No data directory configured');
+    await gitSync.setRemoteUrl(dir, url);
+    // Mirror to config.json so getSyncConfig still returns it.
+    const config = readConfig();
+    writeConfig({ ...config, remoteUrl: url });
+    return { success: true };
+  });
+
+  ipcMain.handle('git:removeRemote', async () => {
+    const dir = getDataDir();
+    if (!dir) throw new Error('No data directory configured');
+    await gitSync.removeRemote(dir);
+    const config = readConfig();
+    writeConfig({ ...config, remoteUrl: null });
+    return { success: true };
+  });
+
+  ipcMain.handle('git:getBranch', () => {
+    const dir = getDataDir();
+    if (!dir) return null;
+    return gitSync.getBranch(dir);
+  });
+
+  ipcMain.handle('git:getSyncStatus', () => {
+    const dir = getDataDir();
+    if (!dir) return { status: 'error', message: 'No data directory configured' };
+    return gitSync.getSyncStatus(dir);
+  });
+
+  // Plain merge-style pull (counterpart to git:pullRebase below).
+  ipcMain.handle('git:pull', async () => {
+    const dir = getDataDir();
+    if (!dir) throw new Error('No data directory configured');
+    const result = await gitSync.pullMerge(dir);
+    if (!result.success) throw new Error(result.error || 'Pull failed');
+    return result;
+  });
+
+  // Rebase-style pull — same engine that auto-sync uses internally.
+  ipcMain.handle('git:pullRebase', async () => {
+    const dir = getDataDir();
+    if (!dir) throw new Error('No data directory configured');
+    const result = await gitSync.pull(dir);
+    if (!result.success) throw new Error(result.error || 'Pull failed');
+    return result;
+  });
+
+  // Push routes through syncManager.forcePush so it serializes with the
+  // background commit/push queue — avoids racing the auto-sync timer.
+  ipcMain.handle('git:push', async () => {
+    await syncManager.forcePush();
+    return { success: true };
+  });
+
+  ipcMain.handle('git:pushUpstream', async () => {
+    const dir = getDataDir();
+    if (!dir) throw new Error('No data directory configured');
+    const result = await gitSync.push(dir);
+    if (!result.success) throw new Error(result.error || 'Push failed');
+    return result;
+  });
+
+  ipcMain.handle('git:resetToRemote', async () => {
+    const dir = getDataDir();
+    if (!dir) throw new Error('No data directory configured');
+    const branch = await gitSync.getBranch(dir);
+    return gitSync.resetToRemote(dir, branch);
+  });
+
+  // Shell: route renderer-driven external links through Electron's shell so
+  // they open in the user's browser instead of inside the Electron window.
+  ipcMain.handle('shell:openExternal', (_event, url) => shell.openExternal(url));
+
+  // --- Help window ---
+
+  function createHelpWindow() {
+    return createSecondaryWindow({
+      id: 'help',
+      title: 'Threadliner Help',
+      parent: mainWindow,
+      preload: path.join(__dirname, '..', '..', 'dist', 'preload.cjs'),
+      devUrl: 'http://localhost:5251/help.html',
+      prodFile: path.join(__dirname, '..', '..', 'dist', 'renderer', 'help.html'),
+      isDev: process.env.NODE_ENV === 'development',
+      width: 1000, height: 720, minWidth: 560, minHeight: 360,
+    });
+  }
+
+  ipcMain.handle('help:open', () => {
+    createHelpWindow();
+    return true;
+  });
+
+  // --- Auto-update IPC ---
+
+  ipcMain.handle('update:getState', () => latestUpdateState);
+
+  ipcMain.handle('update:checkNow', async () => {
+    if (!app.isPackaged) {
+      sendUpdateState({ state: 'unavailable', reason: 'dev' });
+      return false;
+    }
+    const u = getAutoUpdater();
+    if (!u) {
+      sendUpdateState({ state: 'error', error: 'Updater not available in this build' });
+      return false;
+    }
+    try {
+      await u.checkForUpdates();
+      return true;
+    } catch (err) {
+      sendUpdateState({ state: 'error', error: err?.message || String(err) });
+      return false;
+    }
+  });
+
+  ipcMain.handle('update:downloadNow', async () => {
+    const u = getAutoUpdater();
+    if (!u) return false;
+    try {
+      await u.downloadUpdate();
+      return true;
+    } catch (err) {
+      sendUpdateState({ state: 'error', error: err?.message || String(err) });
+      return false;
+    }
+  });
+
+  ipcMain.handle('update:installNow', () => {
+    const u = getAutoUpdater();
+    if (!u) return false;
+    // quitAndInstall() exits the process — no further IPC will be served.
+    u.quitAndInstall();
+    return true;
+  });
 }
 
 // --- Startup ---
@@ -284,6 +537,7 @@ app.whenReady().then(async () => {
   }
 
   createWindow();
+  initAutoUpdater();
 });
 
 app.on('window-all-closed', () => {

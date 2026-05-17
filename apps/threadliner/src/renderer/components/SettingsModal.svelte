@@ -1,17 +1,19 @@
 <script>
-  import { onMount } from 'svelte';
-  import { theme, setTheme } from '../stores/theme.js';
+  import { onMount, tick } from 'svelte';
+  import {
+    SettingsShell, SettingGroup, ThemeList, ScaleList, ToggleOption,
+    RestartBanner, ShortcutsList,
+  } from '@marina/desktop-ui/settings';
+  import { syncLog, lastSyncTime, loadFullLog } from '../stores/sync.js';
 
   let { onClose } = $props();
 
-  let activeTab = $state('theme');
+  let activeTab = $state('ui');
   let syncWaitTime = $state('10');
-
-  const themes = [
-    { id: 'light', label: 'Light', description: 'Clean and bright' },
-    { id: 'dark', label: 'Dark', description: 'Easy on the eyes' },
-    { id: 'midnight', label: 'Midnight', description: 'Deep blue tones' },
-  ];
+  let customTitlebar = $state(false);
+  let customTitlebarInitial = $state(false);
+  let prefsLoaded = $state(false);
+  let logContainer = $state();
 
   const waitTimeOptions = [
     { value: '5', label: '5 seconds' },
@@ -20,306 +22,152 @@
     { value: '60', label: '60 seconds' },
   ];
 
+  const shortcuts = [
+    { keys: 'Esc',    action: 'Close modal', section: 'General' },
+    { keys: 'Ctrl+=', action: 'Zoom in',     section: 'View' },
+    { keys: 'Ctrl+-', action: 'Zoom out',    section: 'View' },
+    { keys: 'Ctrl+0', action: 'Reset zoom',  section: 'View' },
+  ];
+
   onMount(async () => {
     const saved = await window.api.getSetting('syncWaitTime');
     if (saved) syncWaitTime = String(saved);
+    if (window.api?.getUIPrefs) {
+      try {
+        const prefs = await window.api.getUIPrefs();
+        customTitlebar = !!prefs?.customTitlebar;
+        customTitlebarInitial = customTitlebar;
+      } catch { /* ignore */ }
+    }
+    await loadFullLog();
+    prefsLoaded = true;
   });
+
+  // Pin the log to the bottom as new entries arrive — only when the Sync tab
+  // is visible, otherwise logContainer is null.
+  $effect(() => {
+    $syncLog;
+    if (activeTab !== 'sync') return;
+    tick().then(() => {
+      if (logContainer) logContainer.scrollTop = logContainer.scrollHeight;
+    });
+  });
+
+  function formatLastSync(iso) {
+    if (!iso) return 'Never';
+    try { return new Date(iso).toLocaleString(); } catch { return 'Unknown'; }
+  }
+
+  function formatLogTime(timestamp) {
+    const d = new Date(timestamp);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
 
   async function handleWaitTimeChange() {
     await window.api.setSetting('syncWaitTime', syncWaitTime);
   }
 
-  function handleKeydown(e) {
-    if (e.key === 'Escape') onClose();
+  async function setCustomTitlebar(next) {
+    customTitlebar = next;
+    if (window.api?.setUIPrefs) {
+      try { await window.api.setUIPrefs({ customTitlebar }); } catch { /* ignore */ }
+    }
   }
+
+  async function applyRestart() {
+    if (window.api?.relaunchApp) {
+      await window.api.relaunchApp();
+    }
+  }
+
+  const restartPending = $derived(prefsLoaded && customTitlebar !== customTitlebarInitial);
+
+  const tabs = [
+    { id: 'ui',        label: 'UI',                 render: uiTab },
+    { id: 'sync',      label: 'Sync',               render: syncTab },
+    { id: 'shortcuts', label: 'Keyboard Shortcuts', render: shortcutsTab },
+  ];
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="modal-overlay" onmousedown={(e) => { if (e.target === e.currentTarget) onClose(); }} onkeydown={handleKeydown}>
-  <div class="modal">
-    <div class="modal-header">
-      <h3>Settings</h3>
-      <button class="close-btn" aria-label="Close" onclick={onClose}>
-        <i class="fas fa-times"></i>
-      </button>
-    </div>
+{#snippet uiTab()}
+  <SettingGroup label="Theme">
+    <ThemeList />
+  </SettingGroup>
 
-    <div class="modal-body">
-      <div class="tabs">
-        <button
-          class="tab"
-          class:active={activeTab === 'theme'}
-          onclick={() => (activeTab = 'theme')}
-        >
-          <i class="fas fa-palette"></i> Theme
-        </button>
-        <button
-          class="tab"
-          class:active={activeTab === 'sync'}
-          onclick={() => (activeTab = 'sync')}
-        >
-          <i class="fas fa-cloud"></i> Sync
-        </button>
-      </div>
+  <SettingGroup label="UI Scale">
+    <ScaleList />
+    <p class="kbd-help">
+      Or use <kbd>Ctrl</kbd>+<kbd>=</kbd> / <kbd>Ctrl</kbd>+<kbd>-</kbd> / <kbd>Ctrl</kbd>+<kbd>0</kbd>.
+    </p>
+  </SettingGroup>
 
-      <div class="tab-content">
-        {#if activeTab === 'theme'}
-          <div class="theme-grid">
-            {#each themes as t (t.id)}
-              <button
-                class="theme-card"
-                class:selected={$theme === t.id}
-                onclick={() => setTheme(t.id)}
-              >
-                <div class="theme-preview" data-theme={t.id}>
-                  <div class="preview-toolbar"></div>
-                  <div class="preview-sidebar"></div>
-                  <div class="preview-content">
-                    <div class="preview-line"></div>
-                    <div class="preview-line short"></div>
-                  </div>
-                </div>
-                <span class="theme-label">{t.label}</span>
-                <span class="theme-desc">{t.description}</span>
-                {#if $theme === t.id}
-                  <i class="fas fa-check theme-check"></i>
-                {/if}
-              </button>
-            {/each}
+  <SettingGroup label="Window">
+    <ToggleOption
+      label="Custom Window Titlebar"
+      checked={customTitlebar}
+      disabled={!prefsLoaded}
+      onchange={setCustomTitlebar}
+    />
+    {#if restartPending}
+      <RestartBanner
+        message="Restart required to apply titlebar change."
+        onRestart={applyRestart}
+      />
+    {/if}
+  </SettingGroup>
+{/snippet}
+
+{#snippet syncTab()}
+  <SettingGroup
+    label="Sync Wait Time"
+    help="How long to wait after a local change before pushing to the remote repository."
+  >
+    <select bind:value={syncWaitTime} onchange={handleWaitTimeChange}>
+      {#each waitTimeOptions as opt (opt.value)}
+        <option value={opt.value}>{opt.label}</option>
+      {/each}
+    </select>
+  </SettingGroup>
+
+  <SettingGroup label="Last Sync">
+    <p class="last-sync">{formatLastSync($lastSyncTime)}</p>
+  </SettingGroup>
+
+  <SettingGroup label="Activity">
+    <div class="log-container" bind:this={logContainer}>
+      {#if $syncLog.length === 0}
+        <div class="log-empty">No sync activity yet.</div>
+      {:else}
+        {#each $syncLog as entry (entry.id)}
+          <div class="log-entry" class:log-error={entry.level === 'error'}>
+            <span class="log-time">{formatLogTime(entry.timestamp)}</span>
+            <span class="log-message">{entry.message}</span>
           </div>
-        {/if}
-
-        {#if activeTab === 'sync'}
-          <div class="setting-group">
-            <label class="setting-label">
-              <span class="setting-title">Sync Wait Time</span>
-              <span class="setting-desc">How long to wait after a change before pushing to the remote repository.</span>
-              <select bind:value={syncWaitTime} onchange={handleWaitTimeChange}>
-                {#each waitTimeOptions as opt (opt.value)}
-                  <option value={opt.value}>{opt.label}</option>
-                {/each}
-              </select>
-            </label>
-          </div>
-        {/if}
-      </div>
+          {#if entry.detail}
+            <div class="log-entry log-detail">
+              <span class="log-time"></span>
+              <span class="log-message">{entry.detail}</span>
+            </div>
+          {/if}
+        {/each}
+      {/if}
     </div>
-  </div>
-</div>
+  </SettingGroup>
+{/snippet}
+
+{#snippet shortcutsTab()}
+  <ShortcutsList {shortcuts} />
+{/snippet}
+
+<SettingsShell {tabs} bind:activeTab {onClose} />
 
 <style>
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-  }
-
-  .modal {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
-    width: 520px;
-    max-width: 90vw;
-    max-height: 80vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  h3 {
-    font-size: 16px;
-    font-weight: 600;
-  }
-
-  .close-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    color: var(--color-text-muted);
-    font-size: 14px;
-  }
-
-  .close-btn:hover {
-    background-color: var(--color-surface-hover);
-    color: var(--color-text);
-  }
-
-  .modal-body {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-  }
-
-  .tabs {
-    display: flex;
-    flex-direction: column;
-    width: 140px;
-    padding: 8px;
-    border-right: 1px solid var(--color-border);
-    flex-shrink: 0;
-  }
-
-  .tab {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 13px;
-    color: var(--color-text-muted);
-    text-align: left;
-  }
-
-  .tab:hover {
-    background-color: var(--color-surface-hover);
-    color: var(--color-text);
-  }
-
-  .tab.active {
-    background-color: var(--color-surface-active);
-    color: var(--color-text);
-    font-weight: 500;
-  }
-
-  .tab-content {
-    flex: 1;
-    padding: 20px;
-    overflow-y: auto;
-  }
-
-  .theme-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .theme-card {
-    position: relative;
-    display: grid;
-    grid-template-columns: 80px 1fr;
-    grid-template-rows: auto auto;
-    gap: 2px 12px;
-    align-items: center;
-    padding: 12px;
-    border-radius: 8px;
-    border: 2px solid var(--color-border);
-    text-align: left;
-    transition: border-color 0.15s;
-  }
-
-  .theme-card:hover {
-    border-color: var(--color-text-muted);
-  }
-
-  .theme-card.selected {
-    border-color: var(--color-accent);
-  }
-
-  .theme-preview {
-    grid-row: 1 / 3;
-    display: flex;
-    height: 48px;
-    border-radius: 4px;
-    overflow: hidden;
-    border: 1px solid var(--color-border);
-  }
-
-  .preview-toolbar {
-    width: 8px;
-    background-color: var(--color-toolbar-bg);
-  }
-
-  .preview-sidebar {
-    width: 18px;
-    background-color: var(--color-sidebar-bg);
-    border-right: 1px solid var(--color-border);
-  }
-
-  .preview-content {
-    flex: 1;
-    background-color: var(--color-bg);
-    padding: 8px 6px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    justify-content: center;
-  }
-
-  .preview-line {
-    height: 3px;
-    border-radius: 1px;
-    background-color: var(--color-text-muted);
-    opacity: 0.4;
-  }
-
-  .preview-line.short {
-    width: 60%;
-  }
-
-  .theme-label {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--color-text);
-  }
-
-  .theme-desc {
-    font-size: 12px;
-    color: var(--color-text-muted);
-  }
-
-  .theme-check {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    color: var(--color-accent);
-    font-size: 14px;
-  }
-
-  .setting-group {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .setting-label {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .setting-title {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--color-text);
-  }
-
-  .setting-desc {
-    font-size: 12px;
-    color: var(--color-text-muted);
-    margin-bottom: 4px;
-  }
-
   select {
     padding: 8px 12px;
     border-radius: 6px;
-    border: 1px solid var(--color-border);
-    background-color: var(--color-bg);
-    color: var(--color-text);
+    border: 1px solid var(--input-border);
+    background-color: var(--input-bg);
+    color: var(--text-primary);
     font-family: inherit;
     font-size: 13px;
     outline: none;
@@ -328,6 +176,79 @@
   }
 
   select:focus {
-    border-color: var(--color-accent);
+    border-color: var(--input-border-focus);
+  }
+
+  .kbd-help {
+    margin: 10px 2px 0;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--text-muted);
+  }
+
+  .kbd-help kbd {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 1px 5px;
+    background: var(--bg-button);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text-secondary);
+  }
+
+  .last-sync {
+    font-size: 13px;
+    color: var(--text-secondary);
+    padding: 6px 12px;
+    background: var(--bg-base);
+    border-radius: 6px;
+    display: inline-block;
+  }
+
+  .log-container {
+    height: 220px;
+    overflow-y: auto;
+    background: var(--bg-base);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .log-empty {
+    color: var(--text-muted);
+    font-style: italic;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    text-align: center;
+    padding-top: 30px;
+  }
+
+  .log-entry {
+    display: flex;
+    gap: 8px;
+    padding: 1px 0;
+  }
+
+  .log-time {
+    color: var(--text-muted);
+    flex-shrink: 0;
+    user-select: none;
+  }
+
+  .log-message {
+    color: var(--text-secondary);
+    word-break: break-all;
+  }
+
+  .log-error .log-message {
+    color: var(--danger);
+  }
+
+  .log-detail .log-message {
+    color: var(--text-muted);
+    opacity: 0.7;
   }
 </style>

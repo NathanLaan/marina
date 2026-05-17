@@ -90,8 +90,8 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    background-color: var(--color-sidebar-bg);
-    border-right: 1px solid var(--color-border);
+    background-color: var(--bg-surface);
+    border-right: 1px solid var(--border);
     flex-shrink: 0;
     overflow: hidden;
   }
@@ -102,15 +102,16 @@
 
   .sidebar-header {
     padding: 12px 16px;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-base);
   }
 
   .sidebar-header h2 {
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--color-text-muted);
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
   }
 
   .feed-list {
@@ -127,17 +128,20 @@
     padding: 8px 16px;
     text-align: left;
     font-size: 13px;
-    color: var(--color-text);
+    color: var(--text-primary);
     border-radius: 0;
     transition: background-color 0.1s;
   }
 
   .feed-item:hover {
-    background-color: var(--color-surface-hover);
+    background-color: var(--bg-item-hover);
   }
 
   .feed-item.active {
-    background-color: var(--color-surface-active);
+    background-color: var(--bg-selected);
+    outline: 1px solid var(--accent);
+    outline-offset: -1px;
+    color: var(--text-primary);
   }
 
   .feed-title {
@@ -158,21 +162,21 @@
     justify-content: center;
     font-size: 11px;
     font-weight: 600;
-    background-color: var(--color-accent);
-    color: white;
+    background-color: var(--accent);
+    color: var(--accent-on);
     border-radius: 9px;
     margin-left: 8px;
   }
 
   .empty-text {
     padding: 16px;
-    color: var(--color-text-muted);
+    color: var(--text-muted);
     font-size: 13px;
     text-align: center;
   }
 
   .tags-section {
-    border-top: 1px solid var(--color-border);
+    border-top: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     max-height: 40%;
@@ -181,14 +185,15 @@
 
   .tags-header {
     padding: 12px 16px;
+    background: var(--bg-base);
   }
 
   .tags-header h2 {
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--color-text-muted);
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
   }
 
   .tags-list {
@@ -204,14 +209,14 @@
     padding: 6px 16px;
     text-align: left;
     font-size: 13px;
-    color: var(--color-text-muted);
+    color: var(--text-muted);
     border-radius: 0;
     transition: background-color 0.1s, color 0.1s;
   }
 
   .tag-toggle:hover:not(:disabled) {
-    background-color: var(--color-surface-hover);
-    color: var(--color-text);
+    background-color: var(--bg-item-hover);
+    color: var(--text-primary);
   }
 
   .tag-toggle:disabled {
@@ -220,7 +225,7 @@
   }
 
   .tag-toggle.assigned {
-    color: var(--color-accent);
+    color: var(--accent);
   }
 
   .tag-name {
@@ -242,7 +247,7 @@
   }
 
   .resize-handle:hover {
-    background-color: var(--color-accent);
+    background-color: var(--accent);
     opacity: 0.3;
   }
 </style>

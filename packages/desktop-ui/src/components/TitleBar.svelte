@@ -1,12 +1,17 @@
 <script>
+  // Generic custom-titlebar bar. Consumers control:
+  // - the centered app title via `appName`
+  // - the action-button group between hamburger and spacer via `actions` snippet
+  // - the toolbar-toggle behaviour via `onToggleToolbar` + `toolbarVisible`
+  //
+  // The window controls (min/max/close) are wired here against the IPC names
+  // exposed by exposeWindowApi() in the preload helper, so they Just Work
+  // when both halves of the library are in use.
   let {
+    appName = '',
     onToggleToolbar,
     toolbarVisible = true,
-    onGoHome,
-    onOpenFolder,
-    onNewFile,
-    onImportDocument,
-    projectOpen = false,
+    actions,
   } = $props();
 
   let isMaximized = $state(false);
@@ -24,7 +29,8 @@
   });
 
   function onTitlebarDblClick(e) {
-    // Ignore double-clicks on buttons — only the drag region should trigger max/restore
+    // Buttons own their own click handlers — don't let a double-click on them
+    // bubble up and toggle max/restore.
     if (e.target.closest('button')) return;
     window.api?.windowMaximize();
   }
@@ -36,48 +42,33 @@
     class="titlebar-btn toolbar-toggle"
     class:active={toolbarVisible}
     onclick={onToggleToolbar}
-    title="Toolbar (Ctrl+Shift+E)"
+    aria-label="Toggle toolbar"
+    title="Toolbar"
   >
     <i class="fas fa-bars"></i>
   </button>
 
-  <div class="titlebar-actions">
-    <button
-      class="titlebar-btn"
-      class:active={!projectOpen}
-      onclick={onGoHome}
-      disabled={!projectOpen}
-      title="Home"
-    >
-      <i class="fas fa-house"></i>
-    </button>
-    <button class="titlebar-btn" onclick={onOpenFolder} title="Open Folder (Ctrl+O)">
-      <i class="fas fa-folder-open"></i>
-    </button>
-    {#if projectOpen}
-      <button class="titlebar-btn" onclick={onNewFile} title="New File (Ctrl+N)">
-        <i class="fas fa-file-circle-plus"></i>
-      </button>
-      <button class="titlebar-btn" onclick={onImportDocument} title="Import Document (Ctrl+Shift+I)">
-        <i class="fas fa-file-import"></i>
-      </button>
-    {/if}
-  </div>
+  {#if actions}
+    <div class="titlebar-actions">
+      {@render actions()}
+    </div>
+  {/if}
 
-  <div class="titlebar-title">NoteLiner</div>
+  <div class="titlebar-title">{appName}</div>
 
   <div class="titlebar-controls">
-    <button class="titlebar-btn" onclick={() => window.api?.windowMinimize()} title="Minimize">
+    <button class="titlebar-btn" onclick={() => window.api?.windowMinimize()} aria-label="Minimize" title="Minimize">
       <i class="fas fa-window-minimize"></i>
     </button>
     <button
       class="titlebar-btn"
       onclick={() => window.api?.windowMaximize()}
+      aria-label={isMaximized ? 'Restore' : 'Maximize'}
       title={isMaximized ? 'Restore' : 'Maximize'}
     >
       <i class={isMaximized ? 'fas fa-window-restore' : 'fas fa-window-maximize'}></i>
     </button>
-    <button class="titlebar-btn close" onclick={() => window.api?.windowClose()} title="Close">
+    <button class="titlebar-btn close" onclick={() => window.api?.windowClose()} aria-label="Close" title="Close">
       <i class="fas fa-xmark"></i>
     </button>
   </div>

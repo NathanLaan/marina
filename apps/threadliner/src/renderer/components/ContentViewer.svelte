@@ -122,7 +122,7 @@
   .content-viewer {
     flex: 1;
     overflow-y: auto;
-    background-color: var(--color-bg);
+    background-color: var(--bg-base);
     min-width: 0;
   }
 
@@ -133,7 +133,7 @@
     justify-content: center;
     height: 100%;
     gap: 16px;
-    color: var(--color-text-muted);
+    color: var(--text-muted);
   }
 
   .empty-state p {
@@ -149,7 +149,7 @@
   .article-header {
     margin-bottom: 24px;
     padding-bottom: 16px;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--border);
   }
 
   .article-title {
@@ -157,7 +157,7 @@
     font-weight: 700;
     line-height: 1.3;
     margin-bottom: 12px;
-    color: var(--color-text);
+    color: var(--text-primary);
   }
 
   .article-meta {
@@ -165,7 +165,7 @@
     flex-wrap: wrap;
     gap: 16px;
     font-size: 13px;
-    color: var(--color-text-muted);
+    color: var(--text-muted);
   }
 
   .article-meta i {
@@ -174,7 +174,7 @@
   }
 
   .article-link {
-    color: var(--color-accent);
+    color: var(--accent);
     text-decoration: none;
   }
 
@@ -185,7 +185,7 @@
   .article-content {
     font-size: 15px;
     line-height: 1.7;
-    color: var(--color-text);
+    color: var(--text-primary);
   }
 
   .article-content :global(h1),
@@ -207,7 +207,7 @@
   }
 
   .article-content :global(a) {
-    color: var(--color-accent);
+    color: var(--accent);
     text-decoration: none;
   }
 
@@ -242,21 +242,21 @@
 
   .article-content :global(figcaption) {
     font-size: 13px;
-    color: var(--color-text-muted);
+    color: var(--text-muted);
     margin-top: 8px;
     text-align: center;
   }
 
   .article-content :global(blockquote) {
-    border-left: 3px solid var(--color-accent);
+    border-left: 3px solid var(--accent);
     padding-left: 16px;
     margin: 16px 0;
-    color: var(--color-text-muted);
+    color: var(--text-muted);
     font-style: italic;
   }
 
   .article-content :global(pre) {
-    background-color: var(--color-surface);
+    background-color: var(--bg-surface);
     padding: 16px;
     border-radius: 6px;
     overflow-x: auto;
@@ -268,7 +268,7 @@
   .article-content :global(code) {
     font-family: var(--font-mono);
     font-size: 0.9em;
-    background-color: var(--color-surface);
+    background-color: var(--bg-surface);
     padding: 2px 6px;
     border-radius: 3px;
   }
@@ -296,20 +296,20 @@
 
   .article-content :global(th),
   .article-content :global(td) {
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--border);
     padding: 8px 12px;
     text-align: left;
   }
 
   .article-content :global(th) {
-    background-color: var(--color-surface);
+    background-color: var(--bg-surface);
     font-weight: 600;
   }
 
   .no-content {
     text-align: center;
     padding: 48px 24px;
-    color: var(--color-text-muted);
+    color: var(--text-muted);
   }
 
   .no-content p {
@@ -320,7 +320,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: var(--color-accent);
+    color: var(--accent);
     text-decoration: none;
     font-weight: 500;
   }

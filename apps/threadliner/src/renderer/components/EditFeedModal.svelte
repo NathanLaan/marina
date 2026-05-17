@@ -25,87 +25,79 @@
     }
   }
 
+  function focusOnMount(node) {
+    node.focus();
+  }
+
   function handleKeydown(e) {
     if (e.key === 'Escape') onClose();
   }
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="modal-overlay" onmousedown={(e) => { if (e.target === e.currentTarget) onClose(); }} onkeydown={handleKeydown}>
-  <div class="modal">
-    <h3>Edit Feed</h3>
-    {#if $selectedFeed}
-      <form onsubmit={handleSubmit}>
-        <label>
-          <span>Title</span>
-          <!-- svelte-ignore a11y_autofocus -->
-          <input type="text" bind:value={title} disabled={loading} autofocus />
-        </label>
-        <label>
-          <span>Feed URL</span>
-          <input type="url" bind:value={url} disabled={loading} />
-        </label>
-        {#if errorMsg}
-          <p class="error">{errorMsg}</p>
-        {/if}
+<div
+  class="modal-overlay-compact"
+  use:focusOnMount
+  onmousedown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+  onkeydown={handleKeydown}
+  role="dialog"
+  aria-modal="true"
+  tabindex="-1"
+>
+  <div class="modal-compact">
+    <div class="modal-header">
+      <h2>Edit Feed</h2>
+    </div>
+    <div class="modal-body">
+      {#if $selectedFeed}
+        <form onsubmit={handleSubmit}>
+          <label>
+            <span class="setting-label">Title</span>
+            <!-- svelte-ignore a11y_autofocus -->
+            <input type="text" bind:value={title} disabled={loading} autofocus />
+          </label>
+          <label>
+            <span class="setting-label">Feed URL</span>
+            <input type="url" bind:value={url} disabled={loading} />
+          </label>
+          {#if errorMsg}
+            <p class="error">{errorMsg}</p>
+          {/if}
+          <div class="actions">
+            <button type="button" class="btn btn-secondary" onclick={onClose} disabled={loading}>
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-primary" disabled={loading || !title.trim() || !url.trim()}>
+              {#if loading}
+                <i class="fas fa-spinner fa-spin"></i> Saving...
+              {:else}
+                Save
+              {/if}
+            </button>
+          </div>
+        </form>
+      {:else}
+        <p class="empty">No feed selected.</p>
         <div class="actions">
-          <button type="button" class="btn btn-secondary" onclick={onClose} disabled={loading}>
-            Cancel
-          </button>
-          <button type="submit" class="btn btn-primary" disabled={loading || !title.trim() || !url.trim()}>
-            {#if loading}
-              <i class="fas fa-spinner fa-spin"></i> Saving...
-            {:else}
-              Save
-            {/if}
-          </button>
+          <button class="btn btn-secondary" onclick={onClose}>Close</button>
         </div>
-      </form>
-    {:else}
-      <p class="empty">No feed selected.</p>
-      <div class="actions">
-        <button class="btn btn-secondary" onclick={onClose}>Close</button>
-      </div>
-    {/if}
+      {/if}
+    </div>
   </div>
 </div>
 
 <style>
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-  }
-
-  .modal {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
-    padding: 24px;
-    width: 420px;
-    max-width: 90vw;
-  }
-
-  h3 {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 16px;
-  }
-
   label {
     display: block;
     margin-bottom: 16px;
   }
 
-  label span {
+  .setting-label {
     display: block;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--color-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
     margin-bottom: 6px;
   }
 
@@ -113,24 +105,24 @@
     width: 100%;
     padding: 8px 12px;
     border-radius: 6px;
-    border: 1px solid var(--color-border);
-    background-color: var(--color-bg);
-    color: var(--color-text);
+    border: 1px solid var(--input-border);
+    background-color: var(--input-bg);
+    color: var(--text-primary);
     outline: none;
   }
 
   input:focus {
-    border-color: var(--color-accent);
+    border-color: var(--input-border-focus);
   }
 
   .error {
-    color: var(--color-danger);
+    color: var(--danger);
     font-size: 13px;
     margin-bottom: 12px;
   }
 
   .empty {
-    color: var(--color-text-muted);
+    color: var(--text-muted);
     font-size: 13px;
     margin-bottom: 16px;
   }
@@ -149,21 +141,23 @@
   }
 
   .btn-secondary {
-    background-color: var(--color-surface-hover);
-    color: var(--color-text);
+    background: var(--bg-button);
+    color: var(--text-primary);
   }
 
   .btn-secondary:hover {
-    background-color: var(--color-surface-active);
+    background: var(--bg-button-hover);
   }
 
   .btn-primary {
-    background-color: var(--color-accent);
-    color: white;
+    background: var(--bg-selected);
+    outline: 1px solid var(--accent);
+    color: var(--accent);
   }
 
   .btn-primary:hover:not(:disabled) {
-    background-color: var(--color-accent-hover);
+    background: var(--accent);
+    color: var(--accent-on);
   }
 
   .btn-primary:disabled {

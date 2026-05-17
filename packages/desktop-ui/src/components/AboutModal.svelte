@@ -1,11 +1,22 @@
 <script>
-  // Import the SVG's raw markup rather than a URL — inlining via {@html} avoids
-  // any dev-server fs.allow / CSP / URL-resolution surprises that can leave the
-  // image broken on load.
-  import appIconSvg from '../../../assets/icon-hexagon.svg?raw';
-  import { updateState } from '../stores/update.svelte.js';
-
-  let { onClose } = $props();
+  // Generic About dialog. Consumers pass:
+  // - appName, version, description, repoUrl, repoLabel — the static content
+  // - iconSvg (string of raw SVG markup) OR iconClass (Font Awesome class) —
+  //   the icon shown in the right-hand column. If neither is given, the
+  //   header row is rendered without an icon block.
+  // - updateState (optional) — the runed object exposed by an auto-updater
+  //   integration. If absent, the update-related UI is hidden entirely.
+  let {
+    onClose,
+    appName,
+    version,
+    description = '',
+    repoUrl,
+    repoLabel,
+    iconSvg,
+    iconClass,
+    updateState,
+  } = $props();
 
   function focusOnMount(node) {
     node.focus();
@@ -17,11 +28,13 @@
   }
 
   function openRepo(e) {
+    if (!repoUrl) return;
     e.preventDefault();
-    window.api.openExternal('https://github.com/NathanLaan/noteliner');
+    window.api?.openExternal?.(repoUrl);
   }
 
   const statusLine = $derived.by(() => {
+    if (!updateState) return '';
     switch (updateState.state) {
       case 'checking':    return 'Checking for updates…';
       case 'available':   return `Version ${updateState.version} is available.`;
@@ -36,7 +49,15 @@
   });
 </script>
 
-<div class="modal-overlay about-overlay" use:focusOnMount onclick={(e) => { if (e.target === e.currentTarget) onClose(); }} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
+<div
+  class="modal-overlay about-overlay"
+  use:focusOnMount
+  onclick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+  onkeydown={handleKeydown}
+  role="dialog"
+  aria-modal="true"
+  tabindex="-1"
+>
   <div class="modal about-modal">
     <div class="modal-header">
       <h2>About</h2>
@@ -44,41 +65,53 @@
     <div class="modal-body">
       <div class="header-row">
         <div class="header-left">
-          <p class="app-name">NoteLiner</p>
+          <p class="app-name">{appName}</p>
           <div class="version-row">
-            <p class="version">Version {__APP_VERSION__}</p>
-            <button
-              class="update-btn"
-              onclick={() => updateState.check()}
-              disabled={updateState.state === 'checking' || updateState.state === 'downloading'}
-              title="Check for Updates"
-            >
-              <i class="fas fa-arrows-rotate" class:spin={updateState.state === 'checking'}></i>
-              Check
-            </button>
+            <p class="version">Version {version}</p>
+            {#if updateState}
+              <button
+                class="update-btn"
+                onclick={() => updateState.check?.()}
+                disabled={updateState.state === 'checking' || updateState.state === 'downloading'}
+                title="Check for Updates"
+              >
+                <i class="fas fa-arrows-rotate" class:spin={updateState.state === 'checking'}></i>
+                Check
+              </button>
+            {/if}
           </div>
           {#if statusLine}
-            <p class="update-status" class:is-error={updateState.state === 'error'}>{statusLine}</p>
+            <p class="update-status" class:is-error={updateState?.state === 'error'}>{statusLine}</p>
           {/if}
-          {#if updateState.state === 'available'}
+          {#if updateState?.state === 'available'}
             <div class="update-actions">
-              <button class="primary-btn" onclick={() => updateState.download()}>Download</button>
+              <button class="primary-btn" onclick={() => updateState.download?.()}>Download</button>
             </div>
-          {:else if updateState.state === 'downloaded'}
+          {:else if updateState?.state === 'downloaded'}
             <div class="update-actions">
-              <button class="primary-btn" onclick={() => updateState.install()}>Restart and Install</button>
+              <button class="primary-btn" onclick={() => updateState.install?.()}>Restart and Install</button>
             </div>
           {/if}
-          {#if (updateState.state === 'available' || updateState.state === 'downloaded') && updateState.notes}
+          {#if (updateState?.state === 'available' || updateState?.state === 'downloaded') && updateState?.notes}
             <details class="release-notes">
               <summary>Release notes</summary>
               <div class="release-notes-body">{@html typeof updateState.notes === 'string' ? updateState.notes : ''}</div>
             </details>
           {/if}
-          <p class="desc">An outliner-style note-taking application built with Electron and Svelte.</p>
-          <p class="repo-link"><a href="https://github.com/NathanLaan/noteliner" onclick={openRepo}>github.com/NathanLaan/noteliner</a></p>
+          {#if description}
+            <p class="desc">{description}</p>
+          {/if}
+          {#if repoUrl}
+            <p class="repo-link"><a href={repoUrl} onclick={openRepo}>{repoLabel || repoUrl}</a></p>
+          {/if}
         </div>
-        <div class="app-icon" role="img" aria-label="NoteLiner">{@html appIconSvg}</div>
+        {#if iconSvg}
+          <div class="app-icon" role="img" aria-label={appName}>{@html iconSvg}</div>
+        {:else if iconClass}
+          <div class="app-icon icon-fa" role="img" aria-label={appName}>
+            <i class="fas {iconClass}"></i>
+          </div>
+        {/if}
       </div>
       <div class="modal-footer">
         <button class="close-btn" onclick={onClose}>OK</button>
@@ -88,9 +121,6 @@
 </div>
 
 <style>
-  /* About modal: 50% × 50% of the overlay's padded area, pinned to the bottom.
-     The shared .modal class still applies the slide-up animation — overriding
-     size/position here doesn't affect it. */
   .about-overlay {
     align-items: flex-end;
     justify-content: center;
@@ -103,9 +133,7 @@
     min-height: 380px;
   }
 
-  /* Flex-column the body so the OK button can be promoted to the bottom via
-     margin-top: auto. The existing .modal-footer rule keeps it right-aligned. */
-  .modal-body {
+  .about-modal :global(.modal-body) {
     display: flex;
     flex-direction: column;
   }
@@ -132,12 +160,22 @@
     flex-shrink: 0;
   }
 
-  /* The imported SVG has width/height="512" baked in; override via CSS so it
-     scales to the container size rather than rendering at its intrinsic size. */
+  /* SVG-driven icon: scale the imported markup to the container. */
   .app-icon :global(svg) {
     width: 100%;
     height: 100%;
     display: block;
+  }
+
+  /* Font-Awesome-driven icon: filled tile so a single glyph reads as a logo. */
+  .app-icon.icon-fa {
+    border-radius: 18px;
+    background: var(--accent);
+    color: var(--accent-on);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 44px;
   }
 
   .app-name {

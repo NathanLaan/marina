@@ -9,8 +9,18 @@ export default defineConfig({
   plugins: [svelte()],
   root: 'src/renderer',
   base: './',
+  server: {
+    port: 5251,
+    strictPort: true,
+  },
   build: {
     outDir: path.resolve(__dirname, 'dist/renderer'),
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'src/renderer/index.html'),
+        help: path.resolve(__dirname, 'src/renderer/help.html'),
+      },
+    },
   },
 });

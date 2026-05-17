@@ -94,8 +94,8 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    border-right: 1px solid var(--color-border);
-    background-color: var(--color-surface);
+    border-right: 1px solid var(--border);
+    background-color: var(--bg-surface);
     flex-shrink: 0;
     overflow: hidden;
   }
@@ -106,15 +106,16 @@
 
   .entry-list-header {
     padding: 12px 16px;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-base);
   }
 
   .entry-list-header h2 {
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--color-text-muted);
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -132,11 +133,11 @@
     justify-content: center;
     padding: 32px 16px;
     gap: 8px;
-    color: var(--color-text-muted);
+    color: var(--text-muted);
   }
 
   .empty-text {
-    color: var(--color-text-muted);
+    color: var(--text-muted);
     font-size: 13px;
     text-align: center;
   }
@@ -148,26 +149,28 @@
     padding: 10px 16px;
     text-align: left;
     gap: 4px;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--border);
     transition: background-color 0.1s;
   }
 
   .entry-item:hover {
-    background-color: var(--color-surface-hover);
+    background-color: var(--bg-item-hover);
   }
 
   .entry-item.active {
-    background-color: var(--color-surface-active);
+    background-color: var(--bg-selected);
+    outline: 1px solid var(--accent);
+    outline-offset: -1px;
   }
 
   .entry-item.unread .entry-title {
     font-weight: 600;
-    color: var(--color-text);
+    color: var(--text-primary);
   }
 
   .entry-title {
     font-size: 13px;
-    color: var(--color-text-muted);
+    color: var(--text-muted);
     font-weight: 400;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -179,7 +182,7 @@
     display: flex;
     gap: 8px;
     font-size: 11px;
-    color: var(--color-text-muted);
+    color: var(--text-muted);
     opacity: 0.7;
   }
 
@@ -201,7 +204,7 @@
   }
 
   .resize-handle:hover {
-    background-color: var(--color-accent);
+    background-color: var(--accent);
     opacity: 0.3;
   }
 </style>

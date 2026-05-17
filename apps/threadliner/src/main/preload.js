@@ -1,6 +1,13 @@
 const { contextBridge, ipcRenderer } = require('electron');
+const { exposeWindowApi, exposeUIPrefsApi } = require('@marina/desktop-ui/preload');
 
 contextBridge.exposeInMainWorld('api', {
+  // Window controls + UI prefs + relaunch come from the shared library so
+  // renderer-side imports of @marina/desktop-ui talk to the same IPC surface
+  // registered by registerWindowHandlers / registerUIPrefsHandlers in main.js.
+  ...exposeWindowApi(ipcRenderer),
+  ...exposeUIPrefsApi(ipcRenderer),
+
   // Setup operations
   isSetupComplete: () => ipcRenderer.invoke('setup:isComplete'),
   openFolderDialog: () => ipcRenderer.invoke('setup:openFolderDialog'),
@@ -41,4 +48,34 @@ contextBridge.exposeInMainWorld('api', {
   forcePush: () => ipcRenderer.invoke('sync:forcePush'),
   forcePull: () => ipcRenderer.invoke('sync:forcePull'),
   getSyncConfig: () => ipcRenderer.invoke('sync:getConfig'),
+
+  // Manual git operations (used by the redesigned SyncModal)
+  gitGetRemoteUrl: () => ipcRenderer.invoke('git:getRemoteUrl'),
+  gitSetRemoteUrl: (url) => ipcRenderer.invoke('git:setRemoteUrl', url),
+  gitRemoveRemote: () => ipcRenderer.invoke('git:removeRemote'),
+  gitGetBranch: () => ipcRenderer.invoke('git:getBranch'),
+  gitGetSyncStatus: () => ipcRenderer.invoke('git:getSyncStatus'),
+  gitPull: () => ipcRenderer.invoke('git:pull'),
+  gitPullRebase: () => ipcRenderer.invoke('git:pullRebase'),
+  gitPush: () => ipcRenderer.invoke('git:push'),
+  gitPushUpstream: () => ipcRenderer.invoke('git:pushUpstream'),
+  gitResetToRemote: () => ipcRenderer.invoke('git:resetToRemote'),
+
+  // Open an external URL in the user's default browser.
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+
+  // Help window
+  openHelpWindow: () => ipcRenderer.invoke('help:open'),
+
+  // Auto-updater. Mirrors NoteLiner's preload surface so the library's
+  // AboutModal (which accepts an `updateState` prop) can drive both apps.
+  getUpdateState:   () => ipcRenderer.invoke('update:getState'),
+  checkForUpdates:  () => ipcRenderer.invoke('update:checkNow'),
+  downloadUpdate:   () => ipcRenderer.invoke('update:downloadNow'),
+  installUpdate:    () => ipcRenderer.invoke('update:installNow'),
+  onUpdateState: (callback) => {
+    const listener = (_event, state) => callback(state);
+    ipcRenderer.on('update:state', listener);
+    return () => ipcRenderer.removeListener('update:state', listener);
+  },
 });

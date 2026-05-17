@@ -35,6 +35,7 @@ continuing — see git history in `git log` for what's been done so far.
 | 4. Consolidate root tooling | Phase 0 prep | this doc |
 | 5. Upgrade Threadliner stack | Phase 0 prep | this doc |
 | 6. Apply refresh-UI plan to Threadliner | Phase 0 | [`plan-refactor-refresh-ui.md`](./plan-refactor-refresh-ui.md) |
+| 6.5. Unify Threadliner's dev script with NoteLiner's pattern | Phase 0 prep | this doc |
 | 7. Carve out `packages/desktop-ui/` | Phase 1 | [`plan-refactor-common-foundation.md`](./plan-refactor-common-foundation.md) §"Migration plan" |
 | 8. Convert NoteLiner to consume library | Phase 2 | foundation plan §"Migration plan" |
 | 9. Convert Threadliner to consume library | Phase 3 | foundation plan §"Migration plan" |
@@ -245,6 +246,112 @@ sibling app. The two visual languages should be indistinguishable.
 
 **Final commit (or merge):** `feat(threadliner): adopt NoteLiner visual
 language (refresh-ui plan)`
+
+---
+
+## Step 6.5 — Unify Threadliner's dev script with NoteLiner's pattern
+
+Goal: bring Threadliner's dev workflow in line with NoteLiner's so both
+apps run via `npm run electron:dev -w <app>`. Eliminates the
+README-documented asymmetry and sets up the shared dev infra that can
+move into the library in Step 7.
+
+### Why
+
+- Threadliner's current `dev` script
+  (`vite build && vite build --watch & electron .`) rebuilds to disk and
+  requires a manual `Ctrl+R` in the Electron window after every renderer
+  change. NoteLiner's `scripts/dev.js` runs the Vite dev server with HMR
+  — instant updates, no reload.
+- After Steps 5 + 6, the two apps share the same stack and visual
+  language. Dev orchestration is the last meaningful inconsistency
+  before Step 7 turns the shared bits into a library.
+
+### 6.5.1 Port `scripts/dev.js` to Threadliner
+
+Copy `apps/noteliner/scripts/dev.js` → `apps/threadliner/scripts/dev.js`.
+Adjustments:
+
+- Drop the `--class=NoteLiner` Linux WM hint (or replace with
+  `--class=Threadliner` if desired).
+- Vite port: NoteLiner uses 5250 (set in its `vite.config.mjs`
+  `server.port` and hardcoded into `main.js`). Threadliner's vite config
+  has no `server` block today — set it to 5251 so both apps can run
+  simultaneously without a port collision.
+
+### 6.5.2 Teach Threadliner's main process to load the dev server
+
+`apps/threadliner/src/main/main.js` currently has:
+
+```js
+const indexPath = path.join(__dirname, '../../dist/renderer/index.html');
+mainWindow.loadFile(indexPath);
+```
+
+Switch to NoteLiner's pattern: gate on `NODE_ENV === 'development'` (set
+by `scripts/dev.js` when it spawns Electron) and `loadURL` the dev
+server URL in dev, `loadFile` the built `index.html` otherwise.
+
+```js
+const isDev = process.env.NODE_ENV === 'development';
+if (isDev) {
+  mainWindow.loadURL('http://localhost:5251');
+} else {
+  mainWindow.loadFile(path.join(__dirname, '../../dist/renderer/index.html'));
+}
+```
+
+### 6.5.3 Update Threadliner's `package.json` scripts
+
+```jsonc
+"scripts": {
+  "dev":          "vite",
+  "build":        "vite build",
+  "electron:dev": "node scripts/dev.js",
+  "start":        "electron ."
+}
+```
+
+Drop the old `dev:renderer` and `dev:electron` — they're redundant once
+`electron:dev` exists.
+
+### 6.5.4 Add a Vite server config to Threadliner
+
+`apps/threadliner/vite.config.mjs`:
+
+```js
+server: {
+  port: 5251,
+  strictPort: true,
+},
+```
+
+`strictPort` is important — if 5251 is busy the run should fail loudly
+instead of silently falling back to a different port that `main.js`
+doesn't know about.
+
+### 6.5.5 Optional: add root shortcuts
+
+```jsonc
+"electron:noteliner":   "npm run electron:dev -w noteliner",
+"electron:threadliner": "npm run electron:dev -w threadliner"
+```
+
+Keep `dev:noteliner` / `dev:threadliner` as the renderer-only escape
+hatch (handy for iterating on Svelte components without Electron
+overhead).
+
+### 6.5.6 Update README
+
+Both apps now have identical dev instructions modulo app name. Collapse
+the per-app sections in `README.md`'s "Run in development" into one
+block.
+
+**Done when:** `npm run electron:dev -w threadliner` launches Vite on
+5251 + Electron in one command, with HMR working on save. Both apps can
+run simultaneously without port collision.
+
+**Commit:** `chore(threadliner): unify dev script with noteliner pattern`
 
 ---
 
@@ -521,6 +628,7 @@ constraints, and the tag exists.
 | 4 | Working monorepo, common tooling, both apps build green |
 | 5 | Threadliner on the same stack as NoteLiner; ready for visual refresh |
 | 6 | Threadliner visually matches NoteLiner; library work optional |
+| 6.5 | Both apps share the same dev workflow (`electron:dev` + HMR) |
 | 7 | Library buildable in isolation, not yet consumed |
 | 9 | Both apps thinner; library proven in production |
 | 10 | Stable, tagged library; foundation effort complete |

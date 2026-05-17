@@ -227,18 +227,45 @@ class ThemeState {
   }
 
   get list() {
-    return Object.entries(THEMES).map(([id, t]) => ({ id, name: t.name }));
+    const ids = this.themeAllowlist || Object.keys(THEMES);
+    return ids
+      .filter((id) => THEMES[id])
+      .map((id) => ({ id, name: THEMES[id].name }));
   }
 
   get scaleList() {
     return UI_SCALES;
   }
 
+  // Consumers configure their localStorage prefix once at startup
+  // (e.g. themeState.configure({ appId: 'noteliner' })) so different apps
+  // sharing this library on one machine don't clobber each other.
+  // Optional `themes` array pins the visible theme list to a subset —
+  // useful when a consumer ships fewer themes than the library defines.
+  appId = 'desktop-ui';
+  themeAllowlist = null;
+
+  configure({ appId, themes } = {}) {
+    if (appId) this.appId = appId;
+    if (Array.isArray(themes) && themes.length > 0) {
+      this.themeAllowlist = themes.filter((id) => THEMES[id]);
+    }
+  }
+
+  get themeKey() { return `${this.appId}-theme`; }
+  get scaleKey() { return `${this.appId}-scale`; }
+
   set(themeId) {
     if (!THEMES[themeId]) return;
     this.current = themeId;
     this.apply();
-    localStorage.setItem('noteliner-theme', themeId);
+    localStorage.setItem(this.themeKey, themeId);
+    // Mirror to the app's settings store if one is exposed — lets apps with a
+    // git-synced data dir (Threadliner) carry the choice across machines.
+    // Apps without setSetting (NoteLiner) skip cleanly through the ?.
+    if (window.api?.setSetting) {
+      window.api.setSetting('theme', themeId).catch(() => { /* non-critical */ });
+    }
   }
 
   setScale(scaleId) {
@@ -246,7 +273,10 @@ class ThemeState {
     if (!entry) return;
     this.scale = scaleId;
     this.applyScale();
-    localStorage.setItem('noteliner-scale', scaleId);
+    localStorage.setItem(this.scaleKey, scaleId);
+    if (window.api?.setSetting) {
+      window.api.setSetting('scale', scaleId).catch(() => { /* non-critical */ });
+    }
   }
 
   zoomIn() {
@@ -282,12 +312,30 @@ class ThemeState {
     this.applyScale();
   }
 
-  init() {
-    const saved = localStorage.getItem('noteliner-theme');
+  // Async backfill: when localStorage is empty (e.g. fresh install pointing
+  // at a git-synced data dir) but the app's settings store has a saved value,
+  // adopt it. No-op if window.api.getSetting isn't exposed.
+  async hydrateFromSettings() {
+    if (!window.api?.getSetting) return;
+    try {
+      if (!localStorage.getItem(this.themeKey)) {
+        const themeId = await window.api.getSetting('theme');
+        if (themeId && THEMES[themeId]) this.set(themeId);
+      }
+      if (!localStorage.getItem(this.scaleKey)) {
+        const scaleId = await window.api.getSetting('scale');
+        if (scaleId && UI_SCALES.find((s) => s.id === scaleId)) this.setScale(scaleId);
+      }
+    } catch { /* non-critical */ }
+  }
+
+  init(opts) {
+    if (opts) this.configure(opts);
+    const saved = localStorage.getItem(this.themeKey);
     if (saved && THEMES[saved]) {
       this.current = saved;
     }
-    const savedScale = localStorage.getItem('noteliner-scale');
+    const savedScale = localStorage.getItem(this.scaleKey);
     if (savedScale && UI_SCALES.find(s => s.id === savedScale)) {
       this.scale = savedScale;
     }

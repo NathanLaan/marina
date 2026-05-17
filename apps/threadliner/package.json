@@ -1,26 +1,31 @@
 {
   "name": "threadliner",
-  "version": "0.3.1",
+  "version": "1.0.1",
   "description": "A desktop RSS reader built with Electron, Svelte, and Git-synced JSON",
   "main": "src/main/main.js",
   "scripts": {
-    "dev": "vite build && vite build --watch & electron .",
+    "dev": "vite",
+    "bundle:preload": "esbuild src/main/preload.js --bundle --platform=node --target=node20 --external:electron --outfile=dist/preload.cjs",
+    "prebuild": "npm run bundle:preload",
     "build": "vite build",
-    "start": "electron .",
-    "dev:renderer": "vite build --watch",
-    "dev:electron": "electron ."
+    "electron:dev": "node scripts/dev.js",
+    "start": "electron ."
   },
   "dependencies": {
+    "@marina/desktop-ui": "*",
     "@fortawesome/fontawesome-free": "^6.5.1",
     "dompurify": "^3.0.8",
+    "electron-updater": "^6.8.3",
     "rss-parser": "^3.13.0"
   },
   "devDependencies": {},
     "build": {
     "appId": "com.threadline.app",
-    "productName": "Threadline",
+    "productName": "Threadliner",
     "files": [
       "src/main/**/*",
+      "!src/main/preload.js",
+      "dist/preload.cjs",
       "dist/renderer/**/*"
     ],
     "directories": {
