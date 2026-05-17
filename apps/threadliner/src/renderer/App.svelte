@@ -280,4 +280,14 @@
     opacity: 0.35;
     cursor: default;
   }
+
+  /* The library ToolbarButton exposes an `extraClass` hook for app-specific
+     visual states. Threadliner's auto-sync engine flips syncStatus to
+     'committing' or 'waiting' between user actions — tint the Sync button's
+     icon so the user notices a push is queued without needing to open the
+     modal. :global() opts out of Svelte's CSS scoping because ToolbarButton
+     owns its own `.toolbar-btn` selector. */
+  :global(.toolbar-btn.sync-pending) {
+    color: var(--accent);
+  }
 </style>

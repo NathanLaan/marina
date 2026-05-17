@@ -88,15 +88,3 @@
   <ToolbarButton icon="fa-gear"        title="Settings" label="Settings" active={settingsOpen} onclick={onOpenSettings} />
   <ToolbarButton icon="fa-circle-info" title="About"    label="About"    active={aboutOpen}    onclick={onOpenAbout} />
 </ToolbarShell>
-
-<style>
-  /* The library ToolbarButton supports an `extraClass` hook for app-specific
-     visual states. Threadliner's auto-sync engine flips syncStatus to
-     'committing' or 'waiting' between user actions — tint the Sync button
-     accent so the user notices a push is queued without needing to open the
-     modal. The selector is :global() because ToolbarButton scopes its own
-     CSS class to itself. */
-  :global(.toolbar-btn.sync-pending) {
-    color: var(--accent);
-  }
-</style>
