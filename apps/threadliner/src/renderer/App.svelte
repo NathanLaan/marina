@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import TitleBar from './components/TitleBar.svelte';
+  import { TitleBar, AboutModal } from '@marina/desktop-ui/components';
   import Toolbar from './components/Toolbar.svelte';
   import Sidebar from './components/Sidebar.svelte';
   import EntryList from './components/EntryList.svelte';
@@ -11,12 +11,11 @@
   import SyncModal from './components/SyncModal.svelte';
   import SetupDialog from './components/SetupDialog.svelte';
   import TagsModal from './components/TagsModal.svelte';
-  import AboutModal from './components/AboutModal.svelte';
   import {
     loadFeeds, loadTags, error, setupComplete, checkSetup,
     selectedFeedId, refreshFeed,
   } from './stores/app.js';
-  import { themeState } from './stores/theme.svelte.js';
+  import { themeState } from '@marina/desktop-ui/theme';
   import { startPolling, stopPolling } from './stores/sync.js';
 
   let sidebarWidth = $state(240);
@@ -30,6 +29,7 @@
   let loading = $state(true);
   let customTitlebar = $state(false);
   let toolbarVisible = $state(true);
+  let appVersion = $state('');
 
   const TITLEBAR_HEIGHT = '32px';
 
@@ -72,6 +72,7 @@
     // the saved value too.
     themeState.hydrateFromSettings();
     await loadUIPrefs();
+    try { appVersion = await window.api.getAppVersion(); } catch { appVersion = 'x.x.x'; }
     window.addEventListener('keydown', handleGlobalKeydown);
     const isReady = await checkSetup();
     if (isReady) {
@@ -98,13 +99,30 @@
 
 {#if customTitlebar}
   <TitleBar
+    appName="Threadliner"
     onToggleToolbar={() => (toolbarVisible = !toolbarVisible)}
     {toolbarVisible}
-    onAddFeed={() => (showAddModal = true)}
-    onRefreshFeed={handleRefreshFromTitlebar}
-    onOpenTags={() => (showTagsModal = true)}
+    actions={titlebarActions}
   />
 {/if}
+
+{#snippet titlebarActions()}
+  <button class="title-action" onclick={() => (showAddModal = true)} aria-label="Add Feed" title="Add Feed">
+    <i class="fas fa-plus"></i>
+  </button>
+  <button
+    class="title-action"
+    onclick={handleRefreshFromTitlebar}
+    disabled={$selectedFeedId === null}
+    aria-label="Refresh Feed"
+    title="Refresh Feed"
+  >
+    <i class="fas fa-arrows-rotate"></i>
+  </button>
+  <button class="title-action" onclick={() => (showTagsModal = true)} aria-label="Tags" title="Tags">
+    <i class="fas fa-tags"></i>
+  </button>
+{/snippet}
 
 {#if loading}
   <div class="loading-screen">
@@ -165,7 +183,15 @@
   {/if}
 
   {#if showAboutModal}
-    <AboutModal onClose={() => (showAboutModal = false)} />
+    <AboutModal
+      appName="Threadliner"
+      version={appVersion}
+      description="A desktop RSS reader built with Electron, Svelte, and Git-synced JSON."
+      repoUrl="https://github.com/NathanLaan/threadline"
+      repoLabel="github.com/NathanLaan/threadline"
+      iconClass="fa-rss"
+      onClose={() => (showAboutModal = false)}
+    />
   {/if}
 {/if}
 
@@ -225,5 +251,33 @@
 
   .error-dismiss:hover {
     opacity: 1;
+  }
+
+  /* Match the look of the library's .titlebar-btn for action buttons we
+     inject through the <TitleBar actions={...}> snippet. */
+  .title-action {
+    -webkit-app-region: no-drag;
+    width: 48px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-on);
+    opacity: 0.75;
+    font-size: 12px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+  }
+
+  .title-action:hover:not(:disabled) {
+    background: rgba(0, 0, 0, 0.18);
+    opacity: 1;
+  }
+
+  .title-action:disabled {
+    opacity: 0.35;
+    cursor: default;
   }
 </style>

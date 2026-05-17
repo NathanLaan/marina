@@ -1,5 +1,8 @@
 <script>
   import {
+    Toolbar as ToolbarShell, ToolbarButton, ToolbarDivider, ToolbarSpacer,
+  } from '@marina/desktop-ui/components';
+  import {
     selectedFeedId, selectedEntryId, selectedFeed,
     removeFeed, refreshFeed,
     markAllRead, markAllUnread,
@@ -54,149 +57,46 @@
   }
 </script>
 
-<div class="toolbar">
-  <button class="toolbar-btn" title="Add Feed" aria-label="Add Feed" onclick={onAddFeed}>
-    <i class="fas fa-plus"></i>
-  </button>
-  <button
-    class="toolbar-btn"
-    title="Edit Feed"
-    aria-label="Edit Feed"
-    disabled={$selectedFeedId === null}
-    onclick={onEditFeed}
-  >
-    <i class="fas fa-pen"></i>
-  </button>
-  <button
-    class="toolbar-btn"
-    title="Remove Feed"
-    aria-label="Remove Feed"
-    disabled={$selectedFeedId === null}
-    onclick={handleRemove}
-  >
-    <i class="fas fa-trash"></i>
-  </button>
-  <button
-    class="toolbar-btn"
-    title="Refresh Feed"
-    aria-label="Refresh Feed"
-    disabled={$selectedFeedId === null}
-    onclick={handleRefresh}
-  >
-    <i class="fas fa-arrows-rotate"></i>
-  </button>
+<ToolbarShell>
+  <ToolbarButton icon="fa-plus"        title="Add Feed"     label="Add Feed"     onclick={onAddFeed} />
+  <ToolbarButton icon="fa-pen"         title="Edit Feed"    label="Edit Feed"    disabled={$selectedFeedId === null} onclick={onEditFeed} />
+  <ToolbarButton icon="fa-trash"       title="Remove Feed"  label="Remove Feed"  disabled={$selectedFeedId === null} onclick={handleRemove} />
+  <ToolbarButton icon="fa-arrows-rotate" title="Refresh Feed" label="Refresh Feed" disabled={$selectedFeedId === null} onclick={handleRefresh} />
 
-  <div class="toolbar-divider"></div>
+  <ToolbarDivider />
 
-  <button
-    class="toolbar-btn"
-    title="Mark as Read"
-    aria-label="Mark as Read"
-    disabled={$selectedFeedId === null}
-    onclick={handleMarkRead}
-  >
-    <i class="fas fa-check-double"></i>
-  </button>
-  <button
-    class="toolbar-btn"
-    title="Mark as Unread"
-    aria-label="Mark as Unread"
-    disabled={$selectedFeedId === null}
-    onclick={handleMarkUnread}
-  >
-    <i class="fas fa-rotate-left"></i>
-  </button>
+  <ToolbarButton icon="fa-check-double" title="Mark as Read"   label="Mark as Read"   disabled={$selectedFeedId === null} onclick={handleMarkRead} />
+  <ToolbarButton icon="fa-rotate-left"  title="Mark as Unread" label="Mark as Unread" disabled={$selectedFeedId === null} onclick={handleMarkUnread} />
 
-  <div class="toolbar-divider"></div>
+  <ToolbarDivider />
 
-  <button class="toolbar-btn" class:active={tagsOpen} title="Tags" aria-label="Tags" onclick={onOpenTags}>
-    <i class="fas fa-tags"></i>
-  </button>
+  <ToolbarButton icon="fa-tags" title="Tags" label="Tags" active={tagsOpen} onclick={onOpenTags} />
 
-  <div class="toolbar-spacer"></div>
+  <ToolbarSpacer />
 
-  <button
-    class="toolbar-btn"
-    class:active={syncOpen}
-    class:sync-pending={hasPendingSync && !syncOpen}
+  <ToolbarButton
+    icon="fa-cloud-arrow-up"
     title="Remote Sync"
-    aria-label="Sync"
+    label="Sync"
+    active={syncOpen}
+    extraClass={hasPendingSync && !syncOpen ? 'sync-pending' : ''}
     onclick={onOpenSync}
-  >
-    <i class="fas fa-cloud-arrow-up"></i>
-  </button>
+  />
 
-  <div class="toolbar-divider"></div>
+  <ToolbarDivider />
 
-  <button class="toolbar-btn" class:active={settingsOpen} title="Settings" aria-label="Settings" onclick={onOpenSettings}>
-    <i class="fas fa-gear"></i>
-  </button>
-
-  <button class="toolbar-btn" class:active={aboutOpen} title="About" aria-label="About" onclick={onOpenAbout}>
-    <i class="fas fa-circle-info"></i>
-  </button>
-</div>
+  <ToolbarButton icon="fa-gear"        title="Settings" label="Settings" active={settingsOpen} onclick={onOpenSettings} />
+  <ToolbarButton icon="fa-circle-info" title="About"    label="About"    active={aboutOpen}    onclick={onOpenAbout} />
+</ToolbarShell>
 
 <style>
-  .toolbar {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 48px;
-    background: var(--bg-overlay);
-    border-right: 1px solid var(--border);
-    padding: 8px 0;
-    flex-shrink: 0;
-    gap: 4px;
-  }
-
-  .toolbar-btn {
-    position: relative;
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    color: var(--text-secondary);
-    font-size: 16px;
-    transition: background 0.15s, color 0.15s;
-  }
-
-  .toolbar-btn:hover:not(:disabled) {
-    background: var(--bg-button);
-    color: var(--text-primary);
-  }
-
-  .toolbar-btn:disabled {
-    opacity: 0.3;
-    cursor: default;
-  }
-
-  .toolbar-btn:disabled:hover {
-    background: none;
-    color: var(--text-secondary);
-  }
-
-  .toolbar-btn.active {
-    background: var(--bg-selected);
-    outline: 1px solid var(--accent);
+  /* The library ToolbarButton supports an `extraClass` hook for app-specific
+     visual states. Threadliner's auto-sync engine flips syncStatus to
+     'committing' or 'waiting' between user actions — tint the Sync button
+     accent so the user notices a push is queued without needing to open the
+     modal. The selector is :global() because ToolbarButton scopes its own
+     CSS class to itself. */
+  :global(.toolbar-btn.sync-pending) {
     color: var(--accent);
-  }
-
-  /* Pending sync state — accent tint without the full active outline. */
-  .toolbar-btn.sync-pending {
-    color: var(--accent);
-  }
-
-  .toolbar-divider {
-    width: 24px;
-    height: 1px;
-    background: var(--border);
-    margin: 2px 0;
-  }
-
-  .toolbar-spacer {
-    flex: 1;
   }
 </style>

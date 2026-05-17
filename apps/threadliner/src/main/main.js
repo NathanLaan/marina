@@ -5,8 +5,13 @@ const dataStore = require('./data-store');
 const feedParser = require('./feed-parser');
 const gitSync = require('./git-sync');
 const syncManager = require('./sync-manager');
+const {
+  registerWindowHandlers,
+  registerUIPrefsHandlers,
+} = require('@marina/desktop-ui/electron-host');
 
 let mainWindow;
+let uiPrefsApi;
 
 // --- App config (stored outside the git repo) ---
 
@@ -31,33 +36,16 @@ function isSetupComplete() {
   return !!(config.dataDir && fs.existsSync(config.dataDir));
 }
 
-// --- UI prefs (device-local; separate from synced config) ---
-
-const UI_PREFS_DEFAULTS = { customTitlebar: false };
+// --- UI prefs path (loaded by the library helper in registerIpcHandlers) ---
 
 function getUIPrefsPath() {
   return path.join(app.getPath('userData'), 'ui-preferences.json');
 }
 
-function readUIPrefs() {
-  try {
-    const raw = JSON.parse(fs.readFileSync(getUIPrefsPath(), 'utf-8'));
-    return { ...UI_PREFS_DEFAULTS, ...raw };
-  } catch {
-    return { ...UI_PREFS_DEFAULTS };
-  }
-}
-
-function writeUIPrefs(prefs) {
-  const merged = { ...readUIPrefs(), ...prefs };
-  fs.writeFileSync(getUIPrefsPath(), JSON.stringify(merged, null, 2), 'utf-8');
-  return merged;
-}
-
 // --- Window ---
 
 function createWindow() {
-  const uiPrefs = readUIPrefs();
+  const uiPrefs = uiPrefsApi.read();
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -70,15 +58,14 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      // Required for the preload to require('@marina/desktop-ui/preload') —
+      // see that module's header for the rationale.
+      sandbox: false,
     },
   });
 
-  mainWindow.on('maximize', () => {
-    mainWindow.webContents.send('window:maximized-change', true);
-  });
-  mainWindow.on('unmaximize', () => {
-    mainWindow.webContents.send('window:maximized-change', false);
-  });
+  // window:maximized-change broadcasts come from the library's
+  // registerWindowHandlers via its app.on('browser-window-created') hook.
 
   // scripts/dev.js sets NODE_ENV=development when it spawns Electron after
   // Vite is ready; the renderer is then served from the dev server with HMR.
@@ -300,24 +287,23 @@ function registerIpcHandlers() {
     };
   });
 
-  // Window control (for custom titlebar)
-  ipcMain.handle('window:minimize', () => mainWindow?.minimize());
-  ipcMain.handle('window:maximize', () => {
-    if (!mainWindow) return;
-    if (mainWindow.isMaximized()) mainWindow.unmaximize();
-    else mainWindow.maximize();
+  // Window control, UI-prefs persistence, and the window:maximized-change
+  // broadcast all come from the shared library.
+  registerWindowHandlers({ getWindow: () => mainWindow });
+  uiPrefsApi = registerUIPrefsHandlers({
+    prefsPath: getUIPrefsPath(),
+    defaults: { customTitlebar: false },
   });
-  ipcMain.handle('window:close', () => mainWindow?.close());
-  ipcMain.handle('window:isMaximized', () => !!mainWindow?.isMaximized());
 
-  // UI prefs (device-local)
-  ipcMain.handle('ui:getPrefs', () => readUIPrefs());
-  ipcMain.handle('ui:setPrefs', (_event, prefs) => writeUIPrefs(prefs || {}));
-
-  // Relaunch (for custom titlebar toggle, which requires re-creating BrowserWindow)
+  // The library's registerRelaunchHandler does `app.relaunch(); app.exit(0)`,
+  // which in dev tears down scripts/dev.js (and therefore Vite) along with
+  // Electron. Do a soft restart instead: open a new window that re-reads
+  // prefs through uiPrefsApi.read(), then close the old one. Works the same
+  // way in production builds — there's no orchestrator to confuse.
   ipcMain.handle('app:relaunch', () => {
-    app.relaunch();
-    app.exit(0);
+    const old = mainWindow;
+    createWindow();
+    if (old && !old.isDestroyed()) old.close();
   });
 
   // Git operations (manual, NoteLiner-style sync UI).

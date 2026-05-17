@@ -1,6 +1,13 @@
 const { contextBridge, ipcRenderer } = require('electron');
+const { exposeWindowApi, exposeUIPrefsApi } = require('@marina/desktop-ui/preload');
 
 contextBridge.exposeInMainWorld('api', {
+  // Window controls + UI prefs + relaunch come from the shared library so
+  // renderer-side imports of @marina/desktop-ui talk to the same IPC surface
+  // registered by registerWindowHandlers / registerUIPrefsHandlers in main.js.
+  ...exposeWindowApi(ipcRenderer),
+  ...exposeUIPrefsApi(ipcRenderer),
+
   // Setup operations
   isSetupComplete: () => ipcRenderer.invoke('setup:isComplete'),
   openFolderDialog: () => ipcRenderer.invoke('setup:openFolderDialog'),
@@ -41,24 +48,6 @@ contextBridge.exposeInMainWorld('api', {
   forcePush: () => ipcRenderer.invoke('sync:forcePush'),
   forcePull: () => ipcRenderer.invoke('sync:forcePull'),
   getSyncConfig: () => ipcRenderer.invoke('sync:getConfig'),
-
-  // Window control (custom titlebar)
-  windowMinimize: () => ipcRenderer.invoke('window:minimize'),
-  windowMaximize: () => ipcRenderer.invoke('window:maximize'),
-  windowClose: () => ipcRenderer.invoke('window:close'),
-  windowIsMaximized: () => ipcRenderer.invoke('window:isMaximized'),
-  onWindowMaximizedChange: (cb) => {
-    const handler = (_e, v) => cb(v);
-    ipcRenderer.on('window:maximized-change', handler);
-    return () => ipcRenderer.removeListener('window:maximized-change', handler);
-  },
-
-  // UI prefs (device-local)
-  getUIPrefs: () => ipcRenderer.invoke('ui:getPrefs'),
-  setUIPrefs: (p) => ipcRenderer.invoke('ui:setPrefs', p),
-
-  // App relaunch (used after toggling settings that require re-creating BrowserWindow)
-  relaunchApp: () => ipcRenderer.invoke('app:relaunch'),
 
   // Manual git operations (used by the redesigned SyncModal)
   gitGetRemoteUrl: () => ipcRenderer.invoke('git:getRemoteUrl'),
