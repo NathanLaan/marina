@@ -80,8 +80,15 @@ function createWindow() {
     mainWindow.webContents.send('window:maximized-change', false);
   });
 
-  const indexPath = path.join(__dirname, '../../dist/renderer/index.html');
-  mainWindow.loadFile(indexPath);
+  // scripts/dev.js sets NODE_ENV=development when it spawns Electron after
+  // Vite is ready; the renderer is then served from the dev server with HMR.
+  // Anything else (npm run start, packaged builds) loads the built file.
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.loadURL('http://localhost:5251');
+  } else {
+    const indexPath = path.join(__dirname, '../../dist/renderer/index.html');
+    mainWindow.loadFile(indexPath);
+  }
 }
 
 // --- IPC Handlers ---

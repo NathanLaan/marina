@@ -4,11 +4,10 @@
   "description": "A desktop RSS reader built with Electron, Svelte, and Git-synced JSON",
   "main": "src/main/main.js",
   "scripts": {
-    "dev": "vite build && vite build --watch & electron .",
+    "dev": "vite",
     "build": "vite build",
-    "start": "electron .",
-    "dev:renderer": "vite build --watch",
-    "dev:electron": "electron ."
+    "electron:dev": "node scripts/dev.js",
+    "start": "electron ."
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.5.1",

@@ -34,36 +34,30 @@ npm run build:threadliner
 
 ## Run in development
 
-Each app has its own dev workflow because they orchestrate Vite + Electron
-differently.
-
-### NoteLiner
-
-```bash
-npm run electron:dev -w noteliner
-```
-
-Starts Vite on port 5250, waits for "Local:" in its output, then launches
-Electron pointing at the dev server. Reloads on save.
-
-Renderer-only (no Electron window — useful when you just want to iterate on
-Svelte components):
+Both apps share the same dev orchestration (`scripts/dev.js` per app):
+start Vite, wait for `Local:` in its output, then spawn Electron with
+`NODE_ENV=development` so the main process loads the dev server URL
+instead of the built file. Save in your editor → HMR.
 
 ```bash
-npm run dev -w noteliner
+npm run electron:dev -w noteliner       # Vite on 5250 + Electron
+npm run electron:dev -w threadliner     # Vite on 5251 + Electron
+
+# Root shortcuts:
+npm run electron:noteliner
+npm run electron:threadliner
 ```
 
-### Threadliner
+The two apps use different Vite ports (5250 / 5251), so you can run them
+side-by-side without a collision.
+
+Renderer-only (no Electron window — useful when you just want to iterate
+on Svelte components):
 
 ```bash
-npm run dev -w threadliner
-# or via the root shortcut:
-npm run dev:threadliner
+npm run dev -w noteliner       # or: npm run dev:noteliner
+npm run dev -w threadliner     # or: npm run dev:threadliner
 ```
-
-Runs `vite build --watch` in the background and launches Electron against the
-built output. The renderer rebuilds on save; Electron picks up the new files
-on the next reload (`Ctrl+R` inside the window).
 
 ## Run a built app
 
