@@ -47,14 +47,14 @@
 
     {#if step === 1}
       <div class="setup-body">
-        <label>
-          <span>Data Folder</span>
-          <p class="hint">Choose a local folder where Threadline will store your feeds and settings.</p>
+        <div class="setting-group">
+          <span class="setting-label">Data Folder</span>
+          <p class="setting-help">Choose a local folder where Threadliner will store your feeds and settings.</p>
           <div class="folder-input">
             <input
               type="text"
               bind:value={dataDir}
-              placeholder="/path/to/threadline-data"
+              placeholder="/path/to/threadliner-data"
               disabled={loading}
               readonly
             />
@@ -62,18 +62,18 @@
               Browse...
             </button>
           </div>
-        </label>
+        </div>
 
-        <label>
-          <span>Git Remote URL <em>(optional)</em></span>
-          <p class="hint">SSH URL for syncing across devices. Leave blank for local-only use.</p>
+        <div class="setting-group">
+          <span class="setting-label">Git Remote URL <em>(optional)</em></span>
+          <p class="setting-help">SSH URL for syncing across devices. Leave blank for local-only use.</p>
           <input
             type="text"
             bind:value={remoteUrl}
-            placeholder="git@github.com:user/threadline-data.git"
+            placeholder="git@github.com:user/threadliner-data.git"
             disabled={loading}
           />
-        </label>
+        </div>
 
         {#if errorMsg}
           <p class="error">{errorMsg}</p>
@@ -134,45 +134,49 @@
   .setup-body {
     background-color: var(--bg-surface);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 24px;
+    border-radius: 12px;
+    padding: 28px;
   }
 
-  label {
-    display: block;
-    margin-bottom: 20px;
+  .setting-group {
+    margin-bottom: 24px;
   }
 
-  label span {
+  .setting-label {
     display: block;
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 600;
-    margin-bottom: 4px;
-  }
-
-  label em {
-    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
     color: var(--text-muted);
+    margin-bottom: 6px;
   }
 
-  .hint {
+  .setting-label em {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .setting-help {
     font-size: 12px;
     color: var(--text-muted);
-    margin-bottom: 8px;
+    margin-bottom: 10px;
+    line-height: 1.5;
   }
 
   input {
     width: 100%;
     padding: 8px 12px;
     border-radius: 6px;
-    border: 1px solid var(--border);
-    background-color: var(--bg-base);
+    border: 1px solid var(--input-border);
+    background-color: var(--input-bg);
     color: var(--text-primary);
     outline: none;
   }
 
   input:focus {
-    border-color: var(--accent);
+    border-color: var(--input-border-focus);
   }
 
   .folder-input {
@@ -203,23 +207,25 @@
   }
 
   .btn-secondary {
-    background-color: var(--bg-button-hover);
+    background-color: var(--bg-button);
     color: var(--text-primary);
     flex-shrink: 0;
   }
 
   .btn-secondary:hover {
-    background-color: var(--bg-selected);
+    background-color: var(--bg-button-hover);
   }
 
   .btn-primary {
-    background-color: var(--accent);
-    color: white;
+    background: var(--bg-selected);
+    outline: 1px solid var(--accent);
+    color: var(--accent);
     padding: 10px 24px;
   }
 
   .btn-primary:hover:not(:disabled) {
-    background-color: var(--accent-hover);
+    background: var(--accent);
+    color: var(--accent-on);
   }
 
   .btn-primary:disabled {

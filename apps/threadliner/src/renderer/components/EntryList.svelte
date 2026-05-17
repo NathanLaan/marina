@@ -107,13 +107,14 @@
   .entry-list-header {
     padding: 12px 16px;
     border-bottom: 1px solid var(--border);
+    background: var(--bg-base);
   }
 
   .entry-list-header h2 {
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.05em;
     color: var(--text-muted);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -153,11 +154,13 @@
   }
 
   .entry-item:hover {
-    background-color: var(--bg-button-hover);
+    background-color: var(--bg-item-hover);
   }
 
   .entry-item.active {
     background-color: var(--bg-selected);
+    outline: 1px solid var(--accent);
+    outline-offset: -1px;
   }
 
   .entry-item.unread .entry-title {

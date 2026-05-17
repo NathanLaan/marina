@@ -103,13 +103,14 @@
   .sidebar-header {
     padding: 12px 16px;
     border-bottom: 1px solid var(--border);
+    background: var(--bg-base);
   }
 
   .sidebar-header h2 {
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.05em;
     color: var(--text-muted);
   }
 
@@ -133,11 +134,14 @@
   }
 
   .feed-item:hover {
-    background-color: var(--bg-button-hover);
+    background-color: var(--bg-item-hover);
   }
 
   .feed-item.active {
     background-color: var(--bg-selected);
+    outline: 1px solid var(--accent);
+    outline-offset: -1px;
+    color: var(--text-primary);
   }
 
   .feed-title {
@@ -159,7 +163,7 @@
     font-size: 11px;
     font-weight: 600;
     background-color: var(--accent);
-    color: white;
+    color: var(--accent-on);
     border-radius: 9px;
     margin-left: 8px;
   }
@@ -181,13 +185,14 @@
 
   .tags-header {
     padding: 12px 16px;
+    background: var(--bg-base);
   }
 
   .tags-header h2 {
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.05em;
     color: var(--text-muted);
   }
 
@@ -210,7 +215,7 @@
   }
 
   .tag-toggle:hover:not(:disabled) {
-    background-color: var(--bg-button-hover);
+    background-color: var(--bg-item-hover);
     color: var(--text-primary);
   }
 

@@ -1,396 +1,615 @@
 <script>
-  import { onMount, tick } from 'svelte';
-  import {
-    syncStatus, lastSyncTime, lastError, syncConfig, syncLog,
-    loadSyncConfig, forcePush, forcePull, loadFullLog,
-  } from '../stores/sync.js';
+  import { onMount } from 'svelte';
+  import { loadSyncConfig } from '../stores/sync.js';
 
   let { onClose } = $props();
 
-  let pushing = $state(false);
-  let pulling = $state(false);
-  let logContainer = $state();
+  let remoteUrl = $state('');
+  let savedUrl = $state('');
+  let branch = $state('');
+  let syncStatus = $state(null);
+  let loading = $state(true);
+  let operating = $state('');
+  let errorMsg = $state('');
+  let showDisconnectConfirm = $state(false);
+  let showResetConfirm = $state(false);
 
-  onMount(() => {
-    loadSyncConfig();
-    loadFullLog();
-  });
-
-  // Auto-scroll log when new entries arrive
-  $effect(() => {
-    // Subscribe to the log so this effect re-runs when entries are appended.
-    $syncLog;
-    tick().then(() => {
-      if (logContainer) {
-        logContainer.scrollTop = logContainer.scrollHeight;
-      }
-    });
-  });
-
-  async function handlePush() {
-    pushing = true;
-    await forcePush();
-    pushing = false;
-  }
-
-  async function handlePull() {
-    pulling = true;
-    await forcePull();
-    pulling = false;
-  }
-
-  function formatTime(isoString) {
-    if (!isoString) return 'Never';
-    try {
-      const date = new Date(isoString);
-      return date.toLocaleString();
-    } catch {
-      return 'Unknown';
-    }
-  }
-
-  function formatLogTime(timestamp) {
-    const d = new Date(timestamp);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  }
-
-  function statusLabel(s) {
-    switch (s) {
-      case 'idle': return 'Idle';
-      case 'committing': return 'Committing...';
-      case 'waiting': return 'Push pending...';
-      case 'pulling': return 'Pulling...';
-      case 'pushing': return 'Pushing...';
-      case 'error': return 'Error';
-      default: return s;
-    }
-  }
-
-  function statusIcon(s) {
-    switch (s) {
-      case 'idle': return 'fa-check-circle';
-      case 'committing': return 'fa-spinner fa-spin';
-      case 'waiting': return 'fa-clock';
-      case 'pulling': return 'fa-spinner fa-spin';
-      case 'pushing': return 'fa-spinner fa-spin';
-      case 'error': return 'fa-exclamation-triangle';
-      default: return 'fa-question-circle';
-    }
+  function focusOnMount(node) {
+    node.focus();
   }
 
   function handleKeydown(e) {
     if (e.key === 'Escape') onClose();
   }
+
+  onMount(async () => {
+    try {
+      await loadSyncConfig();
+      const [url, branchName] = await Promise.all([
+        window.api.gitGetRemoteUrl(),
+        window.api.gitGetBranch(),
+      ]);
+      if (url) {
+        remoteUrl = url;
+        savedUrl = url;
+      }
+      if (branchName) branch = branchName;
+      if (url) await refreshStatus();
+    } catch (err) {
+      errorMsg = err.message;
+    } finally {
+      loading = false;
+    }
+  });
+
+  async function refreshStatus() {
+    syncStatus = null;
+    try {
+      syncStatus = await window.api.gitGetSyncStatus();
+    } catch (err) {
+      syncStatus = { status: 'error', message: err.message };
+    }
+  }
+
+  async function handleConnect() {
+    const url = remoteUrl.trim();
+    if (!url) {
+      errorMsg = 'Please enter a remote URL.';
+      return;
+    }
+    errorMsg = '';
+    operating = 'Connecting...';
+    try {
+      await window.api.gitSetRemoteUrl(url);
+      savedUrl = url;
+      await window.api.gitPushUpstream();
+      await loadSyncConfig();
+      await refreshStatus();
+    } catch (err) {
+      errorMsg = `Connect failed: ${err.message}`;
+    } finally {
+      operating = '';
+    }
+  }
+
+  async function handleDisconnect() {
+    errorMsg = '';
+    operating = 'Disconnecting...';
+    try {
+      await window.api.gitRemoveRemote();
+      savedUrl = '';
+      remoteUrl = '';
+      syncStatus = null;
+      await loadSyncConfig();
+    } catch (err) {
+      errorMsg = `Disconnect failed: ${err.message}`;
+    } finally {
+      operating = '';
+    }
+  }
+
+  async function handlePush() {
+    errorMsg = '';
+    operating = 'Pushing...';
+    try {
+      await window.api.gitPush();
+      await refreshStatus();
+    } catch (err) {
+      errorMsg = `Push failed: ${err.message}`;
+    } finally {
+      operating = '';
+    }
+  }
+
+  async function handlePull() {
+    errorMsg = '';
+    operating = 'Pulling...';
+    try {
+      await window.api.gitPull();
+      await refreshStatus();
+    } catch (err) {
+      errorMsg = `Pull failed: ${err.message}`;
+    } finally {
+      operating = '';
+    }
+  }
+
+  async function handlePullRebase() {
+    errorMsg = '';
+    operating = 'Pulling & rebasing...';
+    try {
+      await window.api.gitPullRebase();
+      await refreshStatus();
+    } catch (err) {
+      errorMsg = `Pull & rebase failed: ${err.message}`;
+    } finally {
+      operating = '';
+    }
+  }
+
+  async function handleResetFromRemote() {
+    showResetConfirm = false;
+    errorMsg = '';
+    operating = 'Resetting...';
+    try {
+      await window.api.gitResetToRemote();
+      await refreshStatus();
+    } catch (err) {
+      errorMsg = `Reset failed: ${err.message}`;
+    } finally {
+      operating = '';
+    }
+  }
+
+  function statusDotClass(status) {
+    if (!status) return '';
+    switch (status.status) {
+      case 'synced': return 'dot-green';
+      case 'ahead': return 'dot-blue';
+      case 'behind': return 'dot-orange';
+      case 'diverged': return 'dot-red';
+      case 'no-upstream': return 'dot-grey';
+      case 'error': return 'dot-red';
+      default: return 'dot-grey';
+    }
+  }
+
+  function statusText(status) {
+    if (!status) return 'Checking...';
+    switch (status.status) {
+      case 'synced': return 'Synced — local and remote match';
+      case 'ahead': return `Local is ${status.count} commit${status.count !== 1 ? 's' : ''} ahead`;
+      case 'behind': return `Local is ${status.count} commit${status.count !== 1 ? 's' : ''} behind`;
+      case 'diverged': return `Diverged — ${status.ahead} ahead, ${status.behind} behind`;
+      case 'no-upstream': return 'No upstream branch configured';
+      case 'error': return status.message || 'Unknown error';
+      default: return 'Unknown status';
+    }
+  }
+
+  const hasRemote = $derived(savedUrl.length > 0);
+  const busy = $derived(operating.length > 0);
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="legacy-overlay" onmousedown={(e) => { if (e.target === e.currentTarget) onClose(); }} onkeydown={handleKeydown}>
-  <div class="legacy-modal">
-    <div class="legacy-modal-header">
-      <h3>Sync</h3>
-      <button class="close-btn" aria-label="Close" onclick={onClose}>
-        <i class="fas fa-times"></i>
-      </button>
+<div
+  class="modal-overlay sync-overlay"
+  use:focusOnMount
+  onclick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+  onkeydown={handleKeydown}
+  role="dialog"
+  aria-modal="true"
+  tabindex="-1"
+>
+  <div class="modal sync-modal">
+    <div class="modal-header">
+      <h2>Remote Sync</h2>
     </div>
+    <div class="modal-body">
+      {#if loading}
+        <p class="loading-msg">Loading...</p>
+      {:else}
+        {#if !hasRemote}
+          <p class="info-msg">No remote repository configured. Enter a URL to connect to GitHub, GitLab, or another Git remote.</p>
+        {/if}
 
-    <div class="legacy-modal-body">
-      <div class="status-section">
-        <div class="status-row">
-          <span class="status-label">Status</span>
-          <span class="status-value" class:error={$syncStatus === 'error'}>
-            <i class="fas {statusIcon($syncStatus)}"></i>
-            {statusLabel($syncStatus)}
-          </span>
-        </div>
+        {#if errorMsg}
+          <p class="error-msg">{errorMsg}</p>
+        {/if}
 
-        <div class="status-row">
-          <span class="status-label">Last Sync</span>
-          <span class="status-value">{formatTime($lastSyncTime)}</span>
-        </div>
-
-        {#if $syncConfig.remoteUrl}
-          <div class="status-row">
-            <span class="status-label">Remote</span>
-            <span class="status-value mono">{$syncConfig.remoteUrl}</span>
+        <div class="setting-group">
+          <span class="setting-label">Remote URL</span>
+          <div class="url-row">
+            <input
+              type="text"
+              bind:value={remoteUrl}
+              placeholder="git@github.com:user/threadliner-data.git"
+              disabled={busy}
+            />
+            {#if hasRemote}
+              <button class="icon-btn" onclick={() => (showDisconnectConfirm = true)} aria-label="Disconnect remote" title="Disconnect remote" disabled={busy}>
+                <i class="fas fa-xmark"></i>
+              </button>
+            {/if}
           </div>
-        {:else}
-          <div class="status-row">
-            <span class="status-label">Remote</span>
-            <span class="status-value muted">Not configured (local only)</span>
+        </div>
+
+        <div class="setting-group">
+          <span class="setting-label">Branch</span>
+          <p class="branch-name">{branch || 'unknown'}</p>
+        </div>
+
+        {#if hasRemote}
+          <div class="setting-group">
+            <span class="setting-label">Status</span>
+            <div class="status-row">
+              <span class="status-dot {statusDotClass(syncStatus)}"></span>
+              <span class="status-text">{statusText(syncStatus)}</span>
+              <button class="icon-btn refresh-btn" onclick={refreshStatus} aria-label="Refresh status" title="Refresh status" disabled={busy}>
+                <i class="fas fa-arrows-rotate"></i>
+              </button>
+            </div>
           </div>
         {/if}
 
-        <div class="status-row">
-          <span class="status-label">Data Folder</span>
-          <span class="status-value mono">{$syncConfig.dataDir || 'Not set'}</span>
-        </div>
-      </div>
+        {#if operating}
+          <p class="operating-msg">{operating}</p>
+        {/if}
 
-      {#if $lastError}
-        <div class="error-box">
-          <i class="fas fa-exclamation-triangle"></i>
-          <span>{$lastError}</span>
+        <div class="modal-footer">
+          {#if hasRemote}
+            <div class="sync-actions">
+              <button class="action-btn" onclick={handlePull} disabled={busy}>
+                <i class="fas fa-cloud-arrow-down"></i> Pull
+              </button>
+              <button class="action-btn" onclick={handlePullRebase} disabled={busy}>
+                <i class="fas fa-code-branch"></i> Pull & Rebase
+              </button>
+              <button class="action-btn" onclick={handlePush} disabled={busy}>
+                <i class="fas fa-cloud-arrow-up"></i> Push
+              </button>
+              <button class="action-btn reset-btn" onclick={() => (showResetConfirm = true)} disabled={busy}>
+                <i class="fas fa-rotate-left"></i> Reset from Remote
+              </button>
+            </div>
+            <button class="close-btn" onclick={onClose}>Close</button>
+          {:else}
+            <button class="close-btn" onclick={onClose}>Cancel</button>
+            <button class="connect-btn" onclick={handleConnect} disabled={busy || !remoteUrl.trim()}>Connect</button>
+          {/if}
         </div>
       {/if}
-
-      <div class="actions">
-        <button
-          class="btn btn-primary"
-          onclick={handlePush}
-          disabled={pushing || pulling || !$syncConfig.remoteUrl}
-        >
-          {#if pushing}
-            <i class="fas fa-spinner fa-spin"></i> Syncing...
-          {:else}
-            <i class="fas fa-cloud-arrow-up"></i> Sync Now
-          {/if}
-        </button>
-        <button
-          class="btn btn-secondary"
-          onclick={handlePull}
-          disabled={pushing || pulling || !$syncConfig.remoteUrl}
-        >
-          {#if pulling}
-            <i class="fas fa-spinner fa-spin"></i> Pulling...
-          {:else}
-            <i class="fas fa-cloud-arrow-down"></i> Pull Now
-          {/if}
-        </button>
-      </div>
-
-      <div class="log-section">
-        <div class="log-header">Log</div>
-        <div class="log-container" bind:this={logContainer}>
-          {#if $syncLog.length === 0}
-            <div class="log-empty">No sync activity yet.</div>
-          {:else}
-            {#each $syncLog as entry (entry.id)}
-              <div class="log-entry" class:log-error={entry.level === 'error'}>
-                <span class="log-time">{formatLogTime(entry.timestamp)}</span>
-                <span class="log-message">{entry.message}</span>
-              </div>
-              {#if entry.detail}
-                <div class="log-entry log-detail">
-                  <span class="log-time"></span>
-                  <span class="log-message">{entry.detail}</span>
-                </div>
-              {/if}
-            {/each}
-          {/if}
-        </div>
-      </div>
     </div>
   </div>
 </div>
 
+{#if showDisconnectConfirm}
+  <div
+    class="modal-overlay-compact"
+    onclick={(e) => { if (e.target === e.currentTarget) showDisconnectConfirm = false; }}
+    onkeydown={(e) => { if (e.key === 'Escape') showDisconnectConfirm = false; }}
+    role="dialog"
+    aria-modal="true"
+    tabindex="-1"
+  >
+    <div class="modal-compact">
+      <div class="modal-header">
+        <h2>Disconnect Remote</h2>
+      </div>
+      <div class="modal-body">
+        <p class="confirm-prompt">Disconnect from the remote repository?</p>
+        <p class="confirm-detail">{savedUrl}</p>
+        <p class="confirm-note">Your local files will not be deleted.</p>
+        <div class="confirm-footer">
+          <button class="confirm-cancel-btn" onclick={() => (showDisconnectConfirm = false)}>Cancel</button>
+          <button class="confirm-danger-btn" onclick={() => { showDisconnectConfirm = false; handleDisconnect(); }}>Disconnect</button>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
+
+{#if showResetConfirm}
+  <div
+    class="modal-overlay-compact"
+    onclick={(e) => { if (e.target === e.currentTarget) showResetConfirm = false; }}
+    onkeydown={(e) => { if (e.key === 'Escape') showResetConfirm = false; }}
+    role="dialog"
+    aria-modal="true"
+    tabindex="-1"
+  >
+    <div class="modal-compact">
+      <div class="modal-header">
+        <h2>Reset from Remote</h2>
+      </div>
+      <div class="modal-body">
+        <p class="confirm-warning">This will discard ALL local changes and replace your feeds with the latest version from the remote repository.</p>
+        <p class="confirm-warning-sub">This action cannot be undone.</p>
+        <div class="confirm-footer">
+          <button class="confirm-cancel-btn" onclick={() => (showResetConfirm = false)}>Cancel</button>
+          <button class="confirm-danger-btn" onclick={handleResetFromRemote}>Reset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
+
 <style>
-  .legacy-overlay {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
+  .loading-msg {
+    color: var(--text-secondary);
+    font-size: 13px;
+    text-align: center;
+    padding: 20px 0;
   }
 
-  .legacy-modal {
-    background-color: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    width: 960px;
-    max-width: 90vw;
-    overflow: hidden;
+  .info-msg {
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 20px;
+    padding: 10px 12px;
+    background: var(--bg-base);
+    border-radius: 6px;
+    border-left: 3px solid var(--accent);
   }
 
-  .legacy-modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
+  .error-msg {
+    color: var(--danger);
+    font-size: 12px;
+    margin-bottom: 12px;
   }
 
-  h3 {
-    font-size: 16px;
+  .operating-msg {
+    color: var(--text-secondary);
+    font-size: 12px;
+    margin-bottom: 12px;
+    font-style: italic;
+  }
+
+  .setting-group {
+    margin-bottom: 16px;
+  }
+
+  .setting-label {
+    font-size: 11px;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 8px;
   }
 
-  .close-btn {
+  .url-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .url-row input {
+    flex: 1;
+    padding: 8px 12px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: var(--font-mono);
+    outline: none;
+    box-sizing: border-box;
+  }
+
+  .url-row input:focus {
+    border-color: var(--input-border-focus);
+  }
+
+  .url-row input:disabled {
+    opacity: 0.6;
+  }
+
+  .icon-btn {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
     border-radius: 6px;
     color: var(--text-muted);
+    background: var(--bg-button);
     font-size: 14px;
+    transition: background 0.15s, color 0.15s;
   }
 
-  .close-btn:hover {
-    background-color: var(--bg-button-hover);
+  .icon-btn:hover:not(:disabled) {
+    background: var(--bg-button-hover);
     color: var(--text-primary);
   }
 
-  .legacy-modal-body {
-    padding: 20px;
+  .icon-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
   }
 
-  .status-section {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-bottom: 16px;
+  .branch-name {
+    font-size: 13px;
+    color: var(--text-secondary);
+    padding: 6px 12px;
+    background: var(--bg-base);
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    display: inline-block;
   }
 
   .status-row {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 12px;
+    align-items: center;
+    gap: 8px;
   }
 
-  .status-label {
-    font-size: 13px;
-    color: var(--text-muted);
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
     flex-shrink: 0;
-    min-width: 80px;
   }
 
-  .status-value {
+  .dot-green { background: #4ade80; }
+  .dot-blue { background: #60a5fa; }
+  .dot-orange { background: #fb923c; }
+  .dot-red { background: #f87171; }
+  .dot-grey { background: #9ca3af; }
+
+  .status-text {
     font-size: 13px;
-    text-align: right;
-    word-break: break-all;
+    color: var(--text-secondary);
+    flex: 1;
   }
 
-  .status-value.error {
-    color: var(--danger);
-  }
-
-  .status-value.muted {
-    color: var(--text-muted);
-    font-style: italic;
-  }
-
-  .status-value.mono {
-    font-family: var(--font-mono);
+  .refresh-btn {
+    width: 28px;
+    height: 28px;
     font-size: 12px;
   }
 
-  .status-value i {
-    margin-right: 4px;
+  .sync-overlay {
+    align-items: flex-end;
+    justify-content: center;
   }
 
-  .error-box {
+  .sync-modal {
+    width: 65%;
+    height: 50%;
+    min-width: 624px;
+    min-height: 380px;
+  }
+
+  /* Promote the footer to the bottom of the modal body so it sits flush with
+     the drawer's bottom edge regardless of content length. */
+  .sync-modal :global(.modal-body) {
     display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 10px 12px;
-    background-color: rgba(224, 96, 112, 0.1);
-    border: 1px solid var(--danger);
-    border-radius: 6px;
-    color: var(--danger);
-    font-size: 12px;
-    margin-bottom: 16px;
+    flex-direction: column;
   }
 
-  .error-box i {
-    flex-shrink: 0;
-    margin-top: 1px;
-  }
-
-  .actions {
+  .modal-footer {
     display: flex;
-    gap: 8px;
     justify-content: flex-end;
-    margin-bottom: 20px;
+    align-items: center;
+    gap: 8px;
+    margin-top: auto;
   }
 
-  .btn {
+  .sync-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .action-btn {
     padding: 8px 16px;
+    background: var(--bg-button);
     border-radius: 6px;
+    color: var(--text-secondary);
     font-size: 13px;
-    font-weight: 500;
     display: flex;
     align-items: center;
     gap: 6px;
+    transition: background 0.15s, color 0.15s;
   }
 
-  .btn-secondary {
-    background-color: var(--bg-button-hover);
+  .action-btn:hover:not(:disabled) {
+    background: var(--bg-button-hover);
     color: var(--text-primary);
   }
 
-  .btn-secondary:hover:not(:disabled) {
-    background-color: var(--bg-selected);
-  }
-
-  .btn-primary {
-    background-color: var(--accent);
-    color: white;
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    background-color: var(--accent-hover);
-  }
-
-  .btn:disabled {
-    opacity: 0.5;
+  .action-btn:disabled {
+    opacity: 0.4;
     cursor: default;
   }
 
-  .log-section {
-    border-top: 1px solid var(--border);
-    padding-top: 16px;
+  .close-btn {
+    padding: 8px 24px;
+    background: var(--bg-button);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    transition: background 0.15s, color 0.15s;
   }
 
-  .log-header {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-muted);
-    margin-bottom: 8px;
+  .close-btn:hover {
+    background: var(--bg-button-hover);
+    color: var(--text-primary);
   }
 
-  .log-container {
-    height: 280px;
-    overflow-y: auto;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    line-height: 1.5;
+  .connect-btn {
+    padding: 8px 24px;
+    background: var(--bg-selected);
+    outline: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
   }
 
-  .log-empty {
-    color: var(--text-muted);
-    font-style: italic;
-    font-family: var(--font-sans, inherit);
-    font-size: 13px;
-    text-align: center;
-    padding-top: 40px;
+  .connect-btn:hover:not(:disabled) {
+    background: var(--accent);
+    color: var(--accent-on);
   }
 
-  .log-entry {
-    display: flex;
-    gap: 8px;
-    padding: 1px 0;
+  .connect-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
   }
 
-  .log-time {
-    color: var(--text-muted);
-    flex-shrink: 0;
-    user-select: none;
-  }
-
-  .log-message {
-    color: var(--text-muted);
-    word-break: break-all;
-  }
-
-  .log-error .log-message {
+  .reset-btn {
     color: var(--danger);
   }
 
-  .log-detail .log-message {
+  .reset-btn:hover:not(:disabled) {
+    color: var(--danger);
+    background: var(--bg-button-hover);
+  }
+
+  .confirm-prompt {
+    color: var(--text-primary);
+    font-size: 14px;
+    margin-bottom: 6px;
+    line-height: 1.5;
+  }
+
+  .confirm-detail {
     color: var(--text-muted);
-    opacity: 0.7;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    margin-bottom: 12px;
+    word-break: break-all;
+  }
+
+  .confirm-note {
+    color: var(--text-secondary);
+    font-size: 12px;
+    margin-bottom: 24px;
+  }
+
+  .confirm-warning {
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 8px;
+    padding: 10px 12px;
+    background: var(--bg-base);
+    border-radius: 6px;
+    border-left: 3px solid var(--danger);
+  }
+
+  .confirm-warning-sub {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-bottom: 24px;
+  }
+
+  .confirm-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .confirm-cancel-btn {
+    padding: 8px 20px;
+    color: var(--text-muted);
+    border-radius: 6px;
+    transition: color 0.15s;
+  }
+
+  .confirm-cancel-btn:hover {
+    color: var(--text-secondary);
+  }
+
+  .confirm-danger-btn {
+    padding: 8px 24px;
+    background: var(--danger);
+    color: #ffffff;
+    border-radius: 6px;
+    transition: filter 0.15s;
+  }
+
+  .confirm-danger-btn:hover {
+    filter: brightness(1.1);
   }
 </style>

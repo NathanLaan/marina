@@ -194,12 +194,102 @@ async function getRemoteUrl(dataDir) {
   }
 }
 
+async function hasRemote(dataDir) {
+  try {
+    const out = await exec('git', ['remote'], dataDir);
+    return out.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+async function setRemoteUrl(dataDir, url) {
+  if (await hasRemote(dataDir)) {
+    return exec('git', ['remote', 'set-url', 'origin', url], dataDir);
+  }
+  return exec('git', ['remote', 'add', 'origin', url], dataDir);
+}
+
+async function removeRemote(dataDir) {
+  try {
+    return await exec('git', ['remote', 'remove', 'origin'], dataDir);
+  } catch {
+    // Not configured — treat as success.
+    return null;
+  }
+}
+
 async function getBranch(dataDir) {
   try {
     return await exec('git', ['rev-parse', '--abbrev-ref', 'HEAD'], dataDir);
   } catch {
     return null;
   }
+}
+
+// Plain merge-style pull (counterpart to existing rebase-based pull()).
+async function pullMerge(dataDir) {
+  try {
+    await exec('git', ['remote', 'get-url', 'origin'], dataDir);
+  } catch {
+    return { success: true, skipped: true };
+  }
+  try {
+    await exec('git', ['pull'], dataDir);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+// Computes ahead/behind relative to the upstream. Mirrors NoteLiner's
+// `getSyncStatus` vocabulary so the SyncModal can be a near-clone.
+async function getSyncStatus(dataDir) {
+  try {
+    await exec('git', ['fetch', 'origin'], dataDir);
+  } catch (err) {
+    return { status: 'error', message: `Fetch failed: ${err.message}` };
+  }
+
+  try {
+    const local = await exec('git', ['rev-parse', 'HEAD'], dataDir);
+    let remote;
+    try {
+      remote = await exec('git', ['rev-parse', '@{u}'], dataDir);
+    } catch {
+      return { status: 'no-upstream' };
+    }
+
+    if (local === remote) return { status: 'synced' };
+
+    const base = await exec('git', ['merge-base', 'HEAD', '@{u}'], dataDir);
+
+    if (base === remote) {
+      const count = await exec('git', ['rev-list', '--count', '@{u}..HEAD'], dataDir);
+      return { status: 'ahead', count: parseInt(count, 10) };
+    }
+    if (base === local) {
+      const count = await exec('git', ['rev-list', '--count', 'HEAD..@{u}'], dataDir);
+      return { status: 'behind', count: parseInt(count, 10) };
+    }
+
+    const ahead = await exec('git', ['rev-list', '--count', '@{u}..HEAD'], dataDir);
+    const behind = await exec('git', ['rev-list', '--count', 'HEAD..@{u}'], dataDir);
+    return {
+      status: 'diverged',
+      ahead: parseInt(ahead, 10),
+      behind: parseInt(behind, 10),
+    };
+  } catch (err) {
+    return { status: 'error', message: err.message };
+  }
+}
+
+async function resetToRemote(dataDir, branch) {
+  const target = branch || (await getBranch(dataDir)) || 'main';
+  await exec('git', ['fetch', 'origin'], dataDir);
+  await exec('git', ['reset', '--hard', `origin/${target}`], dataDir);
+  return { success: true };
 }
 
 module.exports = {
@@ -210,9 +300,15 @@ module.exports = {
   configureUser,
   commitAll,
   pull,
+  pullMerge,
   push,
   getStatus,
+  getSyncStatus,
   getRemoteUrl,
+  setRemoteUrl,
+  removeRemote,
+  hasRemote,
   getBranch,
+  resetToRemote,
   setLogCallback,
 };

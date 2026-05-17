@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const dataStore = require('./data-store');
@@ -31,19 +31,53 @@ function isSetupComplete() {
   return !!(config.dataDir && fs.existsSync(config.dataDir));
 }
 
+// --- UI prefs (device-local; separate from synced config) ---
+
+const UI_PREFS_DEFAULTS = { customTitlebar: false };
+
+function getUIPrefsPath() {
+  return path.join(app.getPath('userData'), 'ui-preferences.json');
+}
+
+function readUIPrefs() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(getUIPrefsPath(), 'utf-8'));
+    return { ...UI_PREFS_DEFAULTS, ...raw };
+  } catch {
+    return { ...UI_PREFS_DEFAULTS };
+  }
+}
+
+function writeUIPrefs(prefs) {
+  const merged = { ...readUIPrefs(), ...prefs };
+  fs.writeFileSync(getUIPrefsPath(), JSON.stringify(merged, null, 2), 'utf-8');
+  return merged;
+}
+
 // --- Window ---
 
 function createWindow() {
+  const uiPrefs = readUIPrefs();
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 800,
     minHeight: 500,
+    // frame can only be set at construction time — that's why the
+    // customTitlebar toggle requires a restart.
+    frame: !uiPrefs.customTitlebar,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
     },
+  });
+
+  mainWindow.on('maximize', () => {
+    mainWindow.webContents.send('window:maximized-change', true);
+  });
+  mainWindow.on('unmaximize', () => {
+    mainWindow.webContents.send('window:maximized-change', false);
   });
 
   const indexPath = path.join(__dirname, '../../dist/renderer/index.html');
@@ -258,6 +292,116 @@ function registerIpcHandlers() {
       remoteUrl: config.remoteUrl || null,
     };
   });
+
+  // Window control (for custom titlebar)
+  ipcMain.handle('window:minimize', () => mainWindow?.minimize());
+  ipcMain.handle('window:maximize', () => {
+    if (!mainWindow) return;
+    if (mainWindow.isMaximized()) mainWindow.unmaximize();
+    else mainWindow.maximize();
+  });
+  ipcMain.handle('window:close', () => mainWindow?.close());
+  ipcMain.handle('window:isMaximized', () => !!mainWindow?.isMaximized());
+
+  // UI prefs (device-local)
+  ipcMain.handle('ui:getPrefs', () => readUIPrefs());
+  ipcMain.handle('ui:setPrefs', (_event, prefs) => writeUIPrefs(prefs || {}));
+
+  // Relaunch (for custom titlebar toggle, which requires re-creating BrowserWindow)
+  ipcMain.handle('app:relaunch', () => {
+    app.relaunch();
+    app.exit(0);
+  });
+
+  // Git operations (manual, NoteLiner-style sync UI).
+  // These run alongside the auto-sync engine in sync-manager; in practice the
+  // user can only invoke them while a modal is open, and races would at worst
+  // surface as a transient error.
+  function getDataDir() {
+    const config = readConfig();
+    return config.dataDir || null;
+  }
+
+  ipcMain.handle('git:getRemoteUrl', () => {
+    const dir = getDataDir();
+    if (!dir) return null;
+    return gitSync.getRemoteUrl(dir);
+  });
+
+  ipcMain.handle('git:setRemoteUrl', async (_event, url) => {
+    const dir = getDataDir();
+    if (!dir) throw new Error('No data directory configured');
+    await gitSync.setRemoteUrl(dir, url);
+    // Mirror to config.json so getSyncConfig still returns it.
+    const config = readConfig();
+    writeConfig({ ...config, remoteUrl: url });
+    return { success: true };
+  });
+
+  ipcMain.handle('git:removeRemote', async () => {
+    const dir = getDataDir();
+    if (!dir) throw new Error('No data directory configured');
+    await gitSync.removeRemote(dir);
+    const config = readConfig();
+    writeConfig({ ...config, remoteUrl: null });
+    return { success: true };
+  });
+
+  ipcMain.handle('git:getBranch', () => {
+    const dir = getDataDir();
+    if (!dir) return null;
+    return gitSync.getBranch(dir);
+  });
+
+  ipcMain.handle('git:getSyncStatus', () => {
+    const dir = getDataDir();
+    if (!dir) return { status: 'error', message: 'No data directory configured' };
+    return gitSync.getSyncStatus(dir);
+  });
+
+  // Plain merge-style pull (counterpart to git:pullRebase below).
+  ipcMain.handle('git:pull', async () => {
+    const dir = getDataDir();
+    if (!dir) throw new Error('No data directory configured');
+    const result = await gitSync.pullMerge(dir);
+    if (!result.success) throw new Error(result.error || 'Pull failed');
+    return result;
+  });
+
+  // Rebase-style pull — same engine that auto-sync uses internally.
+  ipcMain.handle('git:pullRebase', async () => {
+    const dir = getDataDir();
+    if (!dir) throw new Error('No data directory configured');
+    const result = await gitSync.pull(dir);
+    if (!result.success) throw new Error(result.error || 'Pull failed');
+    return result;
+  });
+
+  // Push routes through syncManager.forcePush so it serializes with the
+  // background commit/push queue — avoids racing the auto-sync timer.
+  ipcMain.handle('git:push', async () => {
+    await syncManager.forcePush();
+    return { success: true };
+  });
+
+  ipcMain.handle('git:pushUpstream', async () => {
+    const dir = getDataDir();
+    if (!dir) throw new Error('No data directory configured');
+    const result = await gitSync.push(dir);
+    if (!result.success) throw new Error(result.error || 'Push failed');
+    return result;
+  });
+
+  ipcMain.handle('git:resetToRemote', async () => {
+    const dir = getDataDir();
+    if (!dir) throw new Error('No data directory configured');
+    const branch = await gitSync.getBranch(dir);
+    return gitSync.resetToRemote(dir, branch);
+  });
+
+  // Shell: route renderer-driven external links through Electron's shell so
+  // they open in the user's browser instead of inside the Electron window.
+  ipcMain.handle('shell:openExternal', (_event, url) => shell.openExternal(url));
 }
 
 // --- Startup ---

@@ -41,4 +41,37 @@ contextBridge.exposeInMainWorld('api', {
   forcePush: () => ipcRenderer.invoke('sync:forcePush'),
   forcePull: () => ipcRenderer.invoke('sync:forcePull'),
   getSyncConfig: () => ipcRenderer.invoke('sync:getConfig'),
+
+  // Window control (custom titlebar)
+  windowMinimize: () => ipcRenderer.invoke('window:minimize'),
+  windowMaximize: () => ipcRenderer.invoke('window:maximize'),
+  windowClose: () => ipcRenderer.invoke('window:close'),
+  windowIsMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+  onWindowMaximizedChange: (cb) => {
+    const handler = (_e, v) => cb(v);
+    ipcRenderer.on('window:maximized-change', handler);
+    return () => ipcRenderer.removeListener('window:maximized-change', handler);
+  },
+
+  // UI prefs (device-local)
+  getUIPrefs: () => ipcRenderer.invoke('ui:getPrefs'),
+  setUIPrefs: (p) => ipcRenderer.invoke('ui:setPrefs', p),
+
+  // App relaunch (used after toggling settings that require re-creating BrowserWindow)
+  relaunchApp: () => ipcRenderer.invoke('app:relaunch'),
+
+  // Manual git operations (used by the redesigned SyncModal)
+  gitGetRemoteUrl: () => ipcRenderer.invoke('git:getRemoteUrl'),
+  gitSetRemoteUrl: (url) => ipcRenderer.invoke('git:setRemoteUrl', url),
+  gitRemoveRemote: () => ipcRenderer.invoke('git:removeRemote'),
+  gitGetBranch: () => ipcRenderer.invoke('git:getBranch'),
+  gitGetSyncStatus: () => ipcRenderer.invoke('git:getSyncStatus'),
+  gitPull: () => ipcRenderer.invoke('git:pull'),
+  gitPullRebase: () => ipcRenderer.invoke('git:pullRebase'),
+  gitPush: () => ipcRenderer.invoke('git:push'),
+  gitPushUpstream: () => ipcRenderer.invoke('git:pushUpstream'),
+  gitResetToRemote: () => ipcRenderer.invoke('git:resetToRemote'),
+
+  // Open an external URL in the user's default browser.
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
 });
