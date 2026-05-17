@@ -18,7 +18,7 @@
   "devDependencies": {},
     "build": {
     "appId": "com.threadline.app",
-    "productName": "Threadline",
+    "productName": "Threadliner",
     "files": [
       "src/main/**/*",
       "dist/renderer/**/*"

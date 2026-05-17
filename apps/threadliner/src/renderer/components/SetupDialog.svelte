@@ -41,7 +41,7 @@
   <div class="setup-dialog">
     <div class="setup-header">
       <i class="fas fa-rss"></i>
-      <h1>Welcome to Threadline</h1>
+      <h1>Welcome to Threadliner</h1>
       <p>Let's set up your data storage.</p>
     </div>
 

@@ -63,12 +63,12 @@ async function configureUser(localDir) {
   try {
     await exec('git', ['config', 'user.name'], localDir);
   } catch {
-    await exec('git', ['config', 'user.name', 'Threadline'], localDir);
+    await exec('git', ['config', 'user.name', 'Threadliner'], localDir);
   }
   try {
     await exec('git', ['config', 'user.email'], localDir);
   } catch {
-    await exec('git', ['config', 'user.email', 'threadline@localhost'], localDir);
+    await exec('git', ['config', 'user.email', 'threadliner@localhost'], localDir);
   }
 }
 
