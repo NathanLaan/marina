@@ -1,0 +1,14 @@
+{
+  "name": "marina",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "build":             "npm run build -ws --if-present",
+    "dev:noteliner":     "npm run dev -w noteliner",
+    "dev:threadliner":   "npm run dev -w threadliner",
+    "build:noteliner":   "npm run build -w noteliner",
+    "build:threadliner": "npm run build -w threadliner"
+  },
+  "engines": { "node": ">=20" }
+}
