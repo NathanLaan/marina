@@ -19,5 +19,15 @@
   "peerDependencies": {
     "svelte":   "^5.0.0",
     "electron": ">=28"
+  },
+  "scripts": {
+    "pretest": "npm run build -w @marina/desktop-ui-playground",
+    "test": "playwright test",
+    "test:update:pretest": "npm run build -w @marina/desktop-ui-playground",
+    "test:update": "playwright test --update-snapshots"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "playwright": "^1.59.1"
   }
 }
