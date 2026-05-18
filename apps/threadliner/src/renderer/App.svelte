@@ -98,15 +98,6 @@
   }
 </script>
 
-{#if customTitlebar}
-  <TitleBar
-    appName="Threadliner"
-    onToggleToolbar={() => (toolbarVisible = !toolbarVisible)}
-    {toolbarVisible}
-    actions={titlebarActions}
-  />
-{/if}
-
 {#snippet titlebarActions()}
   <button class="title-action" onclick={() => (showAddModal = true)} aria-label="Add Feed" title="Add Feed">
     <i class="fas fa-plus"></i>
@@ -125,36 +116,51 @@
   </button>
 {/snippet}
 
-{#if loading}
-  <div class="loading-screen">
-    <i class="fas fa-rss fa-3x"></i>
-  </div>
-{:else if !$setupComplete}
-  <SetupDialog onComplete={handleSetupComplete} />
-{:else}
-  <div class="app-shell" class:has-titlebar={customTitlebar}>
-    {#if toolbarVisible}
-      <Toolbar
-        onAddFeed={() => (showAddModal = true)}
-        onEditFeed={() => (showEditModal = true)}
-        onOpenSettings={() => (showSettingsModal = true)}
-        onOpenSync={() => (showSyncModal = true)}
-        onOpenTags={() => (showTagsModal = true)}
-        onOpenAbout={() => (showAboutModal = true)}
-        onOpenHelp={() => window.api?.openHelpWindow?.()}
-        syncOpen={showSyncModal}
-        settingsOpen={showSettingsModal}
-        tagsOpen={showTagsModal}
-        aboutOpen={showAboutModal}
-      />
-    {/if}
-    <div class="main-content">
-      <Sidebar bind:width={sidebarWidth} />
-      <EntryList bind:width={entryListWidth} />
-      <ContentViewer />
-    </div>
-  </div>
+<div class="app-layout">
+  {#if customTitlebar}
+    <TitleBar
+      appName="Threadliner"
+      onToggleToolbar={() => (toolbarVisible = !toolbarVisible)}
+      {toolbarVisible}
+      actions={titlebarActions}
+    />
+  {/if}
 
+  <div class="app-body">
+    {#if loading}
+      <div class="loading-screen">
+        <i class="fas fa-rss fa-3x"></i>
+      </div>
+    {:else if !$setupComplete}
+      <SetupDialog onComplete={handleSetupComplete} />
+    {:else}
+      <div class="app-shell">
+        {#if toolbarVisible}
+          <Toolbar
+            onAddFeed={() => (showAddModal = true)}
+            onEditFeed={() => (showEditModal = true)}
+            onOpenSettings={() => (showSettingsModal = true)}
+            onOpenSync={() => (showSyncModal = true)}
+            onOpenTags={() => (showTagsModal = true)}
+            onOpenAbout={() => (showAboutModal = true)}
+            onOpenHelp={() => window.api?.openHelpWindow?.()}
+            syncOpen={showSyncModal}
+            settingsOpen={showSettingsModal}
+            tagsOpen={showTagsModal}
+            aboutOpen={showAboutModal}
+          />
+        {/if}
+        <div class="main-content">
+          <Sidebar bind:width={sidebarWidth} />
+          <EntryList bind:width={entryListWidth} />
+          <ContentViewer />
+        </div>
+      </div>
+    {/if}
+  </div>
+</div>
+
+{#if !loading && $setupComplete}
   {#if $error}
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div class="error-toast" role="alert" onclick={() => error.set(null)} onkeydown={(e) => e.key === 'Escape' && error.set(null)}>
@@ -201,23 +207,34 @@
 <style>
   .loading-screen {
     display: flex;
+    flex: 1;
     align-items: center;
     justify-content: center;
-    height: 100vh;
     color: var(--text-muted);
+  }
+
+  /* Zoom + viewport sizing live on the outer layout so the custom titlebar
+     scales with --ui-zoom alongside the rest of the UI. */
+  .app-layout {
+    display: flex;
+    flex-direction: column;
+    zoom: var(--ui-zoom, 1);
+    height: var(--ui-zoom-height, 100vh);
+    width: var(--ui-zoom-width, 100vw);
+    overflow: hidden;
+  }
+
+  .app-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .app-shell {
     display: flex;
-    zoom: var(--ui-zoom, 1);
-    height: var(--ui-zoom-height, 100vh);
+    flex: 1;
     overflow: hidden;
-  }
-
-  /* When the custom titlebar is mounted above, the shell must shrink by its
-     height so the layout fits inside the window. */
-  .app-shell.has-titlebar {
-    height: calc(var(--ui-zoom-height, 100vh) - var(--titlebar-height, 32px));
   }
 
   .main-content {
