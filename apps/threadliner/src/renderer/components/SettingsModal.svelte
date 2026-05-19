@@ -33,10 +33,27 @@
   ];
 
   const shortcuts = [
-    { keys: 'Esc',    action: 'Close modal', section: 'General' },
-    { keys: 'Ctrl+=', action: 'Zoom in',     section: 'View' },
-    { keys: 'Ctrl+-', action: 'Zoom out',    section: 'View' },
-    { keys: 'Ctrl+0', action: 'Reset zoom',  section: 'View' },
+    { keys: 'Esc',          action: 'Close modal',     section: 'General' },
+
+    { keys: 'Ctrl+N',       action: 'Add Feed',        section: 'Feeds' },
+    { keys: 'Ctrl+E',       action: 'Edit Feed',       section: 'Feeds' },
+    { keys: 'Ctrl+D',       action: 'Remove Feed',     section: 'Feeds' },
+    { keys: 'F5',           action: 'Refresh Feed',    section: 'Feeds' },
+
+    { keys: 'Ctrl+M',       action: 'Mark as Read',    section: 'Entries' },
+    { keys: 'Ctrl+Shift+M', action: 'Mark as Unread',  section: 'Entries' },
+
+    { keys: 'Ctrl+Shift+T', action: 'Tags',            section: 'Panels' },
+    { keys: 'Ctrl+Shift+S', action: 'Remote Sync',     section: 'Panels' },
+    { keys: 'Ctrl+Shift+E', action: 'Toggle Toolbar',  section: 'Panels' },
+
+    { keys: 'Ctrl+,',       action: 'Settings',        section: 'App' },
+    { keys: 'Ctrl+I',       action: 'About',           section: 'App' },
+    { keys: 'F1',           action: 'Help',            section: 'App' },
+
+    { keys: 'Ctrl+=',       action: 'Zoom in',         section: 'View' },
+    { keys: 'Ctrl+-',       action: 'Zoom out',        section: 'View' },
+    { keys: 'Ctrl+0',       action: 'Reset zoom',      section: 'View' },
   ];
 
   onMount(async () => {

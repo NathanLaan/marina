@@ -59,25 +59,25 @@
 </script>
 
 <ToolbarShell>
-  <ToolbarButton icon="fa-plus"        title="Add Feed"     label="Add Feed"     onclick={onAddFeed} />
-  <ToolbarButton icon="fa-pen"         title="Edit Feed"    label="Edit Feed"    disabled={$selectedFeedId === null} onclick={onEditFeed} />
-  <ToolbarButton icon="fa-trash"       title="Remove Feed"  label="Remove Feed"  disabled={$selectedFeedId === null} onclick={handleRemove} />
-  <ToolbarButton icon="fa-arrows-rotate" title="Refresh Feed" label="Refresh Feed" disabled={$selectedFeedId === null} onclick={handleRefresh} />
+  <ToolbarButton icon="fa-plus"          title="Add Feed (Ctrl+N)"     label="Add Feed"     onclick={onAddFeed} />
+  <ToolbarButton icon="fa-pen"           title="Edit Feed (Ctrl+E)"    label="Edit Feed"    disabled={$selectedFeedId === null} onclick={onEditFeed} />
+  <ToolbarButton icon="fa-trash"         title="Remove Feed (Ctrl+D)"  label="Remove Feed"  disabled={$selectedFeedId === null} onclick={handleRemove} />
+  <ToolbarButton icon="fa-arrows-rotate" title="Refresh Feed (F5)"     label="Refresh Feed" disabled={$selectedFeedId === null} onclick={handleRefresh} />
 
   <ToolbarDivider />
 
-  <ToolbarButton icon="fa-check-double" title="Mark as Read"   label="Mark as Read"   disabled={$selectedFeedId === null} onclick={handleMarkRead} />
-  <ToolbarButton icon="fa-rotate-left"  title="Mark as Unread" label="Mark as Unread" disabled={$selectedFeedId === null} onclick={handleMarkUnread} />
+  <ToolbarButton icon="fa-check-double" title="Mark as Read (Ctrl+M)"         label="Mark as Read"   disabled={$selectedFeedId === null} onclick={handleMarkRead} />
+  <ToolbarButton icon="fa-rotate-left"  title="Mark as Unread (Ctrl+Shift+M)" label="Mark as Unread" disabled={$selectedFeedId === null} onclick={handleMarkUnread} />
 
   <ToolbarDivider />
 
-  <ToolbarButton icon="fa-tags" title="Tags" label="Tags" active={tagsOpen} onclick={onOpenTags} />
+  <ToolbarButton icon="fa-tags" title="Tags (Ctrl+Shift+T)" label="Tags" active={tagsOpen} onclick={onOpenTags} />
 
   <ToolbarSpacer />
 
   <ToolbarButton
     icon="fa-cloud-arrow-up"
-    title="Remote Sync"
+    title="Remote Sync (Ctrl+Shift+S)"
     label="Sync"
     active={syncOpen}
     extraClass={hasPendingSync && !syncOpen ? 'sync-pending' : ''}
@@ -86,7 +86,7 @@
 
   <ToolbarDivider />
 
-  <ToolbarButton icon="fa-gear"            title="Settings" label="Settings" active={settingsOpen} onclick={onOpenSettings} />
-  <ToolbarButton icon="fa-circle-info"     title="About"    label="About"    active={aboutOpen}    onclick={onOpenAbout} />
-  <ToolbarButton icon="fa-circle-question" title="Help (F1)" label="Help"    onclick={onOpenHelp} />
+  <ToolbarButton icon="fa-gear"            title="Settings (Ctrl+,)" label="Settings" active={settingsOpen} onclick={onOpenSettings} />
+  <ToolbarButton icon="fa-circle-info"     title="About (Ctrl+I)"    label="About"    active={aboutOpen}    onclick={onOpenAbout} />
+  <ToolbarButton icon="fa-circle-question" title="Help (F1)"         label="Help"     onclick={onOpenHelp} />
 </ToolbarShell>
