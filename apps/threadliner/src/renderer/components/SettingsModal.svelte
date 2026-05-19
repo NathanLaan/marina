@@ -10,6 +10,8 @@
 
   let activeTab = $state('ui');
   let syncWaitTime = $state('10');
+  let pollInterval = $state('10');
+  let pollNotificationsEnabled = $state(true);
   let customTitlebar = $state(false);
   let customTitlebarInitial = $state(false);
   let prefsLoaded = $state(false);
@@ -22,16 +24,46 @@
     { value: '60', label: '60 seconds' },
   ];
 
+  const pollIntervalOptions = [
+    { value: '1',  label: '1 minute' },
+    { value: '5',  label: '5 minutes' },
+    { value: '10', label: '10 minutes' },
+    { value: '30', label: '30 minutes' },
+    { value: '60', label: '60 minutes' },
+  ];
+
   const shortcuts = [
-    { keys: 'Esc',    action: 'Close modal', section: 'General' },
-    { keys: 'Ctrl+=', action: 'Zoom in',     section: 'View' },
-    { keys: 'Ctrl+-', action: 'Zoom out',    section: 'View' },
-    { keys: 'Ctrl+0', action: 'Reset zoom',  section: 'View' },
+    { keys: 'Esc',          action: 'Close modal',     section: 'General' },
+
+    { keys: 'Ctrl+N',       action: 'Add Feed',        section: 'Feeds' },
+    { keys: 'Ctrl+E',       action: 'Edit Feed',       section: 'Feeds' },
+    { keys: 'Ctrl+D',       action: 'Remove Feed',     section: 'Feeds' },
+    { keys: 'F5',           action: 'Refresh Feed',    section: 'Feeds' },
+
+    { keys: 'Ctrl+M',       action: 'Mark as Read',    section: 'Entries' },
+    { keys: 'Ctrl+Shift+M', action: 'Mark as Unread',  section: 'Entries' },
+
+    { keys: 'Ctrl+Shift+T', action: 'Tags',            section: 'Panels' },
+    { keys: 'Ctrl+Shift+S', action: 'Remote Sync',     section: 'Panels' },
+    { keys: 'Ctrl+Shift+E', action: 'Toggle Toolbar',  section: 'Panels' },
+
+    { keys: 'Ctrl+,',       action: 'Settings',        section: 'App' },
+    { keys: 'Ctrl+I',       action: 'About',           section: 'App' },
+    { keys: 'F1',           action: 'Help',            section: 'App' },
+
+    { keys: 'Ctrl+=',       action: 'Zoom in',         section: 'View' },
+    { keys: 'Ctrl+-',       action: 'Zoom out',        section: 'View' },
+    { keys: 'Ctrl+0',       action: 'Reset zoom',      section: 'View' },
   ];
 
   onMount(async () => {
     const saved = await window.api.getSetting('syncWaitTime');
     if (saved) syncWaitTime = String(saved);
+    const savedPoll = await window.api.getSetting('pollInterval');
+    if (savedPoll) pollInterval = String(savedPoll);
+    const savedNotify = await window.api.getSetting('pollNotificationsEnabled');
+    // Default ON if unset.
+    pollNotificationsEnabled = savedNotify === null || savedNotify === undefined ? true : !!savedNotify;
     if (window.api?.getUIPrefs) {
       try {
         const prefs = await window.api.getUIPrefs();
@@ -67,6 +99,15 @@
     await window.api.setSetting('syncWaitTime', syncWaitTime);
   }
 
+  async function handlePollIntervalChange() {
+    await window.api.setSetting('pollInterval', pollInterval);
+  }
+
+  async function setPollNotificationsEnabled(next) {
+    pollNotificationsEnabled = next;
+    await window.api.setSetting('pollNotificationsEnabled', next);
+  }
+
   async function setCustomTitlebar(next) {
     customTitlebar = next;
     if (window.api?.setUIPrefs) {
@@ -84,6 +125,7 @@
 
   const tabs = [
     { id: 'ui',        label: 'UI',                 render: uiTab },
+    { id: 'feeds',     label: 'Feeds',              render: feedsTab },
     { id: 'sync',      label: 'Sync',               render: syncTab },
     { id: 'shortcuts', label: 'Keyboard Shortcuts', render: shortcutsTab },
   ];
@@ -114,6 +156,30 @@
         onRestart={applyRestart}
       />
     {/if}
+  </SettingGroup>
+{/snippet}
+
+{#snippet feedsTab()}
+  <SettingGroup
+    label="Poll Interval"
+    help="How often Threadliner checks all RSS feeds for new entries."
+  >
+    <select bind:value={pollInterval} onchange={handlePollIntervalChange}>
+      {#each pollIntervalOptions as opt (opt.value)}
+        <option value={opt.value}>{opt.label}</option>
+      {/each}
+    </select>
+  </SettingGroup>
+
+  <SettingGroup
+    label="Notifications"
+    help="Show a system notification when new entries arrive."
+  >
+    <ToggleOption
+      label="Show Toast Notifications"
+      checked={pollNotificationsEnabled}
+      onchange={setPollNotificationsEnabled}
+    />
   </SettingGroup>
 {/snippet}
 

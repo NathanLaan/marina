@@ -39,6 +39,14 @@ contextBridge.exposeInMainWorld('api', {
   getSetting: (key) => ipcRenderer.invoke('settings:get', key),
   setSetting: (key, value) => ipcRenderer.invoke('settings:set', key, value),
 
+  // RSS auto-poller
+  pollFeedsNow: () => ipcRenderer.invoke('poller:pollNow'),
+  onFeedsUpdated: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('feeds:updated', listener);
+    return () => ipcRenderer.removeListener('feeds:updated', listener);
+  },
+
   // App info
   getAppVersion: () => ipcRenderer.invoke('app:getVersion'),
 

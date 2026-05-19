@@ -13,7 +13,8 @@
   import TagsModal from './components/TagsModal.svelte';
   import {
     loadFeeds, loadTags, error, setupComplete, checkSetup,
-    selectedFeedId, refreshFeed,
+    selectedFeedId, selectedEntryId, selectedFeed, refreshFeed, entries,
+    removeFeed, markAllRead, markAllUnread, markEntryRead, markEntryUnread,
   } from './stores/app.js';
   import { themeState } from '@marina/desktop-ui/theme';
   import { updateState } from './stores/update.svelte.js';
@@ -31,22 +32,102 @@
   let customTitlebar = $state(false);
   let toolbarVisible = $state(true);
   let appVersion = $state('');
+  let unsubFeedsUpdated = null;
 
   const TITLEBAR_HEIGHT = '32px';
 
+  async function handleFeedsUpdated(payload) {
+    await loadFeeds();
+    if ($selectedFeedId !== null && payload?.updatedFeeds?.some((f) => f.id === $selectedFeedId)) {
+      const fresh = await window.api.getEntries($selectedFeedId);
+      entries.set(fresh);
+    }
+  }
+
+  function isTypingTarget(t) {
+    if (!t) return false;
+    if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT') return true;
+    return !!t.isContentEditable;
+  }
+
+  function anyModalOpen() {
+    return showAddModal || showEditModal || showSettingsModal
+        || showSyncModal || showTagsModal || showAboutModal;
+  }
+
+  function handleMarkReadShortcut() {
+    if ($selectedFeedId === null) return;
+    if ($selectedEntryId !== null) markEntryRead($selectedEntryId, $selectedFeedId);
+    else markAllRead($selectedFeedId);
+  }
+
+  function handleMarkUnreadShortcut() {
+    if ($selectedFeedId === null) return;
+    if ($selectedEntryId !== null) markEntryUnread($selectedEntryId, $selectedFeedId);
+    else markAllUnread($selectedFeedId);
+  }
+
+  function handleRemoveShortcut() {
+    if ($selectedFeedId === null) return;
+    // Matches Toolbar.handleRemove — same confirm copy so the keyboard path
+    // and the button path behave identically.
+    if (confirm(`Remove "${$selectedFeed?.title || 'this feed'}"? This will delete all its entries.`)) {
+      removeFeed($selectedFeedId);
+    }
+  }
+
   function handleGlobalKeydown(e) {
-    if (!(e.ctrlKey || e.metaKey)) return;
-    // Ctrl+= (zoom in — handle both "+" and "=" keys since shift inverts them),
-    // Ctrl+- (zoom out), Ctrl+0 (reset).
-    if (e.key === '=' || e.key === '+') {
+    if (isTypingTarget(e.target)) return;
+
+    const mod = e.ctrlKey || e.metaKey;
+
+    // Zoom is intentionally always-on, even with a modal open, so users can
+    // resize the UI mid-flow. Match the existing Ctrl+= / Ctrl+- / Ctrl+0
+    // handling, including the shift-invert "+" / "_" variants.
+    if (mod && !e.altKey && !e.shiftKey) {
+      if (e.key === '=' || e.key === '+') { e.preventDefault(); themeState.zoomIn();    return; }
+      if (e.key === '-' || e.key === '_') { e.preventDefault(); themeState.zoomOut();   return; }
+      if (e.key === '0')                  { e.preventDefault(); themeState.zoomReset(); return; }
+    }
+
+    // Everything below is gated on setup-complete + no modal open, so a
+    // shortcut can't open a second modal on top of the first.
+    if (!$setupComplete || anyModalOpen()) return;
+
+    // F-key shortcuts (no modifier required).
+    if (e.key === 'F1') {
       e.preventDefault();
-      themeState.zoomIn();
-    } else if (e.key === '-' || e.key === '_') {
+      window.api?.openHelpWindow?.();
+      return;
+    }
+    if (e.key === 'F5') {
       e.preventDefault();
-      themeState.zoomOut();
-    } else if (e.key === '0') {
-      e.preventDefault();
-      themeState.zoomReset();
+      if ($selectedFeedId !== null) refreshFeed($selectedFeedId);
+      return;
+    }
+
+    if (!mod || e.altKey) return;
+
+    if (e.shiftKey) {
+      switch (e.key.toLowerCase()) {
+        case 't': e.preventDefault(); showTagsModal = true; return;
+        case 's': e.preventDefault(); showSyncModal = true; return;
+        case 'e': e.preventDefault(); toolbarVisible = !toolbarVisible; return;
+        case 'm': e.preventDefault(); handleMarkUnreadShortcut(); return;
+      }
+      return;
+    }
+
+    switch (e.key.toLowerCase()) {
+      case 'n': e.preventDefault(); showAddModal = true; return;
+      case 'e':
+        e.preventDefault();
+        if ($selectedFeedId !== null) showEditModal = true;
+        return;
+      case 'd': e.preventDefault(); handleRemoveShortcut();    return;
+      case 'm': e.preventDefault(); handleMarkReadShortcut();  return;
+      case 'i': e.preventDefault(); showAboutModal = true;     return;
+      case ',': e.preventDefault(); showSettingsModal = true;  return;
     }
   }
 
@@ -80,6 +161,7 @@
       await loadFeeds();
       await loadTags();
       startPolling();
+      unsubFeedsUpdated = window.api?.onFeedsUpdated?.(handleFeedsUpdated);
     }
     loading = false;
   });
@@ -87,6 +169,10 @@
   onDestroy(() => {
     window.removeEventListener('keydown', handleGlobalKeydown);
     stopPolling();
+    if (unsubFeedsUpdated) {
+      unsubFeedsUpdated();
+      unsubFeedsUpdated = null;
+    }
   });
 
   async function handleSetupComplete() {
@@ -95,11 +181,14 @@
     await loadFeeds();
     await loadTags();
     startPolling();
+    if (!unsubFeedsUpdated) {
+      unsubFeedsUpdated = window.api?.onFeedsUpdated?.(handleFeedsUpdated);
+    }
   }
 </script>
 
 {#snippet titlebarActions()}
-  <button class="title-action" onclick={() => (showAddModal = true)} aria-label="Add Feed" title="Add Feed">
+  <button class="title-action" onclick={() => (showAddModal = true)} aria-label="Add Feed" title="Add Feed (Ctrl+N)">
     <i class="fas fa-plus"></i>
   </button>
   <button
@@ -107,11 +196,11 @@
     onclick={handleRefreshFromTitlebar}
     disabled={$selectedFeedId === null}
     aria-label="Refresh Feed"
-    title="Refresh Feed"
+    title="Refresh Feed (F5)"
   >
     <i class="fas fa-arrows-rotate"></i>
   </button>
-  <button class="title-action" onclick={() => (showTagsModal = true)} aria-label="Tags" title="Tags">
+  <button class="title-action" onclick={() => (showTagsModal = true)} aria-label="Tags" title="Tags (Ctrl+Shift+T)">
     <i class="fas fa-tags"></i>
   </button>
 {/snippet}
