@@ -13,7 +13,7 @@
   import TagsModal from './components/TagsModal.svelte';
   import {
     loadFeeds, loadTags, error, setupComplete, checkSetup,
-    selectedFeedId, refreshFeed,
+    selectedFeedId, refreshFeed, entries,
   } from './stores/app.js';
   import { themeState } from '@marina/desktop-ui/theme';
   import { updateState } from './stores/update.svelte.js';
@@ -31,8 +31,17 @@
   let customTitlebar = $state(false);
   let toolbarVisible = $state(true);
   let appVersion = $state('');
+  let unsubFeedsUpdated = null;
 
   const TITLEBAR_HEIGHT = '32px';
+
+  async function handleFeedsUpdated(payload) {
+    await loadFeeds();
+    if ($selectedFeedId !== null && payload?.updatedFeeds?.some((f) => f.id === $selectedFeedId)) {
+      const fresh = await window.api.getEntries($selectedFeedId);
+      entries.set(fresh);
+    }
+  }
 
   function handleGlobalKeydown(e) {
     if (!(e.ctrlKey || e.metaKey)) return;
@@ -80,6 +89,7 @@
       await loadFeeds();
       await loadTags();
       startPolling();
+      unsubFeedsUpdated = window.api?.onFeedsUpdated?.(handleFeedsUpdated);
     }
     loading = false;
   });
@@ -87,6 +97,10 @@
   onDestroy(() => {
     window.removeEventListener('keydown', handleGlobalKeydown);
     stopPolling();
+    if (unsubFeedsUpdated) {
+      unsubFeedsUpdated();
+      unsubFeedsUpdated = null;
+    }
   });
 
   async function handleSetupComplete() {
@@ -95,6 +109,9 @@
     await loadFeeds();
     await loadTags();
     startPolling();
+    if (!unsubFeedsUpdated) {
+      unsubFeedsUpdated = window.api?.onFeedsUpdated?.(handleFeedsUpdated);
+    }
   }
 </script>
 

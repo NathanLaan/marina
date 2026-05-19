@@ -1,10 +1,11 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Notification } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const dataStore = require('./data-store');
 const feedParser = require('./feed-parser');
 const gitSync = require('./git-sync');
 const syncManager = require('./sync-manager');
+const feedPoller = require('./feed-poller');
 const {
   registerWindowHandlers,
   registerUIPrefsHandlers,
@@ -304,8 +305,16 @@ function registerIpcHandlers() {
     dataStore.setSetting(key, value);
     if (key === 'syncWaitTime') {
       syncManager.updateWaitTime(parseInt(value, 10) || 10);
+    } else if (key === 'pollInterval') {
+      feedPoller.setIntervalMinutes(value);
     }
     await syncManager.notifyChange('Update setting: ' + key);
+    return { success: true };
+  });
+
+  // RSS poller: manual trigger (used for "Refresh all").
+  ipcMain.handle('poller:pollNow', async () => {
+    await feedPoller.pollOnce();
     return { success: true };
   });
 
@@ -526,6 +535,46 @@ async function initDataAndSync(dataDir) {
 
   // Commit any uncommitted data files (e.g., from initial setup)
   await syncManager.notifyChange('Initialize data store');
+
+  initFeedPoller();
+}
+
+function initFeedPoller() {
+  const stored = dataStore.getSetting('pollInterval');
+  feedPoller.setIntervalMinutes(stored != null ? stored : feedPoller.DEFAULT_INTERVAL_MIN);
+
+  feedPoller.addListener(async (event) => {
+    if (event.type !== 'poll-updated') return;
+
+    // Persist to git on the same debounce as user-driven changes.
+    await syncManager.notifyChange(
+      `Poll: ${event.totalInserted} new ${event.totalInserted === 1 ? 'entry' : 'entries'}`
+    );
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('feeds:updated', {
+        totalInserted: event.totalInserted,
+        updatedFeeds: event.updatedFeeds,
+      });
+    }
+
+    const enabled = dataStore.getSetting('pollNotificationsEnabled');
+    const notificationsOn = enabled === null || enabled === undefined ? true : !!enabled;
+    if (notificationsOn && Notification.isSupported()) {
+      const count = event.totalInserted;
+      const feedSummary =
+        event.updatedFeeds.length === 1
+          ? event.updatedFeeds[0].title
+          : `${event.updatedFeeds.length} feeds`;
+      new Notification({
+        title: 'Threadliner',
+        body: `${count} new ${count === 1 ? 'entry' : 'entries'} in ${feedSummary}`,
+        silent: false,
+      }).show();
+    }
+  });
+
+  feedPoller.start();
 }
 
 app.whenReady().then(async () => {
@@ -553,5 +602,6 @@ app.on('activate', () => {
 });
 
 app.on('before-quit', () => {
+  feedPoller.destroy();
   syncManager.destroy();
 });
