@@ -61,6 +61,9 @@
   <div class="modal about-modal">
     <div class="modal-header">
       <h2>About</h2>
+      <button class="modal-close-btn" onclick={onClose} aria-label="Close" title="Close (Esc)">
+        <i class="fas fa-xmark"></i>
+      </button>
     </div>
     <div class="modal-body">
       <div class="header-row">
