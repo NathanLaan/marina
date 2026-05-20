@@ -11,7 +11,7 @@ import { themeState } from '@marina/desktop-ui/theme';
 // their saved theme.
 themeState.init({
   appId: 'threadliner',
-  // Threadliner ships only these three themes. The library defines more
+  // ThreadLiner ships only these three themes. The library defines more
   // (NoteLiner uses the full set); the allowlist filters Settings → UI →
   // Theme without changing the underlying variable scheme.
   themes: ['light', 'dark', 'midnight'],

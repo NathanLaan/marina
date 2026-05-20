@@ -1,4 +1,4 @@
-# Plan: Refresh Threadliner UI to Match NoteLiner
+# Plan: Refresh ThreadLiner UI to Match NoteLiner
 
 Status: Draft for review
 Source app for reference: `apps/noteliner/` (within the Marina monorepo)
@@ -6,8 +6,8 @@ Target app: `apps/threadliner/` (within the Marina monorepo)
 
 ## Goal
 
-Adopt NoteLiner's more refined visual and interaction patterns into Threadliner
-without changing what Threadliner *does*. The result: Threadliner keeps its
+Adopt NoteLiner's more refined visual and interaction patterns into ThreadLiner
+without changing what ThreadLiner *does*. The result: ThreadLiner keeps its
 RSS-reader functionality but feels like a sibling app to NoteLiner — same
 chrome, same toolbar buttons, same modal language, same theme system.
 
@@ -25,7 +25,7 @@ chrome, same toolbar buttons, same modal language, same theme system.
 **Source:** `apps/noteliner/src/renderer/components/Toolbar.svelte`
 **Target:** `apps/threadliner/src/renderer/components/Toolbar.svelte`
 
-Threadliner already uses a vertical icon column on the left edge. NoteLiner's
+ThreadLiner already uses a vertical icon column on the left edge. NoteLiner's
 version is narrower, denser, and styled with explicit semantic CSS variables.
 
 ### Adopt
@@ -37,12 +37,12 @@ version is narrower, denser, and styled with explicit semantic CSS variables.
 - Divider: 24-px wide 1-px line in `var(--border)`.
 - Spacer (`flex: 1`) between primary and utility button groups.
 - Update dot (small accent-coloured circle in upper-right of About button)
-  when an update is queued — Threadliner doesn't ship auto-updates yet; leave
+  when an update is queued — ThreadLiner doesn't ship auto-updates yet; leave
   the dot CSS in place but only wire it up if `window.api.getAppVersion` later
   gains an update channel.
 - `active` modifier reflects which side-panel/modal is currently open.
 
-### Threadliner-specific button mapping
+### ThreadLiner-specific button mapping
 
 | Group | Buttons (top → bottom) |
 |---|---|
@@ -78,22 +78,22 @@ must-have.
   `frame:` can only be set at `BrowserWindow` construction).
 - When enabled, the 32-px bar shows: hamburger (toggles toolbar visibility),
   app-action group (home / open folder / new file / import — for
-  Threadliner: Add Feed / Refresh / Tags), centred app title, then minimize /
+  ThreadLiner: Add Feed / Refresh / Tags), centred app title, then minimize /
   maximize / close.
 - `-webkit-app-region: drag` on the bar, `no-drag` on buttons.
 - Maximise button swaps between `fa-window-maximize` and `fa-window-restore`
-  based on `window:isMaximized`. Threadliner must subscribe to
+  based on `window:isMaximized`. ThreadLiner must subscribe to
   `onWindowMaximizedChange` so the icon stays in sync.
 - The title-bar uses `background: var(--accent)` and `color: var(--accent-on)`
   — NoteLiner's signature look.
 
-### Threadliner customisations
+### ThreadLiner customisations
 
-- App title: "Threadliner".
+- App title: "ThreadLiner".
 - Quick-action buttons in the bar: Add Feed (`fa-plus`), Refresh Feed
   (disabled when no feed selected), Tags (`fa-tags`).
 - The hamburger toggles the *toolbar* (the vertical icon column). That makes
-  Threadliner match NoteLiner's keyboard-friendly minimal mode.
+  ThreadLiner match NoteLiner's keyboard-friendly minimal mode.
 
 ### IPC additions to `src/main/preload.js`
 
@@ -145,9 +145,9 @@ relaunchApp: () => ipcRenderer.invoke('app:relaunch'),
 - Disconnect → compact confirm modal. Reset from Remote → compact confirm
   modal with red warning banner.
 
-### Reconciling with Threadliner's auto-sync model
+### Reconciling with ThreadLiner's auto-sync model
 
-Threadliner already has a *push-pending* sync manager: it auto-commits after
+ThreadLiner already has a *push-pending* sync manager: it auto-commits after
 local edits and pushes after a debounce window. NoteLiner's UI is more
 manual. Two ways to reconcile:
 
@@ -163,11 +163,11 @@ manual. Two ways to reconcile:
     the main sync modal stays clean.
 
 - **Option B — Replace.** Drop auto-sync, push only when the user clicks.
-  Faster to implement but loses Threadliner's headline feature.
+  Faster to implement but loses ThreadLiner's headline feature.
 
 Plan assumes **Option A**.
 
-### Threadliner-specific changes
+### ThreadLiner-specific changes
 
 - Branch row → display branch from `gitSync.getCurrentBranch()` (new helper
   in `src/main/git-sync.js`).
@@ -181,7 +181,7 @@ Plan assumes **Option A**.
 
 ### Adopt
 
-- Top-tab strip directly under the modal header (replaces Threadliner's
+- Top-tab strip directly under the modal header (replaces ThreadLiner's
   left-tab vertical rail). Tab styling: `padding: 10px 16px`, font-size 13,
   active tab gets `color: var(--accent)` + 2-px bottom border in
   `var(--accent)`.
@@ -196,7 +196,7 @@ Plan assumes **Option A**.
 - `.restart-banner` style for pending restart-required prefs.
 - Modal footer: right-aligned OK button styled as the accent pill.
 
-### Tabs for Threadliner
+### Tabs for ThreadLiner
 
 | Tab | Settings |
 |---|---|
@@ -210,15 +210,15 @@ Plan assumes **Option A**.
 `apps/noteliner/src/renderer/stores/theme.svelte.js`
 
 NoteLiner uses *JS-applied inline CSS variables* on `documentElement`, with
-~30 semantic variables per theme. Threadliner currently uses
+~30 semantic variables per theme. ThreadLiner currently uses
 `[data-theme="…"]` selectors with ~12 variables.
 
 ### Migration
 
-1. **Rename variables.** Map Threadliner's `--color-*` set to NoteLiner's
+1. **Rename variables.** Map ThreadLiner's `--color-*` set to NoteLiner's
    semantic set. Suggested mapping:
 
-   | Threadliner | NoteLiner |
+   | ThreadLiner | NoteLiner |
    |---|---|
    | `--color-bg` | `--bg-base` |
    | `--color-surface` | `--bg-surface` |
@@ -235,8 +235,8 @@ NoteLiner uses *JS-applied inline CSS variables* on `documentElement`, with
 
    Add the missing NoteLiner variables (input, scrollbar, code, modal-overlay,
    accent-on, text-secondary/tertiary/faint, bg-button, bg-drag-over,
-   bg-item-hover) by extrapolating from Threadliner's current palette so the
-   three Threadliner themes still look right.
+   bg-item-hover) by extrapolating from ThreadLiner's current palette so the
+   three ThreadLiner themes still look right.
 
 2. **Replace `applyTheme(value)`** in `stores/theme.js`:
 
@@ -275,22 +275,22 @@ NoteLiner uses *JS-applied inline CSS variables* on `documentElement`, with
 
 ### 6.1 About modal (drawer style)
 
-`apps/noteliner/src/renderer/components/AboutModal.svelte` — replace Threadliner's
-About. Drop the auto-update sections (Threadliner doesn't have an
+`apps/noteliner/src/renderer/components/AboutModal.svelte` — replace ThreadLiner's
+About. Drop the auto-update sections (ThreadLiner doesn't have an
 auto-updater yet); keep the icon / version / description / repo link / OK
 button structure and the bottom-anchored 50% × 50% drawer style. Use
-Threadliner's existing icon.
+ThreadLiner's existing icon.
 
 ### 6.2 Setup flow (`OpenScreen` analogue)
 
 NoteLiner has an `OpenScreen` that fills the editor area when no project is
-open. Threadliner's `SetupDialog` is full-screen and only runs once. Keep
-Threadliner's behaviour, but restyle to match NoteLiner's modal vocabulary
+open. ThreadLiner's `SetupDialog` is full-screen and only runs once. Keep
+ThreadLiner's behaviour, but restyle to match NoteLiner's modal vocabulary
 (`.modal-body`, `.setting-group`, `.toggle-option`).
 
 ### 6.3 Sidebar styling (the feed list)
 
-Even though Threadliner's sidebar isn't paneable, adopt:
+Even though ThreadLiner's sidebar isn't paneable, adopt:
 - `.pane-header` look (small-caps label + close X) for the "Feeds" and
   "Tags" section headers.
 - Item hover/selected colours from `--bg-item-hover` and `--bg-selected`.
@@ -337,7 +337,7 @@ Eight stages, in dependency order. Each can ship behind a working build.
 ### 0. Svelte 4 vs Svelte 5
 
 NoteLiner uses Svelte 5 runes (`$state`, `$props`, `$derived`, `$effect`).
-Threadliner is on Svelte 4 (`writable`, `$store`, `createEventDispatcher`).
+ThreadLiner is on Svelte 4 (`writable`, `$store`, `createEventDispatcher`).
 Three options:
 
 - **Keep Svelte 4.** Port markup + styles; rewrite Svelte-5 idioms back to
@@ -383,7 +383,7 @@ Pick Option A or B from §3 before §7-step-7. Recommendation: Option A.
   drag region intercept clicks unless explicitly tagged `no-drag`. NoteLiner
   already deals with this — copy the pattern exactly.
 - **Sync IPC surface change.** Renaming/adding handlers is a breaking
-  change for any open Threadliner instance — bump the IPC version comment
+  change for any open ThreadLiner instance — bump the IPC version comment
   block and document the migration in the release notes.
 
 ## 11. Out of scope

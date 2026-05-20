@@ -54,7 +54,7 @@ vite.stdout.on('data', (data) => {
   // When Vite is ready, launch Electron
   if (output.includes('Local:')) {
     console.log('\nStarting Electron...\n');
-    const electron = spawn('npx', ['electron', '--class=Threadliner', '.'], {
+    const electron = spawn('npx', ['electron', '--class=ThreadLiner', '.'], {
       cwd: APP_ROOT,
       stdio: 'inherit',
       shell: true,

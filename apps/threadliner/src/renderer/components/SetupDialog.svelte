@@ -41,7 +41,7 @@
   <div class="setup-dialog">
     <div class="setup-header">
       <i class="fas fa-rss"></i>
-      <h1>Welcome to Threadliner</h1>
+      <h1>Welcome to ThreadLiner</h1>
       <p>Let's set up your data storage.</p>
     </div>
 
@@ -49,7 +49,7 @@
       <div class="setup-body">
         <div class="setting-group">
           <span class="setting-label">Data Folder</span>
-          <p class="setting-help">Choose a local folder where Threadliner will store your feeds and settings.</p>
+          <p class="setting-help">Choose a local folder where ThreadLiner will store your feeds and settings.</p>
           <div class="folder-input">
             <input
               type="text"

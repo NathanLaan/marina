@@ -12,6 +12,9 @@ const {
 } = require('@marina/desktop-ui/electron-host');
 const { createSecondaryWindow } = require('@marina/desktop-ui/secondary-window');
 
+// Set app name early so Linux WM_CLASS is correct (for dock icon in dev mode)
+app.setName('ThreadLiner');
+
 let mainWindow;
 let uiPrefsApi;
 
@@ -105,6 +108,7 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 500,
+    icon: path.join(__dirname, '..', '..', 'assets', 'icon.png'),
     // frame can only be set at construction time — that's why the
     // customTitlebar toggle requires a restart.
     frame: !uiPrefs.customTitlebar,
@@ -463,7 +467,8 @@ function registerIpcHandlers() {
   function createHelpWindow() {
     return createSecondaryWindow({
       id: 'help',
-      title: 'Threadliner Help',
+      title: 'ThreadLiner Help',
+      icon: path.join(__dirname, '..', '..', 'assets', 'icon.png'),
       parent: mainWindow,
       preload: path.join(__dirname, '..', '..', 'dist', 'preload.cjs'),
       devUrl: 'http://localhost:5251/help.html',
@@ -567,7 +572,7 @@ function initFeedPoller() {
           ? event.updatedFeeds[0].title
           : `${event.updatedFeeds.length} feeds`;
       new Notification({
-        title: 'Threadliner',
+        title: 'ThreadLiner',
         body: `${count} new ${count === 1 ? 'entry' : 'entries'} in ${feedSummary}`,
         silent: false,
       }).show();

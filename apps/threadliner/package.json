@@ -8,8 +8,13 @@
     "bundle:preload": "esbuild src/main/preload.js --bundle --platform=node --target=node20 --external:electron --outfile=dist/preload.cjs",
     "prebuild": "npm run bundle:preload",
     "build": "vite build",
+    "build:icons": "bash scripts/build-icons.sh",
+    "build:linux": "npm run build && npm run build:icons && electron-builder --linux",
+    "build:win":   "npm run build && npm run build:icons && electron-builder --win",
+    "build:mac":   "npm run build && npm run build:icons && electron-builder --mac",
+    "build:all":   "npm run build && npm run build:icons && electron-builder -mwl",
     "electron:dev": "node scripts/dev.js",
-    "start": "electron ."
+    "start": "electron --class=ThreadLiner ."
   },
   "dependencies": {
     "@marina/desktop-ui": "*",
@@ -21,12 +26,13 @@
   "devDependencies": {},
     "build": {
     "appId": "com.threadline.app",
-    "productName": "Threadliner",
+    "productName": "ThreadLiner",
     "files": [
       "src/main/**/*",
       "!src/main/preload.js",
       "dist/preload.cjs",
-      "dist/renderer/**/*"
+      "dist/renderer/**/*",
+      "assets/icon.png"
     ],
     "directories": {
       "output": "release"

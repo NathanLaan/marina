@@ -1,6 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { TitleBar, AboutModal } from '@marina/desktop-ui/components';
+  import appIconSvg from '../../assets/icon-rss.svg?raw';
   import Toolbar from './components/Toolbar.svelte';
   import Sidebar from './components/Sidebar.svelte';
   import EntryList from './components/EntryList.svelte';
@@ -208,7 +209,7 @@
 <div class="app-layout">
   {#if customTitlebar}
     <TitleBar
-      appName="Threadliner"
+      appName="ThreadLiner"
       onToggleToolbar={() => (toolbarVisible = !toolbarVisible)}
       {toolbarVisible}
       actions={titlebarActions}
@@ -286,7 +287,7 @@
       description="A desktop RSS reader built with Electron, Svelte, and Git-synced JSON."
       repoUrl="https://github.com/NathanLaan/marina/"
       repoLabel="github.com/NathanLaan/marina"
-      iconClass="fa-rss"
+      iconSvg={appIconSvg}
       {updateState}
       onClose={() => (showAboutModal = false)}
     />
@@ -391,7 +392,7 @@
   }
 
   /* The library ToolbarButton exposes an `extraClass` hook for app-specific
-     visual states. Threadliner's auto-sync engine flips syncStatus to
+     visual states. ThreadLiner's auto-sync engine flips syncStatus to
      'committing' or 'waiting' between user actions — tint the Sync button's
      icon so the user notices a push is queued without needing to open the
      modal. :global() opts out of Svelte's CSS scoping because ToolbarButton

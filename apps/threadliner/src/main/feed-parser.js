@@ -5,7 +5,7 @@ const RSS_ACCEPT = 'application/feed+json, application/json, application/rss+xml
 const parser = new RSSParser({
   timeout: 15000,
   headers: {
-    'User-Agent': 'Threadliner/0.1.0',
+    'User-Agent': 'ThreadLiner/0.1.0',
     'Accept': RSS_ACCEPT,
   },
 });
@@ -13,7 +13,7 @@ const parser = new RSSParser({
 async function fetchRaw(url) {
   const response = await fetch(url, {
     headers: {
-      'User-Agent': 'Threadliner/0.1.0',
+      'User-Agent': 'ThreadLiner/0.1.0',
       'Accept': RSS_ACCEPT,
     },
     signal: AbortSignal.timeout(15000),

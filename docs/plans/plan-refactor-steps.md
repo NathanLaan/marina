@@ -33,19 +33,19 @@ continuing — see git history in `git log` for what's been done so far.
 | Step | Phase from foundation plan | Detail spec |
 |---|---|---|
 | 4. Consolidate root tooling | Phase 0 prep | this doc |
-| 5. Upgrade Threadliner stack | Phase 0 prep | this doc |
-| 6. Apply refresh-UI plan to Threadliner | Phase 0 | [`plan-refactor-refresh-ui.md`](./plan-refactor-refresh-ui.md) |
-| 6.5. Unify Threadliner's dev script with NoteLiner's pattern | Phase 0 prep | this doc |
+| 5. Upgrade ThreadLiner stack | Phase 0 prep | this doc |
+| 6. Apply refresh-UI plan to ThreadLiner | Phase 0 | [`plan-refactor-refresh-ui.md`](./plan-refactor-refresh-ui.md) |
+| 6.5. Unify ThreadLiner's dev script with NoteLiner's pattern | Phase 0 prep | this doc |
 | 7. Carve out `packages/desktop-ui/` | Phase 1 | [`plan-refactor-common-foundation.md`](./plan-refactor-common-foundation.md) §"Migration plan" |
 | 8. Convert NoteLiner to consume library | Phase 2 | foundation plan §"Migration plan" |
-| 9. Convert Threadliner to consume library | Phase 3 | foundation plan §"Migration plan" |
+| 9. Convert ThreadLiner to consume library | Phase 3 | foundation plan §"Migration plan" |
 | 10. Library hardening + v1.0 | Phase 4 | foundation plan §"Migration plan" |
 
 ## Step 4 — Consolidate root tooling (light touch)
 
 Goal: shared, version-agnostic project plumbing at the root. **Do not
 hoist `electron`, `vite`, `svelte`, or `@sveltejs/vite-plugin-svelte`
-yet** — Threadliner and NoteLiner are on different versions until Step 5.
+yet** — ThreadLiner and NoteLiner are on different versions until Step 5.
 
 ### 4.1 Verify both apps still build
 
@@ -119,7 +119,7 @@ shared root files are committed.
 
 ---
 
-## Step 5 — Upgrade Threadliner to Svelte 5 + Vite 6 + Electron 41
+## Step 5 — Upgrade ThreadLiner to Svelte 5 + Vite 6 + Electron 41
 
 This is the longest single step. Budget 3–5 days. Best done on a
 dedicated branch: `git checkout -b step-5/threadliner-stack-upgrade`.
@@ -176,7 +176,7 @@ Both are mostly drop-in:
   bumped above.
 - Electron 41: skim https://www.electronjs.org/docs/latest/breaking-changes
   for the 28→41 jump. Most likely affected: deprecated `remote` module
-  (Threadliner doesn't use it), CSP defaults. Smoke-test the app.
+  (ThreadLiner doesn't use it), CSP defaults. Smoke-test the app.
 
 ### 5.5 Validate
 
@@ -187,11 +187,11 @@ npm run build:threadliner
 npm run dev:threadliner
 ```
 
-Exercise every Threadliner feature manually: add a feed, refresh, mark
+Exercise every ThreadLiner feature manually: add a feed, refresh, mark
 read/unread, sync, settings dialog, tags dialog. Nothing should be worse
 than before this step.
 
-**Done when:** Threadliner runs on the new stack with all current
+**Done when:** ThreadLiner runs on the new stack with all current
 functionality intact. Commit the branch.
 
 **Commit:** `feat(threadliner): upgrade to Svelte 5 + Vite 6 + Electron 41`
@@ -221,7 +221,7 @@ npm run build  # verify both apps still build
 
 ---
 
-## Step 6 — Apply the refresh-UI plan to Threadliner
+## Step 6 — Apply the refresh-UI plan to ThreadLiner
 
 Branch: `step-6/threadliner-ui-refresh`.
 
@@ -241,7 +241,7 @@ to commits on this branch:
 Budget: ~2 weeks. Each sub-stage is independently mergeable; ship them
 to `main` as they land if you'd rather not carry a long-running branch.
 
-**Done when:** Threadliner side-by-side with NoteLiner looks like a
+**Done when:** ThreadLiner side-by-side with NoteLiner looks like a
 sibling app. The two visual languages should be indistinguishable.
 
 **Final commit (or merge):** `feat(threadliner): adopt NoteLiner visual
@@ -249,16 +249,16 @@ language (refresh-ui plan)`
 
 ---
 
-## Step 6.5 — Unify Threadliner's dev script with NoteLiner's pattern
+## Step 6.5 — Unify ThreadLiner's dev script with NoteLiner's pattern
 
-Goal: bring Threadliner's dev workflow in line with NoteLiner's so both
+Goal: bring ThreadLiner's dev workflow in line with NoteLiner's so both
 apps run via `npm run electron:dev -w <app>`. Eliminates the
 README-documented asymmetry and sets up the shared dev infra that can
 move into the library in Step 7.
 
 ### Why
 
-- Threadliner's current `dev` script
+- ThreadLiner's current `dev` script
   (`vite build && vite build --watch & electron .`) rebuilds to disk and
   requires a manual `Ctrl+R` in the Electron window after every renderer
   change. NoteLiner's `scripts/dev.js` runs the Vite dev server with HMR
@@ -267,19 +267,19 @@ move into the library in Step 7.
   language. Dev orchestration is the last meaningful inconsistency
   before Step 7 turns the shared bits into a library.
 
-### 6.5.1 Port `scripts/dev.js` to Threadliner
+### 6.5.1 Port `scripts/dev.js` to ThreadLiner
 
 Copy `apps/noteliner/scripts/dev.js` → `apps/threadliner/scripts/dev.js`.
 Adjustments:
 
 - Drop the `--class=NoteLiner` Linux WM hint (or replace with
-  `--class=Threadliner` if desired).
+  `--class=ThreadLiner` if desired).
 - Vite port: NoteLiner uses 5250 (set in its `vite.config.mjs`
-  `server.port` and hardcoded into `main.js`). Threadliner's vite config
+  `server.port` and hardcoded into `main.js`). ThreadLiner's vite config
   has no `server` block today — set it to 5251 so both apps can run
   simultaneously without a port collision.
 
-### 6.5.2 Teach Threadliner's main process to load the dev server
+### 6.5.2 Teach ThreadLiner's main process to load the dev server
 
 `apps/threadliner/src/main/main.js` currently has:
 
@@ -301,7 +301,7 @@ if (isDev) {
 }
 ```
 
-### 6.5.3 Update Threadliner's `package.json` scripts
+### 6.5.3 Update ThreadLiner's `package.json` scripts
 
 ```jsonc
 "scripts": {
@@ -315,7 +315,7 @@ if (isDev) {
 Drop the old `dev:renderer` and `dev:electron` — they're redundant once
 `electron:dev` exists.
 
-### 6.5.4 Add a Vite server config to Threadliner
+### 6.5.4 Add a Vite server config to ThreadLiner
 
 `apps/threadliner/vite.config.mjs`:
 
@@ -546,11 +546,11 @@ for chrome and theming`
 
 ---
 
-## Step 9 — Convert Threadliner to consume the library
+## Step 9 — Convert ThreadLiner to consume the library
 
 Branch: `step-9/threadliner-on-desktop-ui`.
 
-Same routine as Step 8. Threadliner's custom tabs (Sync activity, future
+Same routine as Step 8. ThreadLiner's custom tabs (Sync activity, future
 Feed Defaults) register as `SettingsShell` contributions.
 
 ### 9.1 Add dependency
@@ -565,7 +565,7 @@ Feed Defaults) register as `SettingsShell` contributions.
 
 ### 9.2 Replace local imports + IPC handlers
 
-Mirror Step 8.2 + 8.3 for Threadliner.
+Mirror Step 8.2 + 8.3 for ThreadLiner.
 
 ### 9.3 Validate
 
@@ -575,7 +575,7 @@ npm run dev:threadliner
 
 Exercise every feature; pixel-compare against the post-refresh-UI build.
 
-**Done when:** Threadliner runs identically to its post-Step-6 state,
+**Done when:** ThreadLiner runs identically to its post-Step-6 state,
 with library imports replacing every local copy.
 
 **Commit (or merge):** `refactor(threadliner): consume @marina/desktop-ui
@@ -626,8 +626,8 @@ constraints, and the tag exists.
 | After step | What you have |
 |---|---|
 | 4 | Working monorepo, common tooling, both apps build green |
-| 5 | Threadliner on the same stack as NoteLiner; ready for visual refresh |
-| 6 | Threadliner visually matches NoteLiner; library work optional |
+| 5 | ThreadLiner on the same stack as NoteLiner; ready for visual refresh |
+| 6 | ThreadLiner visually matches NoteLiner; library work optional |
 | 6.5 | Both apps share the same dev workflow (`electron:dev` + HMR) |
 | 7 | Library buildable in isolation, not yet consumed |
 | 9 | Both apps thinner; library proven in production |

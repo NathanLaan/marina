@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- SVG recreation of threadliner-icon-1.png — rounded white tile with a
+       black outline, an italic orange "t" floating above three blue waves.
+
+       The frame and waves are hand-drawn vector paths; the letterform is
+       rendered with a serif/italic font stack so the glyph shape matches the
+       source design without needing per-glyph path coordinates. End-renderers
+       that don't have Bookman/Georgia available will fall back to the
+       system's default serif — visually close, but not identical. -->
+
+  <defs>
+    <!-- Tight clip so the waves don't bleed past the rounded corners. -->
+    <clipPath id="tlFrameClip">
+      <rect x="22" y="22" width="468" height="468" rx="76" ry="76"/>
+    </clipPath>
+  </defs>
+
+  <!-- Rounded square: cream-white fill, black outline. -->
+  <rect x="22" y="22" width="468" height="468" rx="76" ry="76"
+        fill="#fdfaf2" stroke="#1a1a1a" stroke-width="16"/>
+
+  <!-- Italic bold "t" in feed-orange with black outline. paint-order=stroke
+       keeps the stroke from eating into the colored body of the glyph. -->
+  <text x="256" y="320"
+        font-family="'Bookman Old Style', 'Georgia', 'Times New Roman', serif" font-weight="900" font-size="380"
+        text-anchor="middle"
+        fill="#f4a82a"
+        stroke="#1a1a1a" stroke-width="28"
+        stroke-linejoin="round"
+        paint-order="stroke fill">t</text>
+
+  <!-- Three blue wave crests along the bottom, clipped to the frame so the
+       outline rolls into the rounded corners cleanly. -->
+  <g clip-path="url(#tlFrameClip)">
+    <path d="M -16 378
+             C 30 438, 122 438, 168 378
+             C 212 438, 300 438, 344 378
+             C 388 438, 482 438, 528 378
+             L 528 570 L -16 570 Z"
+          fill="#3989e5" stroke="#1a1a1a" stroke-width="14"
+          stroke-linejoin="round"/>
+  </g>
+</svg>
