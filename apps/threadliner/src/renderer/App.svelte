@@ -281,11 +281,11 @@
 
   {#if showAboutModal}
     <AboutModal
-      appName="Threadliner"
+      appName="ThreadLiner"
       version={appVersion}
       description="A desktop RSS reader built with Electron, Svelte, and Git-synced JSON."
-      repoUrl="https://github.com/NathanLaan/threadline"
-      repoLabel="github.com/NathanLaan/threadline"
+      repoUrl="https://github.com/NathanLaan/marina/"
+      repoLabel="github.com/NathanLaan/marina"
       iconClass="fa-rss"
       {updateState}
       onClose={() => (showAboutModal = false)}
