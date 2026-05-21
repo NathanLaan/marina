@@ -37,7 +37,7 @@
 
 <div class="help-shell">
   <header class="help-header">
-    <h1>Threadliner Help</h1>
+    <h1>ThreadLiner Help</h1>
     <p>RSS reader with Git-synced JSON storage.</p>
   </header>
 

@@ -110,17 +110,47 @@ input, textarea {
 .modal-header {
   display: flex;
   align-items: center;
+  gap: 8px;
   background: var(--accent);
-  padding: 16px 24px;
+  height: 32px;
+  padding: 0 24px;
   flex-shrink: 0;
 }
 
 .modal-header h2 {
+  flex: 1;
   font-size: 14px;
   font-weight: 600;
   color: var(--accent-on);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.modal-close-btn {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--accent-on);
+  font-size: 14px;
+  opacity: 0.8;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.modal-close-btn:hover {
+  background: rgba(0, 0, 0, 0.18);
+  opacity: 1;
+}
+
+.modal-close-btn:focus-visible {
+  outline: 2px solid var(--accent-on);
+  outline-offset: 1px;
 }
 
 .modal-body {

@@ -1,11 +1,11 @@
-# Plan: Marina — Shared UI Foundation for NoteLiner and Threadliner
+# Plan: Marina — Shared UI Foundation for NoteLiner and ThreadLiner
 
 Status: Active — execution tracked in [`plan-refactor-steps.md`](./plan-refactor-steps.md)
 Monorepo: `~/dev/hub/laan/marina/` (apps under `apps/`, shared packages under `packages/`)
 
 ## Goal
 
-Pull the visual + interaction primitives that NoteLiner and Threadliner have
+Pull the visual + interaction primitives that NoteLiner and ThreadLiner have
 in common into a single reusable library. Each app keeps its own
 identity, main-process code, and domain logic — only the shared chrome,
 theme system, and Electron IPC glue is consolidated.
@@ -18,7 +18,7 @@ natural home for it if both apps are ever cloned together.
 
 The platform is **Marina** — the dock where our "liner"-suffixed desktop
 apps live. This library, **`@marina/desktop-ui`**, is the shared UI kit
-that powers Marina's apps: **NoteLiner** and **Threadliner** (renamed
+that powers Marina's apps: **NoteLiner** and **ThreadLiner** (renamed
 from "Threadline" to match the `-liner` suffix). The package only ever
 ships internally; it is not published to npm.
 
@@ -26,7 +26,7 @@ Brand-style guide for this plan:
 
 - **Marina** — the platform / monorepo / umbrella product
 - **`@marina/...`** — the npm scope for shared packages
-- **NoteLiner**, **Threadliner** — the two apps (the "liners" that dock
+- **NoteLiner**, **ThreadLiner** — the two apps (the "liners" that dock
   at Marina)
 
 ## Scope: what goes in the foundation
@@ -48,14 +48,14 @@ Brand-style guide for this plan:
 - Domain components (FileTree, OutlinePane, BacklinksPane, EntryList,
   ContentViewer, FeedParser, ProjectService, McpService, GitService).
 - Sync UI — the user-facing modal is similar, but the underlying sync
-  *engine* differs (manual git in NoteLiner, auto-debounced in Threadliner).
+  *engine* differs (manual git in NoteLiner, auto-debounced in ThreadLiner).
   We export a generic `SyncModal` whose props accept a status descriptor +
   action callbacks, and each app supplies its own engine.
 - Auto-updater (NoteLiner only, for now).
 - MCP server (NoteLiner only).
 - Command palette is included as a *separate optional sub-export*
   (`@marina/desktop-ui/command-palette`) because it pulls in a fuzzy-match
-  dependency Threadliner doesn't otherwise need.
+  dependency ThreadLiner doesn't otherwise need.
 
 ## Repository layout
 
@@ -161,7 +161,7 @@ contextBridge.exposeInMainWorld('api', {
 ### `<TitleBar appName slot=actions />`
 
 ```svelte
-<TitleBar appName="Threadliner" onToggleToolbar={...} toolbarVisible={...}>
+<TitleBar appName="ThreadLiner" onToggleToolbar={...} toolbarVisible={...}>
   <svelte:fragment slot="actions">
     <ToolbarButton icon="fa-plus" title="Add Feed" onclick={...} />
     <ToolbarButton icon="fa-sync-alt" title="Refresh" onclick={...} disabled={...} />
@@ -192,7 +192,7 @@ slide-up animation, and `--titlebar-height` offset.
 ### `<AboutModal appName version repoUrl iconSrc updateState? />`
 
 Drawer-style by default. `updateState` is an optional prop — when omitted,
-the update UI doesn't render. Lets Threadliner use the same component
+the update UI doesn't render. Lets ThreadLiner use the same component
 without dragging in `electron-updater`.
 
 ## Theme system
@@ -205,7 +205,7 @@ The library owns the variable names. Apps:
 3. Pick which themes show in the picker:
    `themeState.setVisible(['midnight','dark','light'])`.
 
-Threadliner keeps `light`, `dark`, `midnight`. NoteLiner adds `dark-purple`,
+ThreadLiner keeps `light`, `dark`, `midnight`. NoteLiner adds `dark-purple`,
 `light-purple`, `light-mulberry`. All apps share the same variable surface,
 so a component styled with `var(--bg-button)` looks right under every
 registered theme.
@@ -231,7 +231,7 @@ Two-layer system:
 
 1. **Variables.** Defined per-theme on `documentElement` by the theme
    store. Apps can override any variable by setting it on a deeper
-   selector — e.g., Threadliner can pin `--accent` to its brand colour by
+   selector — e.g., ThreadLiner can pin `--accent` to its brand colour by
    default while NoteLiner uses the user's pick.
 2. **Component CSS.** Each library component ships scoped CSS. The shared
    `global.css` only defines reset + scrollbar + the modal/pane primitives
@@ -302,13 +302,13 @@ Phased so the apps stay shippable throughout.
 ### Phase 0 — Convergence prep (NoteLiner = source of truth)
 
 The library's API mirrors NoteLiner's current code. Phase 0 makes
-Threadliner ready to consume it.
+ThreadLiner ready to consume it.
 
 1. Adopt the [`plan-refactor-refresh-ui.md`](./plan-refactor-refresh-ui.md)
-   work in Threadliner, including the Svelte 5 upgrade. This brings
-   Threadliner's component shapes in line with what the library will
+   work in ThreadLiner, including the Svelte 5 upgrade. This brings
+   ThreadLiner's component shapes in line with what the library will
    eventually export.
-2. **Result:** Threadliner + NoteLiner have very similar files that don't
+2. **Result:** ThreadLiner + NoteLiner have very similar files that don't
    share code yet but look alike. Both apps still ship independently.
 
 ### Phase 1 — Carve out the library (no consumer changes yet)
@@ -338,13 +338,13 @@ Threadliner ready to consume it.
 8. Diff the chrome before/after: any visual drift gets fixed in the
    library, not in NoteLiner.
 
-### Phase 3 — Convert Threadliner to the library
+### Phase 3 — Convert ThreadLiner to the library
 
-9. Replace Threadliner's local copies with the same imports.
-10. Threadliner's `SettingsShell` registers its own `SyncTab` and
+9. Replace ThreadLiner's local copies with the same imports.
+10. ThreadLiner's `SettingsShell` registers its own `SyncTab` and
     `FeedDefaultsTab` (custom tabs).
 11. The sync engine stays in `src/main/sync-manager.js`; only the
-    *modal* (status dot + action row) is library-provided. Threadliner
+    *modal* (status dot + action row) is library-provided. ThreadLiner
     passes a status descriptor and action callbacks.
 
 ### Phase 4 — Library hardening
@@ -357,7 +357,7 @@ Threadliner ready to consume it.
 ## Risks / costs
 
 - **Svelte upgrade is a hard prerequisite.** The library is Svelte 5
-  only. Threadliner must finish the refresh-UI plan (Svelte 5 upgrade
+  only. ThreadLiner must finish the refresh-UI plan (Svelte 5 upgrade
   included) before it can consume the library.
 - **Variable rename ripple.** Every component that reads `--color-bg` etc.
   needs to migrate to the library's variable set.
@@ -369,7 +369,7 @@ Threadliner ready to consume it.
   every library change demands a tag, a bump in two consumers, and two
   app-level QA passes.
 - **Test coverage.** NoteLiner has Playwright tests that pin behaviour;
-  Threadliner has none. Adopting the library in Threadliner lacks safety
+  ThreadLiner has none. Adopting the library in ThreadLiner lacks safety
   net unless we also adopt NoteLiner's test harness (worth it).
 
 ## Effort estimate
@@ -379,7 +379,7 @@ Threadliner ready to consume it.
 | 0 | already covered by `plan-refactor-refresh-ui.md` |
 | 1 | 1–2 weeks (library carve-out + playground) |
 | 2 | 3–5 days (NoteLiner cutover) |
-| 3 | 3–5 days (Threadliner cutover) |
+| 3 | 3–5 days (ThreadLiner cutover) |
 | 4 | 1 week (hardening + v1) |
 
 Total: **~3–4 weeks of focused work**, assuming Phase 0 is done.

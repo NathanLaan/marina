@@ -1,7 +1,7 @@
 # @marina/desktop-ui
 
 Shared UI components, theme system, and Electron host helpers for the Marina
-desktop apps (NoteLiner, Threadliner).
+desktop apps (NoteLiner, ThreadLiner).
 
 This package is workspace-private — it's not published to npm. Consumers
 inside the Marina monorepo depend on it via `"@marina/desktop-ui": "*"`.
@@ -162,7 +162,7 @@ unique `appId` at init time.
 
 ### `themeState.hydrateFromSettings()` (optional)
 
-Apps whose data dir is git-synced (e.g. Threadliner) can mirror the
+Apps whose data dir is git-synced (e.g. ThreadLiner) can mirror the
 theme/scale choice into a synced settings store and pick it up on a fresh
 install. The library writes through `window.api.setSetting('theme'|'scale', …)`
 in `set`/`setScale` when that method is present, and `hydrateFromSettings()`

@@ -261,7 +261,7 @@ class ThemeState {
     this.apply();
     localStorage.setItem(this.themeKey, themeId);
     // Mirror to the app's settings store if one is exposed — lets apps with a
-    // git-synced data dir (Threadliner) carry the choice across machines.
+    // git-synced data dir (ThreadLiner) carry the choice across machines.
     // Apps without setSetting (NoteLiner) skip cleanly through the ?.
     if (window.api?.setSetting) {
       window.api.setSetting('theme', themeId).catch(() => { /* non-critical */ });

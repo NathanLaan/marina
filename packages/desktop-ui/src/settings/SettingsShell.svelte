@@ -37,6 +37,9 @@
   <div class="modal">
     <div class="modal-header">
       <h2>{title}</h2>
+      <button class="modal-close-btn" onclick={onClose} aria-label="Close" title="Close (Esc)">
+        <i class="fas fa-xmark"></i>
+      </button>
     </div>
 
     <div class="tab-bar">

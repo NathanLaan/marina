@@ -739,8 +739,8 @@
     appName="NoteLiner"
     version={__APP_VERSION__}
     description="An outliner-style note-taking application built with Electron and Svelte."
-    repoUrl="https://github.com/NathanLaan/noteliner"
-    repoLabel="github.com/NathanLaan/noteliner"
+    repoUrl="https://github.com/NathanLaan/marina/"
+    repoLabel="github.com/NathanLaan/marina"
     iconSvg={appIconSvg}
     {updateState}
     onClose={() => showAbout = false}

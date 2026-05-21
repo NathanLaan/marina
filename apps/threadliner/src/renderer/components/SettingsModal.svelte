@@ -162,7 +162,7 @@
 {#snippet feedsTab()}
   <SettingGroup
     label="Poll Interval"
-    help="How often Threadliner checks all RSS feeds for new entries."
+    help="How often ThreadLiner checks all RSS feeds for new entries."
   >
     <select bind:value={pollInterval} onchange={handlePollIntervalChange}>
       {#each pollIntervalOptions as opt (opt.value)}

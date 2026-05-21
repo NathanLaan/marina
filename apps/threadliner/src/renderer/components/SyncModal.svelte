@@ -190,6 +190,9 @@
   <div class="modal sync-modal">
     <div class="modal-header">
       <h2>Remote Sync</h2>
+      <button class="modal-close-btn" onclick={onClose} aria-label="Close" title="Close (Esc)">
+        <i class="fas fa-xmark"></i>
+      </button>
     </div>
     <div class="modal-body">
       {#if loading}
@@ -281,6 +284,9 @@
     <div class="modal-compact">
       <div class="modal-header">
         <h2>Disconnect Remote</h2>
+        <button class="modal-close-btn" onclick={() => (showDisconnectConfirm = false)} aria-label="Close" title="Close (Esc)">
+          <i class="fas fa-xmark"></i>
+        </button>
       </div>
       <div class="modal-body">
         <p class="confirm-prompt">Disconnect from the remote repository?</p>
@@ -307,6 +313,9 @@
     <div class="modal-compact">
       <div class="modal-header">
         <h2>Reset from Remote</h2>
+        <button class="modal-close-btn" onclick={() => (showResetConfirm = false)} aria-label="Close" title="Close (Esc)">
+          <i class="fas fa-xmark"></i>
+        </button>
       </div>
       <div class="modal-body">
         <p class="confirm-warning">This will discard ALL local changes and replace your feeds with the latest version from the remote repository.</p>

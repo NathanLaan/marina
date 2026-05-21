@@ -75,7 +75,7 @@ tests are pinned against, so it's the right reference.
 
 **Commit:** any fix-forward needed; no commit if it's already passing.
 
-### A.3 Fix the `productName` typo in Threadliner
+### A.3 Fix the `productName` typo in ThreadLiner
 
 `apps/threadliner/package.json` still says:
 
@@ -83,12 +83,12 @@ tests are pinned against, so it's the right reference.
 "productName": "Threadline"
 ```
 
-The npm package + everywhere else in this repo is **Threadliner**.
+The npm package + everywhere else in this repo is **ThreadLiner**.
 electron-builder uses `productName` for installer titles, app bundle
 names, etc.; leaving it wrong means the next packaged build ships with
 the old name. One-line fix.
 
-**Done when:** `productName` reads `"Threadliner"` and a quick
+**Done when:** `productName` reads `"ThreadLiner"` and a quick
 `npm run build:threadliner` is green.
 
 **Commit:** `fix(threadliner): correct productName spelling`
@@ -115,7 +115,7 @@ push to GitHub).
 Items I noticed while doing 4–10 that are small enough to land
 individually. None affect correctness; each is one commit.
 
-### B.1 Reload in-memory state after `git:resetToRemote` (Threadliner)
+### B.1 Reload in-memory state after `git:resetToRemote` (ThreadLiner)
 
 `apps/threadliner/src/renderer/components/SyncModal.svelte`'s
 `handleResetFromRemote` calls `window.api.gitResetToRemote()` which
@@ -147,14 +147,14 @@ without restart.
 
 **Commit:** `fix(threadliner): refresh in-memory state after reset from remote`
 
-### B.2 Optional theme allowlist for Threadliner
+### B.2 Optional theme allowlist for ThreadLiner
 
 The library exposes 6 themes (light / dark / midnight / darkPurple /
-lightPurple / lightMulberry). Threadliner had 3 (light / dark /
+lightPurple / lightMulberry). ThreadLiner had 3 (light / dark /
 midnight) before Step 9; the new options work fine but expose theming
-Threadliner didn't ship before.
+ThreadLiner didn't ship before.
 
-If you'd rather keep Threadliner at 3, add an allowlist option to the
+If you'd rather keep ThreadLiner at 3, add an allowlist option to the
 library's `themeState.configure({ themes: [...] })`. Sketch:
 
 ```js
@@ -181,7 +181,7 @@ themeState.init({
 });
 ```
 
-**Done when:** Threadliner's Settings → UI → Theme list shows three
+**Done when:** ThreadLiner's Settings → UI → Theme list shows three
 themes; NoteLiner still shows six.
 
 **Commit:** `feat(desktop-ui): add theme allowlist; pin threadliner to 3`
@@ -200,7 +200,7 @@ primary path with `sandbox: false` as a prototyping fallback.
 **Status: done.** All three items landed. Summaries kept below as a paper
 trail; jump to the source files for the current shape.
 
-### C.1 Auto-updater for Threadliner — done
+### C.1 Auto-updater for ThreadLiner — done
 
 Ported NoteLiner's `update.svelte.js` store verbatim to
 `apps/threadliner/src/renderer/stores/`. Added `electron-updater` to
@@ -216,7 +216,7 @@ unchanged. When a packaged build runs, the About modal shows the
 Check / Download / Install buttons fed by electron-updater.
 
 The actual update feed (`build.publish` in electron-builder config) is
-not wired — there's no Threadliner release channel yet. Add when ready
+not wired — there's no ThreadLiner release channel yet. Add when ready
 to ship.
 
 ### C.2 Paneable / reorderable sidebar — done
@@ -229,7 +229,7 @@ descriptors plus an `order` array and callbacks for resize/reorder/close.
 
 NoteLiner's `Sidebar.svelte` shrank from 454 to ~210 lines; pane
 content moved into local snippets, layout flows through `<PaneHost>`.
-Threadliner's sidebar is unchanged (Feeds + Tags is structurally
+ThreadLiner's sidebar is unchanged (Feeds + Tags is structurally
 simple; doesn't benefit from PaneHost).
 
 ### C.3 Help window pattern — done (option B)
@@ -241,8 +241,8 @@ sandbox-compatible webPreferences defaults, dev/prod URL switching,
 and 'closed' cleanup.
 
 NoteLiner's `createHelpWindow` migrated to use the helper (consumes
-its own dogfood). Threadliner gained a help window: new `help.html`,
-`help.js`, `HelpApp.svelte` (Threadliner-flavoured help with
+its own dogfood). ThreadLiner gained a help window: new `help.html`,
+`help.js`, `HelpApp.svelte` (ThreadLiner-flavoured help with
 Getting-started, Tags, Sync, Settings sections), `vite.config.mjs`
 updated with a second rollup entry, `help:open` IPC handler, preload
 binding, and a Help button at the bottom of the toolbar
@@ -277,7 +277,7 @@ Things to know about but not necessarily fix:
   Each app registers a window-recreate handler instead. The library's
   helper still works for packaged builds but is unused in this repo.
 - **`themeState.hydrateFromSettings` + auto-mirror-to-settings on `set`.**
-  Threadliner uses this (git-synced data dir). NoteLiner doesn't expose
+  ThreadLiner uses this (git-synced data dir). NoteLiner doesn't expose
   `window.api.setSetting`, so the optional-chain guards skip cleanly.
   Library-side both methods exist generically; no consumer-side opt-in
   needed.
@@ -298,6 +298,6 @@ opt-in and can land in any order — they don't depend on each other.
 
 - [`plan-refactor-steps.md`](./plan-refactor-steps.md) — completed execution plan (Steps 4–10)
 - [`plan-refactor-common-foundation.md`](./plan-refactor-common-foundation.md) — library design (now implemented)
-- [`plan-refactor-refresh-ui.md`](./plan-refactor-refresh-ui.md) — Threadliner visual refresh (now implemented); §11 lists what was deferred
+- [`plan-refactor-refresh-ui.md`](./plan-refactor-refresh-ui.md) — ThreadLiner visual refresh (now implemented); §11 lists what was deferred
 - [`plan-refactor-modular-app.md`](./plan-refactor-modular-app.md) — future direction; evaluate in Phase D
 - [`plan-refactor-summary.md`](./plan-refactor-summary.md) — three-plan comparison

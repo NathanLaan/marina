@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Rounded-square tile. Colors match the AboutModal's icon-fa rendering
+       under the default "midnight" theme: var(--accent) #89b4fa background
+       with the glyph in var(--accent-on) #1e1e2e. The 96px corner radius on
+       a 512px square preserves the 18/96 radius ratio used by .app-icon. -->
+  <rect width="512" height="512" rx="96" ry="96" fill="#89b4fa"/>
+
+  <!-- Font Awesome 6 "rss" (solid) glyph. Source viewBox is 0 0 448 512.
+       Scaling by 0.457 yields a ~205×234 glyph (≈45.8% of the tile, matching
+       the 44/96 font-size ratio in .app-icon.icon-fa) and translating by
+       (153, 139) centers it within the tile. -->
+  <g fill="#1e1e2e" transform="translate(153, 139) scale(0.457)">
+    <path d="M0 64C0 46.3 14.3 32 32 32c229.8 0 416 186.2 416 416c0 17.7-14.3 32-32 32s-32-14.3-32-32C384 253.6 226.4 96 32 96C14.3 96 0 81.7 0 64zM0 256c0-17.7 14.3-32 32-32c123.7 0 224 100.3 224 224c0 17.7-14.3 32-32 32s-32-14.3-32-32c0-88.4-71.6-160-160-160c-17.7 0-32-14.3-32-32zM80 416a48 48 0 1 1 0-96 48 48 0 1 1 0 96z"/>
+  </g>
+</svg>

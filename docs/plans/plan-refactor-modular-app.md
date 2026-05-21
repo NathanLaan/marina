@@ -1,11 +1,11 @@
-# Plan: One Modular App — Installable NoteLiner and Threadliner Modules
+# Plan: One Modular App — Installable NoteLiner and ThreadLiner Modules
 
 Status: Draft for review
 Working name: **Marina** (single Electron app, two installable modules)
 
 ## Goal
 
-Collapse NoteLiner and Threadliner into a single Electron application whose
+Collapse NoteLiner and ThreadLiner into a single Electron application whose
 features are organised as modules the user can install, enable, disable,
 or uninstall at runtime. The shell looks and behaves like one product.
 Each module owns a domain (notes / RSS feeds / ...future), shows up in the
@@ -20,7 +20,7 @@ a shared UI library. This plan eliminates the second app entirely.
 Boot the app cold and you see a chrome with no module-specific UI.
 Settings → Modules has an "Add module" row. Pick "NoteLiner" — a new
 toolbar group appears, the sidebar becomes available, the editor / preview
-panes mount on demand. Pick "Threadliner" too — a second toolbar group
+panes mount on demand. Pick "ThreadLiner" too — a second toolbar group
 appears below the first, the sidebar gains a second sub-panel for feeds,
 the entry list and content viewer pane become available. Each module can
 be unticked and the UI shrinks back accordingly.
@@ -41,10 +41,10 @@ be unticked and the UI shrinks back accordingly.
 
 - **Layout.** The two apps disagree about what fills the editor pane.
   NoteLiner's centre is an editor + preview + history + attachments;
-  Threadliner's centre is an entry list + content viewer. The shell needs
+  ThreadLiner's centre is an entry list + content viewer. The shell needs
   a "workspace" abstraction that one module owns at a time.
 - **Storage models.** NoteLiner is a folder of `.md` files with a JSON
-  index + git sync. Threadliner is a git-synced JSON store of feeds.
+  index + git sync. ThreadLiner is a git-synced JSON store of feeds.
   Either each module owns its own data directory, or we converge on a
   single workspace folder that contains both.
 - **Lifecycle.** Install → enable → load → IPC handlers register → UI
@@ -284,7 +284,7 @@ requirement and a permission model — both substantial.
    - Persist data under `module-data/noteliner/`.
 5. **Smoke-test as a single-module app.** Should be feature-parity
    with current NoteLiner.
-6. **Port Threadliner into `modules/threadliner/`.**
+6. **Port ThreadLiner into `modules/threadliner/`.**
    - Same routine. Workspace id: `feeds`.
    - Sync engine adapts the existing auto-push model to the shell's
      sync registry contract.
@@ -295,7 +295,7 @@ requirement and a permission model — both substantial.
    - Notes can `[[feed:<id>]]`-link into an RSS entry.
    - Command palette shows commands from both modules.
    - Theme stays shared.
-9. **Deprecate** the standalone NoteLiner and Threadliner binaries. Ship
+9. **Deprecate** the standalone NoteLiner and ThreadLiner binaries. Ship
    the unified bundle.
 
 ### Backwards-compatibility for existing users
@@ -304,7 +304,7 @@ requirement and a permission model — both substantial.
   Marina boot with the NoteLiner module enabled, prompt to import
   recent projects (we already store these as JSON pointers — no data
   copying needed).
-- Existing Threadliner users have a `dataDir` config. Same prompt to
+- Existing ThreadLiner users have a `dataDir` config. Same prompt to
   import.
 - We do *not* move user data — we just point the module at the existing
   location.
@@ -334,7 +334,7 @@ These need a decision before implementation, in roughly this order.
 - **Performance.** Two modules in one process = two file watchers, two
   git engines, possibly an MCP server. The current single-app footprints
   add up.
-- **Branding.** "NoteLiner" and "Threadliner" are recognisable. The unified
+- **Branding.** "NoteLiner" and "ThreadLiner" are recognisable. The unified
   shell needs its own identity, or the modules need to remain marketed
   as separate things even though they share an installer.
 - **Reversibility.** Once consumers migrate to the unified app, going
@@ -349,7 +349,7 @@ These need a decision before implementation, in roughly this order.
 | Foundation library (prerequisite) | 3–4 weeks |
 | Shell skeleton + module host | 2–3 weeks |
 | NoteLiner-as-module port | 2 weeks |
-| Threadliner-as-module port | 1–2 weeks |
+| ThreadLiner-as-module port | 1–2 weeks |
 | Module manager UI + polish | 1 week |
 | QA + migration story | 1 week |
 
