@@ -1,5 +1,5 @@
 #!/bin/bash
-# Generate and install a .desktop file for NoteLiner with correct paths
+# Generate and install a .desktop file for ThreadLiner with correct paths
 # Run from anywhere: bash scripts/install-desktop.sh
 # Skips silently on non-Linux systems.
 
@@ -16,19 +16,19 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 DESKTOP_DIR="$HOME/.local/share/applications"
-DESKTOP_FILE="$DESKTOP_DIR/noteliner.desktop"
+DESKTOP_FILE="$DESKTOP_DIR/threadliner.desktop"
 
 mkdir -p "$DESKTOP_DIR"
 
 cat > "$DESKTOP_FILE" <<EOF
 [Desktop Entry]
-Name=NoteLiner
-Comment=An outliner-style note-taking application
+Name=ThreadLiner
+Comment=A desktop RSS reader
 Exec=npx --prefix "$PROJECT_DIR" electron "$PROJECT_DIR"
 Icon=$PROJECT_DIR/assets/icon.png
 Type=Application
-Categories=Utility;TextEditor;
-StartupWMClass=NoteLiner
+Categories=Network;Feed;
+StartupWMClass=ThreadLiner
 EOF
 
 # Nudge the launcher database so GNOME/KDE re-read the entry without a logout.

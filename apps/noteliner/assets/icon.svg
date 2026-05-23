@@ -19,7 +19,7 @@
         fill="#fdfaf2" stroke="#1a1a1a" stroke-width="16"/>
 
   <!-- Bold serif "n" in burgundy with black outline. -->
-  <text x="256" y="320"
+  <text x="256" y="360"
         font-family="'Bookman Old Style', 'Georgia', 'Times New Roman', serif"
         font-weight="900" font-size="380"
         text-anchor="middle"
@@ -27,7 +27,7 @@
         stroke="#1a1a1a" stroke-width="28"
         stroke-linejoin="round"
         paint-order="stroke fill">n</text>
-
+  <!--
   <g clip-path="url(#nlFrameClip)">
     <path d="M -16 378
              C 30 438, 122 438, 168 378
@@ -37,4 +37,5 @@
           fill="#3989e5" stroke="#1a1a1a" stroke-width="14"
           stroke-linejoin="round"/>
   </g>
+  -->
 </svg>
