@@ -182,6 +182,9 @@
     C({ id: 'view.toggleLog', label: 'Toggle Log Panel', section: 'View', shortcut: 'Ctrl+L',
         matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'l',
         run: () => handleToggleLog() });
+    C({ id: 'view.toggleSpellCheck', label: 'Toggle Spell Check', section: 'View', shortcut: 'F7',
+        matches: (e) => !ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'F7',
+        run: () => handleToggleSpellCheck() });
     C({ id: 'view.zoomIn', label: 'Zoom In', section: 'View', shortcut: 'Ctrl+=',
         matches: (e) => ctrl(e) && !e.altKey && (e.key === '=' || e.key === '+'),
         run: () => themeState.zoomIn() });
@@ -432,6 +435,19 @@
 
   function handleToggleHistory() {
     layout.showHistory = !layout.showHistory;
+  }
+
+  async function handleToggleSpellCheck() {
+    // Read current value from prefs rather than tracking a local mirror —
+    // the Settings dialog also writes this pref, so a mirror could drift.
+    // The setUIPrefs onChange in main.js fires the broadcast that flips
+    // the editor compartment, so no further work is needed here.
+    if (!window.api?.getUIPrefs || !window.api?.setUIPrefs) return;
+    try {
+      const prefs = await window.api.getUIPrefs();
+      const next = !(prefs?.spellCheckEnabled !== false);
+      await window.api.setUIPrefs({ spellCheckEnabled: next });
+    } catch { /* ignore */ }
   }
 
   async function handleSaveToHtml() {

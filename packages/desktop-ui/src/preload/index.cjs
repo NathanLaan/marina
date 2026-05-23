@@ -51,6 +51,11 @@ function exposeUIPrefsApi(ipcRenderer) {
   return {
     getUIPrefs: () => ipcRenderer.invoke('ui:getPrefs'),
     setUIPrefs: (p) => ipcRenderer.invoke('ui:setPrefs', p),
+    onSpellCheckChanged: (cb) => {
+      const handler = (_e, v) => cb(v);
+      ipcRenderer.on('ui:spellcheck-changed', handler);
+      return () => ipcRenderer.removeListener('ui:spellcheck-changed', handler);
+    },
   };
 }
 

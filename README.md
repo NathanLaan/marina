@@ -7,6 +7,16 @@ Monorepo for desktop apps that share UI and Electron infrastructure.
 - `apps/noteliner/`   — outliner-style note-taking
 - `apps/threadliner/` — RSS reader with git sync
 
+### NoteLiner
+
+NoteLiner is a single-user outliner-style note-taking application, built with Electron and Svelte 5. It allows users to create and organize files in a hierarchical structure. Each file is written in Markdown with syntax highlighting, and all changes are automatically synced via Git.
+
+NoteLiner should be considered BETA software. I wrote it for my own personal use, and it meets my specific needs.
+
+### ThreadLiner
+
+A desktop RSS reader built with Electron, Svelte, and Git-synced JSON. Supports RSS 2.0, Atom, and JSON Feed formats.
+
 ## Packages
 
 - `packages/desktop-ui/` — shared UI components, theme system, Electron host helpers.
