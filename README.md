@@ -67,3 +67,30 @@ After `npm run build`:
 npm run start -w noteliner
 npm run start -w threadliner
 ```
+
+## App icons
+
+Each app's icon originates from a master SVG at the monorepo root:
+
+- `assets/img/noteliner-icon-1.svg`
+- `assets/img/threadliner-icon-1.svg`
+
+The pipeline from SVG to packaged app is:
+
+1. `scripts/rasterize-icon.js` (headless Electron) renders the SVG to a
+   512×512 PNG at `apps/<app>/assets/icon.png`.
+2. Each app's `build:icons` step (ImageMagick, in `apps/<app>/scripts/build-icons.sh`)
+   pads that PNG into a square `apps/<app>/build/icon.png`.
+3. `electron-builder` reads `build/icon.png` and derives the platform
+   icons (`.icns`, `.ico`, multi-size PNG sets) at package time.
+
+After editing either source SVG, regenerate the per-app PNGs:
+
+```bash
+npm run icons:rasterize                 # both apps
+npm run icons:rasterize:noteliner       # one app
+npm run icons:rasterize:threadliner
+```
+
+Commit the updated `apps/<app>/assets/icon.png` alongside the SVG change.
+Step 2 runs automatically as part of `build:linux` / `build:win` / `build:mac` / `build:all`.

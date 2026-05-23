@@ -21,7 +21,7 @@
 
   <!-- Italic bold "t" in feed-orange with black outline. paint-order=stroke
        keeps the stroke from eating into the colored body of the glyph. -->
-  <text x="256" y="320"
+  <text x="256" y="360"
         font-family="'Bookman Old Style', 'Georgia', 'Times New Roman', serif" font-weight="900" font-size="380"
         text-anchor="middle"
         fill="#f4a82a"
@@ -29,8 +29,7 @@
         stroke-linejoin="round"
         paint-order="stroke fill">t</text>
 
-  <!-- Three blue wave crests along the bottom, clipped to the frame so the
-       outline rolls into the rounded corners cleanly. -->
+  <!-- 
   <g clip-path="url(#tlFrameClip)">
     <path d="M -16 378
              C 30 438, 122 438, 168 378
@@ -40,4 +39,5 @@
           fill="#3989e5" stroke="#1a1a1a" stroke-width="14"
           stroke-linejoin="round"/>
   </g>
+   -->
 </svg>

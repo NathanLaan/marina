@@ -11,7 +11,10 @@
     "electron:threadliner": "npm run electron:dev -w threadliner",
     "playground":           "npm run electron:dev -w @marina/desktop-ui-playground",
     "build:noteliner":      "npm run build -w noteliner",
-    "build:threadliner":    "npm run build -w threadliner"
+    "build:threadliner":    "npm run build -w threadliner",
+    "icons:rasterize":      "npm run icons:rasterize:noteliner && npm run icons:rasterize:threadliner",
+    "icons:rasterize:noteliner":   "electron scripts/rasterize-icon.js assets/img/noteliner-icon-1.svg apps/noteliner/assets/icon.png 512",
+    "icons:rasterize:threadliner": "electron scripts/rasterize-icon.js assets/img/threadliner-icon-1.svg apps/threadliner/assets/icon.png 512"
   },
   "engines": { "node": ">=20" },
   "devDependencies": {
