@@ -13,8 +13,8 @@
     "build:noteliner":      "npm run build -w noteliner",
     "build:threadliner":    "npm run build -w threadliner",
     "icons:rasterize":      "npm run icons:rasterize:noteliner && npm run icons:rasterize:threadliner",
-    "icons:rasterize:noteliner":   "electron scripts/rasterize-icon.js assets/img/noteliner-icon-1.svg apps/noteliner/assets/icon.png 512",
-    "icons:rasterize:threadliner": "electron scripts/rasterize-icon.js assets/img/threadliner-icon-1.svg apps/threadliner/assets/icon.png 512"
+    "icons:rasterize:noteliner":   "electron scripts/rasterize-icon.js apps/noteliner/assets/icon.svg apps/noteliner/assets/icon.png 512",
+    "icons:rasterize:threadliner": "electron scripts/rasterize-icon.js apps/threadliner/assets/icon.svg apps/threadliner/assets/icon.png 512"
   },
   "engines": { "node": ">=20" },
   "devDependencies": {

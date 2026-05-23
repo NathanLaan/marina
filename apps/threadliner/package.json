@@ -14,7 +14,8 @@
     "build:mac":   "npm run build && npm run build:icons && electron-builder --mac",
     "build:all":   "npm run build && npm run build:icons && electron-builder -mwl",
     "electron:dev": "node scripts/dev.js",
-    "start": "electron --class=ThreadLiner ."
+    "start": "electron --class=ThreadLiner .",
+    "postinstall": "bash scripts/install-desktop.sh"
   },
   "dependencies": {
     "@marina/desktop-ui": "*",
