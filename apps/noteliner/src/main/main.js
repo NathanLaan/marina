@@ -53,6 +53,7 @@ function loadUIPrefs() {
     mcpConfirmWrites: false,
     mcpDisabledTools: [],
     spellCheckEnabled: true,
+    filesSortMode: 'user',
   };
   try {
     const filePath = getUIPrefsPath();
@@ -343,6 +344,7 @@ registerUIPrefsHandlers({
     mcpConfirmWrites: false,
     mcpDisabledTools: [],
     spellCheckEnabled: true,
+    filesSortMode: 'user',
   },
   onChange: async (patch) => {
     if (projectService && typeof patch?.writeFrontmatter === 'boolean') {

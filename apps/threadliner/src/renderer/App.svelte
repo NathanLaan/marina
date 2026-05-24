@@ -1,7 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { TitleBar, AboutModal } from '@marina/desktop-ui/components';
-  import appIconSvg from '../../assets/icon-rss.svg?raw';
+  import appIconSvg from '../../assets/icon.svg?raw';
   import Toolbar from './components/Toolbar.svelte';
   import Sidebar from './components/Sidebar.svelte';
   import EntryList from './components/EntryList.svelte';

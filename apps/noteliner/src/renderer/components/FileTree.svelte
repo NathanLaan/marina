@@ -35,6 +35,15 @@
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
 
+    // In non-user sort modes, before/after slots are meaningless — the file
+    // would just snap back to its sorted slot. Allow re-parenting only, by
+    // pinning the slot to 'child' regardless of pointer position.
+    if (projectState.sortMode !== 'user') {
+      dragOverPosition = 'child';
+      dragOverId = fileId;
+      return;
+    }
+
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
     const height = rect.height;

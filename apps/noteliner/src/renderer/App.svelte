@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import appIconSvg from '../../assets/icon-hexagon.svg?raw';
+  import appIconSvg from '../../assets/icon.svg?raw';
   import Toolbar from './components/Toolbar.svelte';
   import { TitleBar, AboutModal } from '@marina/desktop-ui/components';
   import Sidebar from './components/Sidebar.svelte';
@@ -260,6 +260,9 @@
       window.api.getUIPrefs().then((prefs) => {
         customTitlebar = !!prefs?.customTitlebar;
         commandRegistry.loadRecents(prefs?.commandRecents || []);
+        // Sort mode is a user-level preference, not a per-project one — load
+        // it into projectState once at app start; survives project close/open.
+        if (prefs?.filesSortMode) projectState.sortMode = prefs.filesSortMode;
       }).catch(() => {}).finally(() => {
         recentsLoaded = true;
       });
