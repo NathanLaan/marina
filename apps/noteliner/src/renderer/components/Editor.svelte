@@ -8,7 +8,7 @@
   import { indentWithTab, selectAll } from '@codemirror/commands';
   import { markdown } from '@codemirror/lang-markdown';
   import { languages } from '@codemirror/language-data';
-  import { EditorState } from '@codemirror/state';
+  import { EditorState, Compartment } from '@codemirror/state';
   import { oneDark } from '@codemirror/theme-one-dark';
   import { openSearchPanel } from '@codemirror/search';
   import { autocompletion } from '@codemirror/autocomplete';
@@ -48,6 +48,16 @@
   let currentFileId = null;
   let currentTheme = null;
   let isUpdating = false;
+  let spellCheckEnabled = true;
+  let unsubscribeSpellCheck = null;
+
+  // Compartment so we can flip .cm-content's spellcheck attribute without
+  // tearing down and rebuilding the editor (which would drop scroll/cursor).
+  const spellCheckCompartment = new Compartment();
+
+  function spellCheckExtension(enabled) {
+    return EditorView.contentAttributes.of({ spellcheck: enabled ? 'true' : 'false' });
+  }
 
   // Custom theme overrides
   const customTheme = EditorView.theme({
@@ -107,6 +117,7 @@
         autocompletion({ override: [wikilinkCompletions] }),
         getEditorTheme(),
         customTheme,
+        spellCheckCompartment.of(spellCheckExtension(spellCheckEnabled)),
         EditorView.domEventHandlers({
           mouseup(event, view) {
             if (event.detail !== 3) return false;
@@ -340,9 +351,34 @@
     };
   }
 
-  onMount(() => {
+  function applySpellCheck(enabled) {
+    spellCheckEnabled = enabled;
+    if (editorView) {
+      editorView.dispatch({
+        effects: spellCheckCompartment.reconfigure(spellCheckExtension(enabled)),
+      });
+    }
+  }
+
+  onMount(async () => {
     currentTheme = themeState.current;
+
+    // Read the initial pref synchronously-ish before creating the editor so
+    // the compartment starts with the right value. If the IPC call hasn't
+    // settled by the time we build, createEditor falls back to the default
+    // (true) and the broadcast below corrects it.
+    if (window.api?.getUIPrefs) {
+      try {
+        const prefs = await window.api.getUIPrefs();
+        spellCheckEnabled = prefs?.spellCheckEnabled !== false;
+      } catch { /* ignore */ }
+    }
+
     createEditor();
+
+    if (window.api?.onSpellCheckChanged) {
+      unsubscribeSpellCheck = window.api.onSpellCheckChanged((v) => applySpellCheck(!!v));
+    }
   });
 
   // Recreate editor when theme changes
@@ -357,6 +393,7 @@
   onDestroy(() => {
     if (editorView) editorView.destroy();
     if (saveTimeout) clearTimeout(saveTimeout);
+    if (unsubscribeSpellCheck) unsubscribeSpellCheck();
   });
 
   // Watch for scroll-to-line requests from outline

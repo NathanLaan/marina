@@ -66,6 +66,13 @@
     await window.api.saveIndex($state.snapshot(projectState.index));
   }
 
+  async function setSortMode(mode) {
+    projectState.sortMode = mode;
+    if (window.api?.setUIPrefs) {
+      try { await window.api.setUIPrefs({ filesSortMode: mode }); } catch { /* ignore */ }
+    }
+  }
+
   let externalDragOver = $state(false);
 
   function handleExternalDragOver(e) {
@@ -144,7 +151,7 @@
   // Build the panes array for PaneHost — only include panes the consumer
   // has marked visible. Order is enforced by the host using `paneOrder`.
   const panes = $derived([
-    filesVisible && { id: 'files', title: 'FILES', height: filesHeight, render: filesPane },
+    filesVisible && { id: 'files', title: 'FILES', height: filesHeight, render: filesPane, headerExtra: filesHeaderExtra },
     tagGroupsVisible && { id: 'tagGroups', title: 'TAG GROUPS', height: tagGroupsHeight, render: tagGroupsPaneBody },
     outlineVisible && { id: 'outline', title: 'OUTLINE', height: outlineHeight, render: outlinePaneBody },
     tagsVisible && { id: 'tags', title: 'TAGS', height: tagsHeight, render: tagsPaneBody, headerExtra: tagsHeaderExtra },
@@ -189,6 +196,27 @@
 
 {#snippet backlinksPaneBody()}
   <BacklinksPane onSelect={(id, line) => onBacklinkSelect?.(id, line)} />
+{/snippet}
+
+{#snippet filesHeaderExtra()}
+  <span class="pane-header-select-wrap">
+    <select
+      class="pane-header-select"
+      title="Sort files"
+      aria-label="Sort files"
+      value={projectState.sortMode}
+      onchange={(e) => setSortMode(e.currentTarget.value)}
+      onclick={(e) => e.stopPropagation()}
+      onmousedown={(e) => e.stopPropagation()}
+    >
+      <option value="user">User Order</option>
+      <option value="name-asc">Name A-Z</option>
+      <option value="name-desc">Name Z-A</option>
+      <option value="modified-desc">Last Modified</option>
+      <option value="created-desc">Created</option>
+    </select>
+    <i class="fas fa-chevron-down pane-header-select-chevron" aria-hidden="true"></i>
+  </span>
 {/snippet}
 
 {#snippet tagsHeaderExtra()}
@@ -236,5 +264,59 @@
     outline: 2px solid var(--accent);
     outline-offset: -2px;
     background: var(--bg-drag-over);
+  }
+
+  /* The pane header is a drag handle (panes reorder by header drag), so the
+     select needs explicit pointer-events and stopped propagation on click/
+     mousedown above to avoid the drag stealing focus. */
+  /* Wrap exists so the chevron <i> can be absolutely positioned over the
+     native select — selects can't host child elements, so we overlay it. */
+  :global(.pane-header-select-wrap) {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+  }
+
+  :global(.pane-header-select) {
+    /* .pane-header-actions is a flex row with default align-items: stretch,
+       which made this select climb to the close-button's 24px height. Lock
+       height + line-height so it sits centered next to the close button. */
+    height: 22px;
+    line-height: 20px;
+    padding: 0 20px 0 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    appearance: none;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+  }
+  :global(.pane-header-select:hover) {
+    color: var(--text-primary);
+    background-color: var(--bg-button-hover);
+    border-color: var(--border);
+  }
+  :global(.pane-header-select:focus) {
+    outline: none;
+    color: var(--text-primary);
+    border-color: var(--border);
+  }
+
+  /* pointer-events: none so the chevron doesn't swallow the click that opens
+     the native dropdown — the click passes through to the underlying select. */
+  :global(.pane-header-select-chevron) {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 9px;
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+  :global(.pane-header-select-wrap:hover .pane-header-select-chevron) {
+    color: var(--text-primary);
   }
 </style>

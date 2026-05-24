@@ -181,6 +181,17 @@ class ProjectService {
       outContent = this.frontmatter.serialize(body, data);
     }
     fs.writeFileSync(filePath, outContent, 'utf-8');
+
+    // Stamp modifiedAt on the matching index entry so Last-Modified sort
+    // reflects app edits (not e.g. a git pull that rewrites mtimes for files
+    // the user didn't actually change).
+    const entry = this.index?.files.find(f => f.filename === filename);
+    if (entry) {
+      entry.modifiedAt = new Date().toISOString();
+      try { fs.writeFileSync(this.indexPath(), JSON.stringify(this.index, null, 2)); }
+      catch { /* a transient write failure shouldn't fail the body save */ }
+    }
+
     await this.gitService.commit(this.projectPath, `Update ${filename}`);
     this.gitService.schedulePush(this.projectPath);
   }
@@ -208,6 +219,7 @@ class ProjectService {
     const id = uuidv4();
     const filename = this.uniqueFilename(this.slugify(name) + '.md');
 
+    const nowIso = new Date().toISOString();
     const entry = {
       id,
       name,
@@ -215,7 +227,9 @@ class ProjectService {
       parentId: null,
       order: this.index.files.length,
       tags: Array.isArray(tags) ? tags : [],
-      attachments: []
+      attachments: [],
+      createdAt: nowIso,
+      modifiedAt: nowIso,
     };
 
     const filePath = path.join(this.projectPath, filename);
@@ -301,12 +315,44 @@ class ProjectService {
   }
 
   migrateIndex() {
+    let dirty = false;
     if (!this.index.version || this.index.version < 2) {
       for (const file of this.index.files) {
         if (!file.attachments) file.attachments = [];
       }
       this.index.version = 2;
+      dirty = true;
+    }
+    // v3 adds createdAt/modifiedAt for the Files-pane sort modes. Backfill
+    // from fs.stat so existing projects don't open with a flat "epoch zero"
+    // sort. birthtime is unreliable on some Linux filesystems, so we fall
+    // back to mtime when it's missing or returns the 1970 sentinel.
+    if (!this.index.version || this.index.version < 3) {
+      for (const file of this.index.files) {
+        if (file.createdAt && file.modifiedAt) continue;
+        const stats = this.statForEntry(file.filename);
+        if (!file.createdAt) file.createdAt = stats.createdAt;
+        if (!file.modifiedAt) file.modifiedAt = stats.modifiedAt;
+      }
+      this.index.version = 3;
+      dirty = true;
+    }
+    if (dirty) {
       fs.writeFileSync(this.indexPath(), JSON.stringify(this.index, null, 2));
+    }
+  }
+
+  statForEntry(filename) {
+    try {
+      const stats = fs.statSync(path.join(this.projectPath, filename));
+      const mtime = stats.mtime.toISOString();
+      const birth = stats.birthtime && stats.birthtime.getTime() > 0
+        ? stats.birthtime.toISOString()
+        : mtime;
+      return { createdAt: birth, modifiedAt: mtime };
+    } catch {
+      const now = new Date().toISOString();
+      return { createdAt: now, modifiedAt: now };
     }
   }
 

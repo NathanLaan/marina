@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import appIconSvg from '../../assets/icon-hexagon.svg?raw';
+  import appIconSvg from '../../assets/icon.svg?raw';
   import Toolbar from './components/Toolbar.svelte';
   import { TitleBar, AboutModal } from '@marina/desktop-ui/components';
   import Sidebar from './components/Sidebar.svelte';
@@ -182,6 +182,9 @@
     C({ id: 'view.toggleLog', label: 'Toggle Log Panel', section: 'View', shortcut: 'Ctrl+L',
         matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'l',
         run: () => handleToggleLog() });
+    C({ id: 'view.toggleSpellCheck', label: 'Toggle Spell Check', section: 'View', shortcut: 'F7',
+        matches: (e) => !ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'F7',
+        run: () => handleToggleSpellCheck() });
     C({ id: 'view.zoomIn', label: 'Zoom In', section: 'View', shortcut: 'Ctrl+=',
         matches: (e) => ctrl(e) && !e.altKey && (e.key === '=' || e.key === '+'),
         run: () => themeState.zoomIn() });
@@ -257,6 +260,9 @@
       window.api.getUIPrefs().then((prefs) => {
         customTitlebar = !!prefs?.customTitlebar;
         commandRegistry.loadRecents(prefs?.commandRecents || []);
+        // Sort mode is a user-level preference, not a per-project one — load
+        // it into projectState once at app start; survives project close/open.
+        if (prefs?.filesSortMode) projectState.sortMode = prefs.filesSortMode;
       }).catch(() => {}).finally(() => {
         recentsLoaded = true;
       });
@@ -432,6 +438,19 @@
 
   function handleToggleHistory() {
     layout.showHistory = !layout.showHistory;
+  }
+
+  async function handleToggleSpellCheck() {
+    // Read current value from prefs rather than tracking a local mirror —
+    // the Settings dialog also writes this pref, so a mirror could drift.
+    // The setUIPrefs onChange in main.js fires the broadcast that flips
+    // the editor compartment, so no further work is needed here.
+    if (!window.api?.getUIPrefs || !window.api?.setUIPrefs) return;
+    try {
+      const prefs = await window.api.getUIPrefs();
+      const next = !(prefs?.spellCheckEnabled !== false);
+      await window.api.setUIPrefs({ spellCheckEnabled: next });
+    } catch { /* ignore */ }
   }
 
   async function handleSaveToHtml() {

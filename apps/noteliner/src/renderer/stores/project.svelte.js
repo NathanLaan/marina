@@ -1,6 +1,23 @@
 // Reactive project state using Svelte 5 runes via a class with $state fields.
 // Exported as a singleton module-level instance.
 
+function sortKids(kids, mode) {
+  const byName = (a, b) =>
+    a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+  const ts = (v) => Date.parse(v) || 0;
+
+  switch (mode) {
+    case 'name-asc':      return [...kids].sort(byName);
+    case 'name-desc':     return [...kids].sort((a, b) => -byName(a, b));
+    case 'modified-desc': return [...kids].sort((a, b) =>
+        ts(b.modifiedAt) - ts(a.modifiedAt) || byName(a, b));
+    case 'created-desc':  return [...kids].sort((a, b) =>
+        ts(b.createdAt) - ts(a.createdAt) || byName(a, b));
+    case 'user':
+    default:              return [...kids].sort((a, b) => a.order - b.order);
+  }
+}
+
 class ProjectState {
   isOpen = $state(false);
   folderPath = $state('');
@@ -9,6 +26,8 @@ class ProjectState {
   editorContent = $state('');
   scrollToLine = $state(null);
   cursorLine = $state(1);
+  // Drives the Files-pane order. Persisted to UI prefs under filesSortMode.
+  sortMode = $state('user');
 
   load(folderPath, index) {
     this.folderPath = folderPath;
@@ -83,9 +102,8 @@ class ProjectState {
   }
 
   getChildren(parentId) {
-    return this.index.files
-      .filter(f => f.parentId === parentId)
-      .sort((a, b) => a.order - b.order);
+    const kids = this.index.files.filter(f => f.parentId === parentId);
+    return sortKids(kids, this.sortMode);
   }
 
   // Returns files flattened into display order (depth-first, following the tree)

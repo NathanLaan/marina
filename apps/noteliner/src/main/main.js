@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog, shell, net, protocol, screen } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, shell, net, protocol, screen, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -52,6 +52,8 @@ function loadUIPrefs() {
     mcpEnabled: false,
     mcpConfirmWrites: false,
     mcpDisabledTools: [],
+    spellCheckEnabled: true,
+    filesSortMode: 'user',
   };
   try {
     const filePath = getUIPrefsPath();
@@ -181,6 +183,15 @@ function createWindow() {
   });
 
   Menu.setApplicationMenu(null);
+
+  // Chromium's built-in spell checker is session-scoped; a renderer-level
+  // spellcheck="true" on contenteditable is a no-op without this. Languages
+  // default to the system locale so the user's actual language gets checked.
+  const sess = mainWindow.webContents.session;
+  const locale = (app.getLocale() || 'en-US').replace('_', '-');
+  try { sess.setSpellCheckerLanguages([locale]); }
+  catch { try { sess.setSpellCheckerLanguages(['en-US']); } catch { /* ignore */ } }
+  sess.setSpellCheckerEnabled(uiPrefs.spellCheckEnabled !== false);
 
   if (isDev && !isTest) {
     mainWindow.loadURL('http://localhost:5250');
@@ -332,6 +343,8 @@ registerUIPrefsHandlers({
     mcpEnabled: false,
     mcpConfirmWrites: false,
     mcpDisabledTools: [],
+    spellCheckEnabled: true,
+    filesSortMode: 'user',
   },
   onChange: async (patch) => {
     if (projectService && typeof patch?.writeFrontmatter === 'boolean') {
@@ -342,6 +355,16 @@ registerUIPrefsHandlers({
         await maybeStartMcp();
       } else {
         await mcpService?.stop();
+      }
+    }
+    if (typeof patch?.spellCheckEnabled === 'boolean') {
+      // Update Chromium's session checker AND tell the renderer so the
+      // CodeMirror compartment can flip .cm-content's spellcheck attribute
+      // in the same beat — both layers must agree for the underline to show.
+      try { session.defaultSession.setSpellCheckerEnabled(patch.spellCheckEnabled); }
+      catch { /* ignore */ }
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('ui:spellcheck-changed', patch.spellCheckEnabled);
       }
     }
   },

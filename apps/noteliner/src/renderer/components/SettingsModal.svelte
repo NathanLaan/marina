@@ -13,6 +13,7 @@
   let customTitlebar = $state(false);
   let customTitlebarInitial = $state(false);
   let writeFrontmatter = $state(true);
+  let spellCheckEnabled = $state(true);
   let mcpEnabled = $state(false);
   let mcpConfirmWrites = $state(false);
   let mcpDisabledTools = $state([]);
@@ -35,6 +36,7 @@
         customTitlebar = !!prefs?.customTitlebar;
         customTitlebarInitial = customTitlebar;
         writeFrontmatter = prefs?.writeFrontmatter !== false;
+        spellCheckEnabled = prefs?.spellCheckEnabled !== false;
         mcpEnabled = !!prefs?.mcpEnabled;
         mcpConfirmWrites = !!prefs?.mcpConfirmWrites;
         mcpDisabledTools = Array.isArray(prefs?.mcpDisabledTools) ? [...prefs.mcpDisabledTools] : [];
@@ -62,6 +64,13 @@
     writeFrontmatter = next;
     if (window.api?.setUIPrefs) {
       try { await window.api.setUIPrefs({ writeFrontmatter }); } catch { /* ignore */ }
+    }
+  }
+
+  async function setSpellCheckEnabled(next) {
+    spellCheckEnabled = next;
+    if (window.api?.setUIPrefs) {
+      try { await window.api.setUIPrefs({ spellCheckEnabled }); } catch { /* ignore */ }
     }
   }
 
@@ -206,6 +215,18 @@
       checked={writeFrontmatter}
       disabled={!prefsLoaded}
       onchange={setWriteFrontmatter}
+    />
+  </SettingGroup>
+
+  <SettingGroup
+    label="Editor"
+    help="Underlines misspelled words in the editor. Uses Chromium's built-in spell checker with your system language. Toggle with F7."
+  >
+    <ToggleOption
+      label="Check spelling"
+      checked={spellCheckEnabled}
+      disabled={!prefsLoaded}
+      onchange={setSpellCheckEnabled}
     />
   </SettingGroup>
 {/snippet}
