@@ -1,5 +1,6 @@
 <script>
   import { projectState } from '../stores/project.svelte.js';
+  import { lookupColor } from '../lib/svgColors.js';
 
   let { onTagsChanged, tagAction = null } = $props();
 
@@ -91,6 +92,22 @@
   let hasSelection = $derived(!!projectState.selectedFileId);
   let allTags = $derived(projectState.allTags);
   let fileTags = $derived(projectState.selectedFileTags);
+
+  // Per-chip inline style derived from the tag's configured SVG color.
+  // Tags with no color return '' so the default chip styling stays.
+  // Active (chip is on the current file) → full swatch + matching
+  // outline. Inactive (chip is in the palette but not on this file) →
+  // faded swatch so the on/off distinction stays legible without
+  // changing chip height (no added borders, no layout shift).
+  function chipStyle(tag, active) {
+    const swatch = lookupColor(projectState.getTagColor(tag));
+    if (!swatch) return '';
+    const textColor = swatch.darkText ? '#111' : '#fff';
+    if (active) {
+      return `background: ${swatch.name}; color: ${textColor}; outline-color: ${swatch.name};`;
+    }
+    return `background: color-mix(in srgb, ${swatch.name} 30%, transparent); color: var(--text-primary);`;
+  }
 </script>
 
 <div class="tags-pane">
@@ -113,6 +130,7 @@
         class="tag-chip"
         class:active
         class:drag-over={tag === dragOverTag}
+        style={chipStyle(tag, active)}
         disabled={!hasSelection}
         title={hasSelection
           ? (active ? `Remove "${tag}" from this file` : `Add "${tag}" to this file`)
@@ -149,7 +167,7 @@
     flex-wrap: wrap;
     gap: 4px;
     padding: 8px 12px;
-    min-height: 36px;
+    min-height: 0;
     overflow-y: auto;
     align-content: flex-start;
     flex: 1;

@@ -87,9 +87,10 @@
   });
 
   // Pane resize. Drag-the-divider between `above` and `below` panes.
-  // If `below` is the last (flex-grow) pane, only `above` resizes; the
-  // flex pane absorbs the change. Otherwise both resize inversely so the
-  // total stays constant.
+  // Symmetric: both stored heights update so the user can shrink either side
+  // down to its minHeight. When `below` is the last (flex-grow) pane, its
+  // rendered height can exceed its stored height (flex absorbs leftover); we
+  // seed the drag with the rendered height so the divider tracks the cursor.
   function startResize(above, below, isBelowLast) {
     return (e) => {
       e.preventDefault();
@@ -100,49 +101,37 @@
       // height tracks the cursor at any UI scale.
       const zoom = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-zoom')) || 1;
 
-      if (!isBelowLast) {
-        const startBelow = below.height;
-        const combined = startAbove + startBelow;
-        const minA = minHeight(above);
-        const minB = minHeight(below);
-
-        const onMouseMove = (ev) => {
-          const deltaY = (ev.clientY - startY) / zoom;
-          let newAbove = startAbove + deltaY;
-          let newBelow = startBelow - deltaY;
-          if (newAbove < minA) { newAbove = minA; newBelow = combined - newAbove; }
-          else if (newBelow < minB) { newBelow = minB; newAbove = combined - newBelow; }
-          onPaneResize?.(above.id, newAbove);
-          onPaneResize?.(below.id, newBelow);
-        };
-        const onMouseUp = () => {
-          window.removeEventListener('mousemove', onMouseMove);
-          window.removeEventListener('mouseup', onMouseUp);
-        };
-        window.addEventListener('mousemove', onMouseMove);
-        window.addEventListener('mouseup', onMouseUp);
-      } else {
-        const totalH = hostEl ? hostEl.clientHeight : 0;
+      let startBelow = below.height;
+      if (isBelowLast && hostEl) {
+        const totalH = hostEl.clientHeight;
         const resizerCount = Math.max(0, visiblePanes.length - 1);
-        let reservedForOthers = resizerCount * RESIZER_H;
+        let othersStored = resizerCount * RESIZER_H;
         for (const p of visiblePanes) {
-          if (p.id !== above.id) reservedForOthers += p.height;
+          if (p.id !== below.id) othersStored += p.height;
         }
-        const minA = minHeight(above);
-        const maxA = Math.max(minA, totalH - reservedForOthers);
-
-        const onMouseMove = (ev) => {
-          const deltaY = (ev.clientY - startY) / zoom;
-          const newHeight = Math.min(maxA, Math.max(minA, startAbove + deltaY));
-          onPaneResize?.(above.id, newHeight);
-        };
-        const onMouseUp = () => {
-          window.removeEventListener('mousemove', onMouseMove);
-          window.removeEventListener('mouseup', onMouseUp);
-        };
-        window.addEventListener('mousemove', onMouseMove);
-        window.addEventListener('mouseup', onMouseUp);
+        const flexLeftover = Math.max(0, totalH - othersStored - below.height);
+        startBelow = below.height + flexLeftover;
       }
+
+      const combined = startAbove + startBelow;
+      const minA = minHeight(above);
+      const minB = minHeight(below);
+
+      const onMouseMove = (ev) => {
+        const deltaY = (ev.clientY - startY) / zoom;
+        let newAbove = startAbove + deltaY;
+        let newBelow = startBelow - deltaY;
+        if (newAbove < minA) { newAbove = minA; newBelow = combined - newAbove; }
+        else if (newBelow < minB) { newBelow = minB; newAbove = combined - newBelow; }
+        onPaneResize?.(above.id, newAbove);
+        onPaneResize?.(below.id, newBelow);
+      };
+      const onMouseUp = () => {
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+      };
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
     };
   }
 
