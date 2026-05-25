@@ -149,7 +149,7 @@
     flex-wrap: wrap;
     gap: 4px;
     padding: 8px 12px;
-    min-height: 36px;
+    min-height: 0;
     overflow-y: auto;
     align-content: flex-start;
     flex: 1;
