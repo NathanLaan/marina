@@ -7,6 +7,9 @@
   import OutlinePane from './OutlinePane.svelte';
   import SearchPane from './SearchPane.svelte';
   import BacklinksPane from './BacklinksPane.svelte';
+  import TagFilterPopover from './TagFilterPopover.svelte';
+
+  let showTagFilter = $state(false);
 
   let {
     tagAction = null,
@@ -116,13 +119,16 @@
     const target = files.find(f => f.id === targetId);
     if (!dragged || !target) return;
 
+    // The renumber loop must walk *all* siblings, not only the ones currently
+    // visible under a tag filter — otherwise hidden siblings get assigned
+    // duplicate `order` values when the filter is later cleared.
     if (position === 'child') {
       dragged.parentId = target.id;
-      const children = projectState.getChildren(target.id);
+      const children = projectState.getAllChildren(target.id);
       dragged.order = children.length;
     } else {
       dragged.parentId = target.parentId;
-      const siblings = projectState.getChildren(target.parentId).filter(f => f.id !== draggedId);
+      const siblings = projectState.getAllChildren(target.parentId).filter(f => f.id !== draggedId);
       const targetIndex = siblings.findIndex(f => f.id === targetId);
       const insertIndex = position === 'before' ? targetIndex : targetIndex + 1;
       siblings.splice(insertIndex, 0, dragged);
@@ -216,6 +222,28 @@
       <option value="created-desc">Created</option>
     </select>
     <i class="fas fa-chevron-down pane-header-select-chevron" aria-hidden="true"></i>
+  </span>
+
+  <span class="tag-filter-anchor">
+    <button
+      class="pane-header-btn tag-filter-btn"
+      class:active={projectState.hiddenTags.size > 0}
+      disabled={projectState.allTags.length === 0 && projectState.untaggedCount === 0}
+      title="Filter by tags"
+      aria-label="Filter by tags"
+      aria-haspopup="dialog"
+      aria-expanded={showTagFilter}
+      onclick={(e) => { e.stopPropagation(); showTagFilter = !showTagFilter; }}
+      onmousedown={(e) => e.stopPropagation()}
+    >
+      <i class="fas fa-filter"></i>
+      {#if projectState.hiddenTags.size > 0}
+        <span class="tag-filter-badge">{projectState.hiddenTags.size}</span>
+      {/if}
+    </button>
+    {#if showTagFilter}
+      <TagFilterPopover onClose={() => showTagFilter = false} />
+    {/if}
   </span>
 {/snippet}
 
@@ -318,5 +346,43 @@
   }
   :global(.pane-header-select-wrap:hover .pane-header-select-chevron) {
     color: var(--text-primary);
+  }
+
+  /* The popover is `position: absolute` relative to this span. The anchor
+     itself is inline-flex so it stays centered in the pane-header-actions
+     row alongside the sort select. */
+  :global(.tag-filter-anchor) {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+  }
+
+  :global(.tag-filter-btn) {
+    position: relative;
+  }
+  :global(.tag-filter-btn.active) {
+    color: var(--accent);
+  }
+  :global(.tag-filter-btn.active:hover) {
+    color: var(--accent);
+  }
+
+  :global(.tag-filter-badge) {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    min-width: 12px;
+    height: 12px;
+    padding: 0 3px;
+    box-sizing: border-box;
+    background: var(--accent);
+    color: var(--bg-base);
+    border-radius: 6px;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 12px;
+    text-align: center;
+    pointer-events: none;
   }
 </style>

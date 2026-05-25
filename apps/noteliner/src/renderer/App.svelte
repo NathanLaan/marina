@@ -250,6 +250,20 @@
   });
   let recentsLoaded = $state(false);
 
+  // Prune the Files-pane tag filter when a tag disappears from the project
+  // (last file with that tag deleted, or last instance of the tag removed).
+  // Without this the badge count would persist a stale entry the user can no
+  // longer un-uncheck via the popover.
+  $effect(() => {
+    const live = new Set(projectState.allTags);
+    for (const t of projectState.hiddenTags) {
+      // The UNTAGGED_KEY sentinel starts with a space — won't ever be in
+      // allTags but is a legitimate hiddenTags member; leave it alone.
+      if (t.startsWith(' ')) continue;
+      if (!live.has(t)) projectState.hiddenTags.delete(t);
+    }
+  });
+
   onMount(() => {
     // themeState.init() runs at module scope in main.js before mount — don't repeat here.
 
