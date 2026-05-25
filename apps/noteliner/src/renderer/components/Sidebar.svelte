@@ -251,9 +251,6 @@
   <button class="pane-header-btn" onclick={() => onTagAction?.('add')} disabled={!projectState.selectedFileId} title="Add Tag (Ctrl+T)" aria-label="Add Tag">
     <i class="fas fa-plus"></i>
   </button>
-  <button class="pane-header-btn" onclick={() => onTagAction?.('remove')} disabled={!projectState.selectedFileId || projectState.selectedFileTags.length === 0} title="Remove Tag (Ctrl+Y)" aria-label="Remove Tag">
-    <i class="fas fa-minus"></i>
-  </button>
 {/snippet}
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->

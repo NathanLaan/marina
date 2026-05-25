@@ -3,7 +3,6 @@
 
   let { onTagsChanged, tagAction = null } = $props();
 
-  let selectedTag = $state(null);
   let adding = $state(false);
   let addValue = $state('');
 
@@ -42,28 +41,29 @@
     }
   }
 
-  function handleRemove() {
+  // Toggle whether `tag` is on the currently selected file. With no file
+  // selected the chips render disabled and this handler shouldn't fire, but
+  // we guard anyway in case a keyboard activation slips through.
+  function toggle(tag) {
     if (!projectState.selectedFileId) return;
-    const tags = projectState.selectedFileTags;
-    if (tags.length === 0) return;
-
-    const tagToRemove = selectedTag && tags.includes(selectedTag) ? selectedTag : tags[tags.length - 1];
-    projectState.removeTag(projectState.selectedFileId, tagToRemove);
-    selectedTag = null;
+    const onFile = projectState.selectedFileTags.includes(tag);
+    if (onFile) {
+      projectState.removeTag(projectState.selectedFileId, tag);
+    } else {
+      projectState.addTag(projectState.selectedFileId, tag);
+    }
     onTagsChanged();
   }
 
+  // The pane header's `+` button raises tagAction.type === 'add'. The `-`
+  // button has been removed; we no longer handle 'remove' here.
   $effect(() => {
-    if (tagAction) {
-      if (tagAction.type === 'add') handleAdd();
-      else if (tagAction.type === 'remove') handleRemove();
-    }
+    if (tagAction && tagAction.type === 'add') handleAdd();
   });
 
-  // Clear selected tag when file selection changes
+  // Cancel an in-progress add if the file selection changes underneath.
   $effect(() => {
     projectState.selectedFileId;
-    selectedTag = null;
     adding = false;
   });
 
@@ -89,7 +89,8 @@
   }
 
   let hasSelection = $derived(!!projectState.selectedFileId);
-  let tags = $derived(projectState.selectedFileTags);
+  let allTags = $derived(projectState.allTags);
+  let fileTags = $derived(projectState.selectedFileTags);
 </script>
 
 <div class="tags-pane">
@@ -105,20 +106,30 @@
         use:autoFocus
       />
     {/if}
-    {#each tags as tag (tag)}
+
+    {#each allTags as tag (tag)}
+      {@const active = fileTags.includes(tag)}
       <button
         class="tag-chip"
-        class:selected={tag === selectedTag}
+        class:active
         class:drag-over={tag === dragOverTag}
-        onclick={() => selectedTag = (selectedTag === tag ? null : tag)}
+        disabled={!hasSelection}
+        title={hasSelection
+          ? (active ? `Remove "${tag}" from this file` : `Add "${tag}" to this file`)
+          : 'Select a file to edit tags'}
+        aria-pressed={active}
+        onclick={() => toggle(tag)}
         ondragover={(e) => handleChipDragOver(e, tag)}
         ondragleave={handleChipDragLeave}
         ondrop={(e) => handleChipDrop(e, tag)}
       >
-        {tag}
+        <i class="fas fa-square-check chip-icon" class:hidden={!active} aria-hidden="true"></i>
+        <i class="far fa-square chip-icon" class:hidden={active} aria-hidden="true"></i>
+        <span class="chip-label">{tag}</span>
       </button>
     {/each}
-    {#if !adding && tags.length === 0 && hasSelection}
+
+    {#if allTags.length === 0 && !adding}
       <span class="tags-empty">No tags</span>
     {/if}
   </div>
@@ -139,9 +150,9 @@
     gap: 4px;
     padding: 8px 12px;
     min-height: 36px;
-    max-height: 80px;
     overflow-y: auto;
     align-content: flex-start;
+    flex: 1;
   }
 
   .tag-input {
@@ -159,30 +170,57 @@
   .tag-chip {
     display: inline-flex;
     align-items: center;
+    gap: 5px;
     padding: 2px 10px;
     font-size: 12px;
     background: var(--bg-button);
     color: var(--text-secondary);
     border-radius: 10px;
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.15s, color 0.15s, opacity 0.15s;
     height: 24px;
+    cursor: pointer;
   }
 
-  .tag-chip:hover {
+  .tag-chip:hover:not(:disabled) {
     background: var(--bg-button-hover);
     color: var(--text-primary);
   }
 
-  .tag-chip.selected {
+  .tag-chip.active {
     background: var(--bg-selected);
     outline: 1px solid var(--accent);
     color: var(--accent);
+  }
+
+  .tag-chip.active:hover:not(:disabled) {
+    background: var(--bg-selected);
+    color: var(--accent);
+  }
+
+  .tag-chip:disabled {
+    opacity: 0.45;
+    cursor: default;
   }
 
   .tag-chip.drag-over {
     background: var(--bg-selected);
     outline: 2px solid var(--accent);
     color: var(--accent);
+  }
+
+  /* Two icons in the same slot — toggle via .hidden so the chip width
+     doesn't reflow when the state flips. */
+  .chip-icon {
+    font-size: 10px;
+    width: 10px;
+    flex-shrink: 0;
+  }
+  .chip-icon.hidden {
+    display: none;
+  }
+
+  .chip-label {
+    line-height: 1;
   }
 
   .tags-empty {

@@ -199,9 +199,6 @@
     C({ id: 'tag.add', label: 'Add Tag', section: 'Tags', shortcut: 'Ctrl+T',
         matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === 't',
         when: hasSelection, run: () => triggerTagAction('add') });
-    C({ id: 'tag.remove', label: 'Remove Tag', section: 'Tags', shortcut: 'Ctrl+Y',
-        matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'y',
-        when: hasSelection, run: () => triggerTagAction('remove') });
 
     // Project
     C({ id: 'project.sync', label: 'Remote Sync', section: 'Project', shortcut: 'Ctrl+Shift+S',

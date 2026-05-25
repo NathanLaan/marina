@@ -212,7 +212,12 @@ class ProjectState {
         for (const tag of file.tags) tagSet.add(tag);
       }
     }
-    return [...tagSet].sort();
+    // Case-insensitive, numeric-aware sort so 'archive' comes before 'Work'
+    // and 'item2' before 'item10'. Default JS sort is case-sensitive
+    // codepoint order, which surfaces uppercase tags ahead of lowercase ones.
+    return [...tagSet].sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+    );
   }
 
   get selectedFileTags() {
