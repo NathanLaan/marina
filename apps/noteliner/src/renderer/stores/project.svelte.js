@@ -1,6 +1,13 @@
 // Reactive project state using Svelte 5 runes via a class with $state fields.
 // Exported as a singleton module-level instance.
 
+import { SvelteSet } from 'svelte/reactivity';
+
+// Sentinel used in `hiddenTags` to represent "files with no tags". A leading
+// space can't appear in a real tag (FrontmatterService normalizes), so a
+// collision with a real user tag is impossible.
+export const UNTAGGED_KEY = ' __untagged__';
+
 function sortKids(kids, mode) {
   const byName = (a, b) =>
     a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
@@ -28,6 +35,11 @@ class ProjectState {
   cursorLine = $state(1);
   // Drives the Files-pane order. Persisted to UI prefs under filesSortMode.
   sortMode = $state('user');
+  // Files-pane tag filter. Stores *un*-checked rows (real tag names plus the
+  // UNTAGGED_KEY sentinel) so newly-added tags default to "checked"
+  // (visible) — the opposite shape would silently hide a file the moment a
+  // new tag was applied to it. Session-only; reset on project close.
+  hiddenTags = $state(new SvelteSet());
 
   load(folderPath, index) {
     this.folderPath = folderPath;
@@ -45,6 +57,7 @@ class ProjectState {
     this.selectedFileId = null;
     this.editorContent = '';
     this.scrollToLine = null;
+    this.hiddenTags.clear();
   }
 
   addFile(entry) {
@@ -101,9 +114,60 @@ class ProjectState {
     }
   }
 
+  // Filtered + sorted — used by FileTree rendering and keyboard navigation.
   getChildren(parentId) {
-    const kids = this.index.files.filter(f => f.parentId === parentId);
+    const kids = this.index.files
+      .filter(f => f.parentId === parentId)
+      .filter(f => this.passesTagFilter(f));
     return sortKids(kids, this.sortMode);
+  }
+
+  // Unfiltered, in user order — used by drag-reorder's renumber loop in
+  // Sidebar.handleDrop. Renumbering must see hidden siblings or the
+  // persisted `order` field gets corrupted relative to them.
+  getAllChildren(parentId) {
+    return this.index.files
+      .filter(f => f.parentId === parentId)
+      .sort((a, b) => a.order - b.order);
+  }
+
+  // OR-of-checked: a file is visible iff at least one of its tags is checked
+  // (i.e. NOT in hiddenTags). Files with no tags are governed by the
+  // synthetic UNTAGGED_KEY row at the top of the popover.
+  passesTagFilter(file) {
+    const tags = file.tags || [];
+    if (tags.length === 0) return !this.hiddenTags.has(UNTAGGED_KEY);
+    for (const t of tags) {
+      if (!this.hiddenTags.has(t)) return true;
+    }
+    return false;
+  }
+
+  isChecked(key) {
+    return !this.hiddenTags.has(key);
+  }
+
+  toggleChecked(key) {
+    if (this.hiddenTags.has(key)) this.hiddenTags.delete(key);
+    else this.hiddenTags.add(key);
+  }
+
+  // Used by the popover's footer buttons.
+  showAllTags() {
+    this.hiddenTags.clear();
+  }
+  hideAllTags() {
+    for (const t of this.allTags) this.hiddenTags.add(t);
+    this.hiddenTags.add(UNTAGGED_KEY);
+  }
+
+  // Count of files with no tags — drives the "No Tags" row's counter.
+  get untaggedCount() {
+    let n = 0;
+    for (const f of this.index.files) {
+      if (!f.tags || f.tags.length === 0) n++;
+    }
+    return n;
   }
 
   // Returns files flattened into display order (depth-first, following the tree)
@@ -148,7 +212,12 @@ class ProjectState {
         for (const tag of file.tags) tagSet.add(tag);
       }
     }
-    return [...tagSet].sort();
+    // Case-insensitive, numeric-aware sort so 'archive' comes before 'Work'
+    // and 'item2' before 'item10'. Default JS sort is case-sensitive
+    // codepoint order, which surfaces uppercase tags ahead of lowercase ones.
+    return [...tagSet].sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+    );
   }
 
   get selectedFileTags() {

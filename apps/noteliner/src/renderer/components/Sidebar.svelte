@@ -2,28 +2,28 @@
   import { projectState } from '../stores/project.svelte.js';
   import { PaneHost } from '@marina/desktop-ui/panels';
   import FileTree from './FileTree.svelte';
-  import TagGroupsPane from './TagGroupsPane.svelte';
   import TagsPane from './TagsPane.svelte';
   import OutlinePane from './OutlinePane.svelte';
   import SearchPane from './SearchPane.svelte';
   import BacklinksPane from './BacklinksPane.svelte';
+  import TagFilterPopover from './TagFilterPopover.svelte';
+
+  let showTagFilter = $state(false);
 
   let {
     tagAction = null,
     filesVisible = true,
     outlineVisible = false,
-    tagGroupsVisible = false,
     tagsVisible = true,
     searchVisible = false,
     backlinksVisible = false,
     searchFocusRequest = null,
     filesHeight = 200,
-    tagGroupsHeight = 150,
     outlineHeight = 150,
     tagsHeight = 100,
     searchHeight = 200,
     backlinksHeight = 180,
-    paneOrder = ['files', 'tagGroups', 'outline', 'tags', 'search', 'backlinks'],
+    paneOrder = ['files', 'outline', 'tags', 'search', 'backlinks'],
     onPaneResize,
     onPaneReorder,
     onContextAction,
@@ -116,13 +116,16 @@
     const target = files.find(f => f.id === targetId);
     if (!dragged || !target) return;
 
+    // The renumber loop must walk *all* siblings, not only the ones currently
+    // visible under a tag filter — otherwise hidden siblings get assigned
+    // duplicate `order` values when the filter is later cleared.
     if (position === 'child') {
       dragged.parentId = target.id;
-      const children = projectState.getChildren(target.id);
+      const children = projectState.getAllChildren(target.id);
       dragged.order = children.length;
     } else {
       dragged.parentId = target.parentId;
-      const siblings = projectState.getChildren(target.parentId).filter(f => f.id !== draggedId);
+      const siblings = projectState.getAllChildren(target.parentId).filter(f => f.id !== draggedId);
       const targetIndex = siblings.findIndex(f => f.id === targetId);
       const insertIndex = position === 'before' ? targetIndex : targetIndex + 1;
       siblings.splice(insertIndex, 0, dragged);
@@ -136,7 +139,6 @@
   // back to App.svelte's expected onPaneResize(heightKey, newHeight) signature.
   const PANE_HEIGHT_KEY = {
     files: 'filesHeight',
-    tagGroups: 'tagGroupsHeight',
     outline: 'outlineHeight',
     tags: 'tagsHeight',
     search: 'searchHeight',
@@ -152,7 +154,6 @@
   // has marked visible. Order is enforced by the host using `paneOrder`.
   const panes = $derived([
     filesVisible && { id: 'files', title: 'FILES', height: filesHeight, render: filesPane, headerExtra: filesHeaderExtra },
-    tagGroupsVisible && { id: 'tagGroups', title: 'TAG GROUPS', height: tagGroupsHeight, render: tagGroupsPaneBody },
     outlineVisible && { id: 'outline', title: 'OUTLINE', height: outlineHeight, render: outlinePaneBody },
     tagsVisible && { id: 'tags', title: 'TAGS', height: tagsHeight, render: tagsPaneBody, headerExtra: tagsHeaderExtra },
     searchVisible && { id: 'search', title: 'SEARCH', height: searchHeight, render: searchPaneBody },
@@ -176,10 +177,6 @@
       {onContextAction}
     />
   </div>
-{/snippet}
-
-{#snippet tagGroupsPaneBody()}
-  <TagGroupsPane selectedId={projectState.selectedFileId} onSelect={handleSelect} onTagsChanged={handleTagsChanged} />
 {/snippet}
 
 {#snippet outlinePaneBody()}
@@ -217,14 +214,33 @@
     </select>
     <i class="fas fa-chevron-down pane-header-select-chevron" aria-hidden="true"></i>
   </span>
+
+  <span class="tag-filter-anchor">
+    <button
+      class="pane-header-btn tag-filter-btn"
+      class:active={projectState.hiddenTags.size > 0}
+      disabled={projectState.allTags.length === 0 && projectState.untaggedCount === 0}
+      title="Filter by tags"
+      aria-label="Filter by tags"
+      aria-haspopup="dialog"
+      aria-expanded={showTagFilter}
+      onclick={(e) => { e.stopPropagation(); showTagFilter = !showTagFilter; }}
+      onmousedown={(e) => e.stopPropagation()}
+    >
+      <i class="fas fa-filter"></i>
+      {#if projectState.hiddenTags.size > 0}
+        <span class="tag-filter-badge">{projectState.hiddenTags.size}</span>
+      {/if}
+    </button>
+    {#if showTagFilter}
+      <TagFilterPopover onClose={() => showTagFilter = false} />
+    {/if}
+  </span>
 {/snippet}
 
 {#snippet tagsHeaderExtra()}
   <button class="pane-header-btn" onclick={() => onTagAction?.('add')} disabled={!projectState.selectedFileId} title="Add Tag (Ctrl+T)" aria-label="Add Tag">
     <i class="fas fa-plus"></i>
-  </button>
-  <button class="pane-header-btn" onclick={() => onTagAction?.('remove')} disabled={!projectState.selectedFileId || projectState.selectedFileTags.length === 0} title="Remove Tag (Ctrl+Y)" aria-label="Remove Tag">
-    <i class="fas fa-minus"></i>
   </button>
 {/snippet}
 
@@ -318,5 +334,43 @@
   }
   :global(.pane-header-select-wrap:hover .pane-header-select-chevron) {
     color: var(--text-primary);
+  }
+
+  /* The popover is `position: absolute` relative to this span. The anchor
+     itself is inline-flex so it stays centered in the pane-header-actions
+     row alongside the sort select. */
+  :global(.tag-filter-anchor) {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+  }
+
+  :global(.tag-filter-btn) {
+    position: relative;
+  }
+  :global(.tag-filter-btn.active) {
+    color: var(--accent);
+  }
+  :global(.tag-filter-btn.active:hover) {
+    color: var(--accent);
+  }
+
+  :global(.tag-filter-badge) {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    min-width: 12px;
+    height: 12px;
+    padding: 0 3px;
+    box-sizing: border-box;
+    background: var(--accent);
+    color: var(--bg-base);
+    border-radius: 6px;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 12px;
+    text-align: center;
+    pointer-events: none;
   }
 </style>

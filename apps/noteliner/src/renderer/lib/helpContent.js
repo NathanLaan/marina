@@ -20,8 +20,8 @@ back changes at any time.
 
 - **Toolbar buttons** — every icon on the left toolbar has a dedicated page
   describing what it does and which keyboard shortcut triggers it.
-- **Panels** — the Files, Outline, Tags, Tag Groups, Search, Backlinks,
-  Attachments, History, and Log panels each have their own page.
+- **Panels** — the Files, Outline, Tags, Search, Backlinks, Attachments,
+  History, and Log panels each have their own page.
 - **Workflow guides** — how to create files, import documents, link notes
   with ` + '`[[wikilinks]]`' + `, sync to a remote Git repository, and export to
   HTML/PDF/Markdown.
@@ -51,8 +51,8 @@ back changes at any time.
 3. **Write in markdown**. The editor is plain text — links, headings, lists,
    code blocks, and ` + '`[[wikilinks]]`' + ` all render in the Preview pane
    (` + '`Ctrl+P`' + `).
-4. **Tag, link, and organize**. Apply tags from the Tags pane, group tags
-   into collections with Tag Groups, and connect notes with ` + '`[[wikilinks]]`' + `.
+4. **Tag, link, and organize**. Apply tags from the Tags pane, filter the
+   Files pane by tag, and connect notes with ` + '`[[wikilinks]]`' + `.
 5. **Sync** to a Git remote (` + '`Ctrl+Shift+S`' + `) when you want to back up or
    share your project.
 `,
@@ -184,20 +184,6 @@ currently selected file.
 
 Tags are stored in each file's YAML frontmatter when frontmatter writing
 is enabled in Settings — otherwise they live only in the project index.
-`,
-  },
-
-  {
-    id: 'toolbar-tag-groups',
-    title: 'Tag Groups Panel',
-    section: 'Toolbar',
-    body: `# Tag Groups Panel
-
-**Shortcut:** ` + '`Ctrl+G`' + `
-
-Toggles the **Tag Groups** sidebar pane. Tag groups let you bundle related
-tags together for easier filtering and discovery. Click a group to filter
-the Files pane to notes carrying any tag in that group.
 `,
   },
 
