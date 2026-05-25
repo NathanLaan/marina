@@ -658,7 +658,9 @@ ipcMain.handle('dialog:openImportFile', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile'],
     filters: [
+      { name: 'Documents', extensions: ['docx', 'pptx'] },
       { name: 'Word Document', extensions: ['docx'] },
+      { name: 'PowerPoint Presentation', extensions: ['pptx'] },
     ],
   });
   if (result.canceled || result.filePaths.length === 0) return null;
@@ -667,7 +669,7 @@ ipcMain.handle('dialog:openImportFile', async () => {
 
 ipcMain.handle('file:import', async (_event, sourcePath) => {
   try {
-    const result = await importService.importDocx(sourcePath);
+    const result = await importService.import(sourcePath);
     await linkGraphService.rebuild();
     return result;
   } catch (err) {

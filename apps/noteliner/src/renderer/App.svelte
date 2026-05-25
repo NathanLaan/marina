@@ -412,6 +412,7 @@
       projectState.selectFile(entry.id);
 
       const parts = [`Imported ${basename}`];
+      if (stats.slides) parts.push(`${stats.slides} slide${stats.slides === 1 ? '' : 's'}`);
       if (stats.images) parts.push(`${stats.images} image${stats.images === 1 ? '' : 's'}`);
       if (stats.tablesStripped) parts.push(`${stats.tablesStripped} table${stats.tablesStripped === 1 ? '' : 's'} stripped`);
       logState.add(parts.join(' — '));
