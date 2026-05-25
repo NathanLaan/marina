@@ -28,6 +28,7 @@
     onPaneReorder,
     onContextAction,
     onTagAction,
+    onOpenTagEditor,
     onClosePane,
     onBacklinkSelect,
   } = $props();
@@ -239,6 +240,9 @@
 {/snippet}
 
 {#snippet tagsHeaderExtra()}
+  <button class="pane-header-btn" onclick={() => onOpenTagEditor?.()} disabled={projectState.allTags.length === 0} title="Edit tag colors" aria-label="Edit tag colors">
+    <i class="fas fa-pen"></i>
+  </button>
   <button class="pane-header-btn" onclick={() => onTagAction?.('add')} disabled={!projectState.selectedFileId} title="Add Tag (Ctrl+T)" aria-label="Add Tag">
     <i class="fas fa-plus"></i>
   </button>

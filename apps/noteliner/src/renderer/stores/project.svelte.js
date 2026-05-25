@@ -43,6 +43,12 @@ class ProjectState {
 
   load(folderPath, index) {
     this.folderPath = folderPath;
+    // Older project indexes pre-date tag metadata. Stamp an empty
+    // `tagMeta` so reactive getters don't have to optional-chain on
+    // every read, and `saveIndex` round-trips a stable shape on disk.
+    if (!index.tagMeta || typeof index.tagMeta !== 'object') {
+      index.tagMeta = {};
+    }
     this.index = index;
     this.isOpen = true;
     this.selectedFileId = null;
@@ -246,6 +252,36 @@ class ProjectState {
     return this.index.files
       .filter(f => f.tags && f.tags.includes(tag))
       .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  // ─── Tag metadata ─────────────────────────────────────────────────
+  //
+  // Tag colors live in `index.tagMeta[tag] = { color: 'Tomato' }`. Only
+  // tags with explicit metadata appear in the map — absence means
+  // "default chip styling", which is the desired UX (silent fallback,
+  // not an entry per tag).
+  //
+  // The tag string is the key as-typed (case-sensitive). Tag names
+  // themselves are case-sensitive everywhere else in the codebase, so
+  // keeping that here too avoids surprise mismatches.
+
+  getTagColor(tag) {
+    const meta = this.index.tagMeta?.[tag];
+    return meta?.color || null;
+  }
+
+  setTagColor(tag, color) {
+    if (!this.index.tagMeta) this.index.tagMeta = {};
+    if (!color) {
+      // Clearing — drop the metadata entirely so the saved index stays
+      // tidy and "no metadata" round-trips as "no metadata".
+      if (this.index.tagMeta[tag]) {
+        const { [tag]: _, ...rest } = this.index.tagMeta;
+        this.index.tagMeta = rest;
+      }
+      return;
+    }
+    this.index.tagMeta = { ...this.index.tagMeta, [tag]: { ...(this.index.tagMeta[tag] || {}), color } };
   }
 }
 

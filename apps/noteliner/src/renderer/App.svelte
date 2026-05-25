@@ -19,6 +19,7 @@
   import SyncingModal from './components/SyncingModal.svelte';
   import ImportingModal from './components/ImportingModal.svelte';
   import McpConfirmModal from './components/McpConfirmModal.svelte';
+  import TagEditorModal from './components/TagEditorModal.svelte';
   import HistoryPanel from './components/HistoryPanel.svelte';
   import AttachmentPanel from './components/AttachmentPanel.svelte';
   import { CommandPalette, fuzzyScore } from '@marina/desktop-ui/command-palette';
@@ -76,6 +77,7 @@
   let importingFilename = $state('');
   let showClearTags = $state(false);
   let clearTagsFile = $state(null);
+  let showTagEditor = $state(false);
   let projectSettingsRequired = $state(false);
   // Queue of pending MCP confirm-before-write prompts. Main may push multiple
   // before the user answers the first, so we serialize them — only the head
@@ -812,6 +814,10 @@
   />
 {/if}
 
+{#if showTagEditor}
+  <TagEditorModal onClose={() => showTagEditor = false} />
+{/if}
+
 {#if showProjectSettings}
   <ProjectSettingsModal
     required={projectSettingsRequired}
@@ -910,6 +916,7 @@
               onPaneReorder={handlePaneReorder}
               onContextAction={handleContextAction}
               onTagAction={triggerTagAction}
+              onOpenTagEditor={() => showTagEditor = true}
               onClosePane={handleClosePane}
               onBacklinkSelect={handleBacklinkSelect}
             />
