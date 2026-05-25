@@ -6,13 +6,13 @@
 
   let {
     onGoHome, onOpenFolder, onNewFile, onImportDocument,
-    onToggleSidebar, onToggleOutline, onToggleTags, onToggleTagGroups,
+    onToggleSidebar, onToggleOutline, onToggleTags,
     onToggleLog, onToggleAttachments, onToggleSearch, onToggleBacklinks,
     onShowAbout, onShowSettings, onShowProjectSettings, onShowSync, onShowHelp,
     projectOpen,
     customTitlebar = false,
     logVisible = false, sidebarVisible = true, outlineVisible = false,
-    tagsVisible = true, tagGroupsVisible = false, attachmentsVisible = false,
+    tagsVisible = true, attachmentsVisible = false,
     searchVisible = false, backlinksVisible = false,
   } = $props();
 
@@ -36,7 +36,6 @@
     <ToolbarButton icon="fa-bars-staggered" active={sidebarVisible} onclick={onToggleSidebar} title="Files (Ctrl+E)" />
     <ToolbarButton icon="fa-list-ol" active={outlineVisible} onclick={onToggleOutline} title="Outline (Ctrl+Shift+O)" />
     <ToolbarButton icon="fa-tag" active={tagsVisible} onclick={onToggleTags} title="Tags (Ctrl+Shift+T)" />
-    <ToolbarButton icon="fa-tags" active={tagGroupsVisible} onclick={onToggleTagGroups} title="Tag Groups (Ctrl+G)" />
     <ToolbarButton icon="fa-paperclip" active={attachmentsVisible} onclick={onToggleAttachments} title="Attachments (Ctrl+B)" />
 
     <ToolbarDivider />

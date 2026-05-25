@@ -29,7 +29,7 @@
   import { commandRegistry } from '@marina/desktop-ui/command-palette';
   import { installTestHelpers } from './test-helpers.js';
 
-  const VALID_PANE_KEYS = ['files', 'tagGroups', 'outline', 'tags', 'search', 'backlinks'];
+  const VALID_PANE_KEYS = ['files', 'outline', 'tags', 'search', 'backlinks'];
 
   const DEFAULT_LAYOUT = {
     showPreview: false,
@@ -39,7 +39,6 @@
     showSidebar: true,
     showOutline: false,
     showTags: true,
-    showTagGroups: false,
     showAttachments: false,
     showSearch: false,
     showBacklinks: false,
@@ -48,12 +47,11 @@
     attachmentPanelWidth: 220,
     previewWidth: 500,
     filesHeight: 200,
-    tagGroupsHeight: 150,
     outlineHeight: 150,
     tagsHeight: 100,
     searchHeight: 200,
     backlinksHeight: 180,
-    paneOrder: ['files', 'tagGroups', 'outline', 'tags', 'search', 'backlinks'],
+    paneOrder: ['files', 'outline', 'tags', 'search', 'backlinks'],
   };
 
   function normalizePaneOrder(order) {
@@ -167,9 +165,6 @@
     C({ id: 'view.toggleTags', label: 'Toggle Tags', section: 'View', shortcut: 'Ctrl+Shift+T',
         matches: (e) => ctrl(e) && e.shiftKey && !e.altKey && e.code === 'KeyT',
         when: projectOpen, run: () => handleToggleTags() });
-    C({ id: 'view.toggleTagGroups', label: 'Toggle Tag Groups', section: 'View', shortcut: 'Ctrl+G',
-        matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'g',
-        when: projectOpen, run: () => handleToggleTagGroups() });
     C({ id: 'view.toggleAttachments', label: 'Toggle Attachments', section: 'View', shortcut: 'Ctrl+B',
         matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'b',
         run: () => handleToggleAttachments() });
@@ -507,10 +502,6 @@
     layout.showTags = !layout.showTags;
   }
 
-  function handleToggleTagGroups() {
-    layout.showTagGroups = !layout.showTagGroups;
-  }
-
   function handleToggleAttachments() {
     layout.showAttachments = !layout.showAttachments;
   }
@@ -545,7 +536,6 @@
       case 'files': layout.showSidebar = false; break;
       case 'outline': layout.showOutline = false; break;
       case 'tags': layout.showTags = false; break;
-      case 'tagGroups': layout.showTagGroups = false; break;
       case 'search': layout.showSearch = false; break;
       case 'backlinks': layout.showBacklinks = false; break;
     }
@@ -869,7 +859,6 @@
         onToggleSidebar={handleToggleSidebar}
         onToggleOutline={handleToggleOutline}
         onToggleTags={handleToggleTags}
-        onToggleTagGroups={handleToggleTagGroups}
         onToggleAttachments={handleToggleAttachments}
         onToggleSearch={handleToggleSearch}
         onToggleBacklinks={handleToggleBacklinks}
@@ -883,7 +872,6 @@
         sidebarVisible={layout.showSidebar}
         outlineVisible={layout.showOutline}
         tagsVisible={layout.showTags}
-        tagGroupsVisible={layout.showTagGroups}
         attachmentsVisible={layout.showAttachments}
         searchVisible={layout.showSearch}
         backlinksVisible={layout.showBacklinks}
@@ -901,18 +889,16 @@
   {:else}
     <div class="main-area">
       <div class="content-area" class:with-log={layout.showLog}>
-        {#if layout.showSidebar || layout.showOutline || layout.showTags || layout.showTagGroups || layout.showSearch || layout.showBacklinks}
+        {#if layout.showSidebar || layout.showOutline || layout.showTags || layout.showSearch || layout.showBacklinks}
           <div class="sidebar" style="width: {layout.sidebarWidth}px">
             <Sidebar
               {tagAction}
               filesVisible={layout.showSidebar}
               outlineVisible={layout.showOutline}
               tagsVisible={layout.showTags}
-              tagGroupsVisible={layout.showTagGroups}
               searchVisible={layout.showSearch}
               backlinksVisible={layout.showBacklinks}
               searchFocusRequest={searchFocusTs}
-              tagGroupsHeight={layout.tagGroupsHeight}
               outlineHeight={layout.outlineHeight}
               tagsHeight={layout.tagsHeight}
               searchHeight={layout.searchHeight}

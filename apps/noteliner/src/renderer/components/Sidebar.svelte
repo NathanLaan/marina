@@ -2,7 +2,6 @@
   import { projectState } from '../stores/project.svelte.js';
   import { PaneHost } from '@marina/desktop-ui/panels';
   import FileTree from './FileTree.svelte';
-  import TagGroupsPane from './TagGroupsPane.svelte';
   import TagsPane from './TagsPane.svelte';
   import OutlinePane from './OutlinePane.svelte';
   import SearchPane from './SearchPane.svelte';
@@ -15,18 +14,16 @@
     tagAction = null,
     filesVisible = true,
     outlineVisible = false,
-    tagGroupsVisible = false,
     tagsVisible = true,
     searchVisible = false,
     backlinksVisible = false,
     searchFocusRequest = null,
     filesHeight = 200,
-    tagGroupsHeight = 150,
     outlineHeight = 150,
     tagsHeight = 100,
     searchHeight = 200,
     backlinksHeight = 180,
-    paneOrder = ['files', 'tagGroups', 'outline', 'tags', 'search', 'backlinks'],
+    paneOrder = ['files', 'outline', 'tags', 'search', 'backlinks'],
     onPaneResize,
     onPaneReorder,
     onContextAction,
@@ -142,7 +139,6 @@
   // back to App.svelte's expected onPaneResize(heightKey, newHeight) signature.
   const PANE_HEIGHT_KEY = {
     files: 'filesHeight',
-    tagGroups: 'tagGroupsHeight',
     outline: 'outlineHeight',
     tags: 'tagsHeight',
     search: 'searchHeight',
@@ -158,7 +154,6 @@
   // has marked visible. Order is enforced by the host using `paneOrder`.
   const panes = $derived([
     filesVisible && { id: 'files', title: 'FILES', height: filesHeight, render: filesPane, headerExtra: filesHeaderExtra },
-    tagGroupsVisible && { id: 'tagGroups', title: 'TAG GROUPS', height: tagGroupsHeight, render: tagGroupsPaneBody },
     outlineVisible && { id: 'outline', title: 'OUTLINE', height: outlineHeight, render: outlinePaneBody },
     tagsVisible && { id: 'tags', title: 'TAGS', height: tagsHeight, render: tagsPaneBody, headerExtra: tagsHeaderExtra },
     searchVisible && { id: 'search', title: 'SEARCH', height: searchHeight, render: searchPaneBody },
@@ -182,10 +177,6 @@
       {onContextAction}
     />
   </div>
-{/snippet}
-
-{#snippet tagGroupsPaneBody()}
-  <TagGroupsPane selectedId={projectState.selectedFileId} onSelect={handleSelect} onTagsChanged={handleTagsChanged} />
 {/snippet}
 
 {#snippet outlinePaneBody()}

@@ -32,7 +32,7 @@
     return () => document.removeEventListener('mousedown', onMouseDown, true);
   });
 
-  // Count of files per real tag — mirrors TagGroupsPane's counter UX.
+  // Count of files per real tag — same counter style used in the TagsPane.
   function countFor(tag) {
     return projectState.getFilesWithTag(tag).length;
   }
