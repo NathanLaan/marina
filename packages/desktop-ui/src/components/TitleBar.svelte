@@ -1,4 +1,6 @@
 <script>
+  import { themeState } from '../theme/index.svelte.js';
+
   // Generic custom-titlebar bar. Consumers control:
   // - the centered app title via `appName`
   // - the action-button group between hamburger and spacer via `actions` snippet
@@ -55,6 +57,18 @@
   {/if}
 
   <div class="titlebar-title">{appName}</div>
+
+  <select
+    class="titlebar-scale"
+    aria-label="UI scale"
+    title="UI scale"
+    value={themeState.scale}
+    onchange={(e) => themeState.setScale(e.currentTarget.value)}
+  >
+    {#each themeState.scaleList as scale (scale.id)}
+      <option value={scale.id}>{scale.label}</option>
+    {/each}
+  </select>
 
   <div class="titlebar-controls">
     <button class="titlebar-btn" onclick={() => window.api?.windowMinimize()} aria-label="Minimize" title="Minimize">
@@ -144,5 +158,30 @@
     display: flex;
     align-items: center;
     -webkit-app-region: no-drag;
+  }
+
+  .titlebar-scale {
+    -webkit-app-region: no-drag;
+    height: 22px;
+    margin: 0 6px;
+    padding: 0 6px;
+    background: rgba(0, 0, 0, 0.18);
+    color: var(--accent-on);
+    border: 1px solid rgba(0, 0, 0, 0.18);
+    border-radius: 4px;
+    font-size: 11px;
+    line-height: 1;
+    opacity: 0.85;
+    transition: background 0.15s, opacity 0.15s;
+  }
+
+  .titlebar-scale:hover {
+    background: rgba(0, 0, 0, 0.28);
+    opacity: 1;
+  }
+
+  .titlebar-scale option {
+    background: var(--bg-surface);
+    color: var(--text-primary);
   }
 </style>
