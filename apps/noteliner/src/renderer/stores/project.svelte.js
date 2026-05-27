@@ -33,6 +33,13 @@ class ProjectState {
   editorContent = $state('');
   scrollToLine = $state(null);
   cursorLine = $state(1);
+  // 1-based caret column, surfaced in the status bar.
+  cursorCol = $state(1);
+  // Length (in characters) of the current editor selection; 0 when none.
+  selectionLength = $state(0);
+  // Autosave indicator for the status bar: 'saved' | 'saving' | 'unsaved'.
+  // Editor.svelte drives the transitions; reset to 'saved' on file load.
+  saveStatus = $state('saved');
   // Drives the Files-pane order. Persisted to UI prefs under filesSortMode.
   sortMode = $state('user');
   // Files-pane tag filter. Stores *un*-checked rows (real tag names plus the
@@ -87,6 +94,12 @@ class ProjectState {
 
   async selectFile(fileId) {
     this.selectedFileId = fileId;
+    // Freshly loaded content is by definition in sync with disk; reset the
+    // status-bar caret/selection/save indicators so they don't carry over
+    // stale values from the previously open file.
+    this.cursorCol = 1;
+    this.selectionLength = 0;
+    this.saveStatus = 'saved';
     const file = this.index.files.find(f => f.id === fileId);
     if (file) {
       const content = await window.api.readFile(file.filename);
