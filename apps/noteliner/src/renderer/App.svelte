@@ -1021,8 +1021,9 @@
   </div>
 
   <!-- Full-width status bar pinned to the bottom of the column layout (must be
-       a child of .app-layout, not .app-body, so it spans under the toolbar). -->
-  {#if projectState.isOpen && layout.showStatusBar}
+       a child of .app-layout, not .app-body, so it spans under the toolbar).
+       Shown on the home screen too; StatusBar renders a "no project" state. -->
+  {#if layout.showStatusBar}
     <StatusBar onShowSync={handleShowSync} refreshToken={statusRefresh} />
   {/if}
 </div>

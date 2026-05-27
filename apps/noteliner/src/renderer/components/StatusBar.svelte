@@ -83,20 +83,24 @@
 <footer class="status-bar">
   <!-- Left: document & project context -->
   <div class="zone left">
-    {#if projectState.selectedFile}
-      <span class="seg file" title={projectState.selectedFile.filename}>
-        {projectState.selectedFile.name}
-      </span>
-      <span class="seg save" class:is-unsaved={projectState.saveStatus === 'unsaved'}>
-        <span class="dot {projectState.saveStatus === 'saved' ? 'dot-green' : projectState.saveStatus === 'saving' ? 'dot-orange' : 'dot-grey'}"></span>
-        {saveLabel}
-      </span>
+    {#if !projectState.isOpen}
+      <span class="seg muted">No project open</span>
     {:else}
-      <span class="seg muted">No file selected</span>
+      <span class="seg muted">
+        {projectState.index.files.length} note{projectState.index.files.length !== 1 ? 's' : ''}
+      </span>
+      {#if projectState.selectedFile}
+        <span class="seg save" class:is-unsaved={projectState.saveStatus === 'unsaved'}>
+          <span class="dot {projectState.saveStatus === 'saved' ? 'dot-green' : projectState.saveStatus === 'saving' ? 'dot-orange' : 'dot-grey'}"></span>
+          {saveLabel}
+        </span>
+        <span class="seg file" title={projectState.selectedFile.filename}>
+          {projectState.selectedFile.name}
+        </span>
+      {:else}
+        <span class="seg muted">No file selected</span>
+      {/if}
     {/if}
-    <span class="seg muted">
-      {projectState.index.files.length} note{projectState.index.files.length !== 1 ? 's' : ''}
-    </span>
   </div>
 
   <!-- Center: selection summary (only when something is selected) -->
