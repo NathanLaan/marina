@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog, shell, net, protocol, screen, session } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, shell, net, protocol, screen, session, powerMonitor } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -315,6 +315,32 @@ app.whenReady().then(() => {
   createWindow();
 
   initAutoUpdater();
+
+  // On Linux, a system suspend/resume (e.g. closing and reopening a laptop lid)
+  // can leave the window's native compositor surface stale, so it wakes up as a
+  // blank white window with no UI. Disabling GPU compositing alone doesn't
+  // recover it on every WM. Forcing a hide/show cycle on resume makes Chromium
+  // tear down and re-create the native surface, repainting a fresh frame —
+  // without a content reload, so the open project, cursor, and scroll survive.
+  // A short delay lets the compositor settle after wake before we nudge it.
+  //
+  // The hide/show re-creates the surface but can leave it mid-relayout, with
+  // visual glitches that only clear once the window is manually resized.
+  // webContents.invalidate() schedules a full repaint of the window directly,
+  // clearing those glitches without the flicker or maximized-state juggling a
+  // resize nudge would require.
+  if (process.platform === 'linux') {
+    powerMonitor.on('resume', () => {
+      setTimeout(() => {
+        if (!mainWindow || mainWindow.isDestroyed()) return;
+        const wasMaximized = mainWindow.isMaximized();
+        mainWindow.hide();
+        mainWindow.show();
+        if (wasMaximized && !mainWindow.isMaximized()) mainWindow.maximize();
+        mainWindow.webContents.invalidate();
+      }, 300);
+    });
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
