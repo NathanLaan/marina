@@ -32,8 +32,17 @@ if (!app.requestSingleInstanceLock()) {
 // can't survive a screen-lock/unlock cycle, leaving a blank white screen.
 // Disabling Vulkan lets Chromium fall back to OpenGL/GLES which handles
 // Wayland surface lifecycle correctly.
+//
+// A deeper system suspend/resume (vs. a mere screen lock) tears down the GPU
+// process's GL context entirely, and Chromium's compositor fails to re-create
+// its surface on wake — the window comes back blank white with no UI and has
+// to be killed. `render-process-gone` does not fire because the renderer is
+// still alive; only its GPU surface is dead. Disabling GPU *compositing* keeps
+// content GPU-rasterized but composites the final window frame on the CPU, so
+// the surface no longer depends on a GL context that can't survive resume.
 if (process.platform === 'linux') {
   app.commandLine.appendSwitch('disable-vulkan');
+  app.commandLine.appendSwitch('disable-gpu-compositing');
 }
 
 const RECENT_PROJECTS_FILE = 'recent-projects.json';
