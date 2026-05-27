@@ -132,11 +132,15 @@
           if (update.docChanged && !isUpdating) {
             const content = update.state.doc.toString();
             projectState.editorContent = content;
+            projectState.saveStatus = 'unsaved';
             scheduleSave(content);
           }
           if (update.selectionSet || update.docChanged) {
-            const pos = update.state.selection.main.head;
-            projectState.cursorLine = update.state.doc.lineAt(pos).number;
+            const sel = update.state.selection.main;
+            const line = update.state.doc.lineAt(sel.head);
+            projectState.cursorLine = line.number;
+            projectState.cursorCol = sel.head - line.from + 1;
+            projectState.selectionLength = Math.abs(sel.to - sel.from);
           }
         }),
         EditorView.lineWrapping
@@ -154,9 +158,13 @@
     saveTimeout = setTimeout(async () => {
       const file = projectState.selectedFile;
       if (file) {
+        projectState.saveStatus = 'saving';
         const result = await window.api.writeFile(file.filename, content);
         if (result && result.error === 'git_config_required') {
+          projectState.saveStatus = 'unsaved';
           onGitConfigRequired();
+        } else {
+          projectState.saveStatus = 'saved';
         }
       }
     }, 500);

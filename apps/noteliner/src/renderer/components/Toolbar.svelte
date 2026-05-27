@@ -7,11 +7,11 @@
   let {
     onGoHome, onOpenFolder, onNewFile, onImportDocument,
     onToggleSidebar, onToggleOutline, onToggleTags,
-    onToggleLog, onToggleAttachments, onToggleSearch, onToggleBacklinks,
+    onToggleLog, onToggleStatusBar, onToggleAttachments, onToggleSearch, onToggleBacklinks,
     onShowAbout, onShowSettings, onShowProjectSettings, onShowSync, onShowHelp,
     projectOpen,
     customTitlebar = false,
-    logVisible = false, sidebarVisible = true, outlineVisible = false,
+    logVisible = false, statusBarVisible = true, sidebarVisible = true, outlineVisible = false,
     tagsVisible = true, attachmentsVisible = false,
     searchVisible = false, backlinksVisible = false,
   } = $props();
@@ -51,6 +51,7 @@
   {/if}
 
   <ToolbarButton icon="fa-terminal" active={logVisible} onclick={onToggleLog} title="Show Log (Ctrl+L)" />
+  <ToolbarButton icon="fa-window-maximize" active={statusBarVisible} onclick={onToggleStatusBar} title="Status Bar (Ctrl+J)" />
 
   <ToolbarDivider />
 

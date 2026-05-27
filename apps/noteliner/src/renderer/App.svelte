@@ -16,6 +16,7 @@
   import DeleteFileModal from './components/DeleteFileModal.svelte';
   import ClearTagsModal from './components/ClearTagsModal.svelte';
   import SyncModal from './components/SyncModal.svelte';
+  import StatusBar from './components/StatusBar.svelte';
   import SyncingModal from './components/SyncingModal.svelte';
   import ImportingModal from './components/ImportingModal.svelte';
   import McpConfirmModal from './components/McpConfirmModal.svelte';
@@ -36,6 +37,7 @@
     showPreview: false,
     showHistory: false,
     showLog: false,
+    showStatusBar: true,
     showToolbar: true,
     showSidebar: true,
     showOutline: false,
@@ -70,6 +72,8 @@
   let showProjectSettings = $state(false);
   let showNewProject = $state(false);
   let showSync = $state(false);
+  // Bumped to make the StatusBar re-fetch git/MCP state without polling.
+  let statusRefresh = $state(0);
   let showNewFile = $state(false);
   let showDeleteFile = $state(false);
   let showSyncing = $state(false);
@@ -179,6 +183,9 @@
     C({ id: 'view.toggleLog', label: 'Toggle Log Panel', section: 'View', shortcut: 'Ctrl+L',
         matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'l',
         run: () => handleToggleLog() });
+    C({ id: 'view.toggleStatusBar', label: 'Toggle Status Bar', section: 'View', shortcut: 'Ctrl+J',
+        matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'j',
+        run: () => handleToggleStatusBar() });
     C({ id: 'view.toggleSpellCheck', label: 'Toggle Spell Check', section: 'View', shortcut: 'F7',
         matches: (e) => !ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'F7',
         run: () => handleToggleSpellCheck() });
@@ -439,6 +446,10 @@
 
   function handleToggleLog() {
     layout.showLog = !layout.showLog;
+  }
+
+  function handleToggleStatusBar() {
+    layout.showStatusBar = !layout.showStatusBar;
   }
 
   function handleTogglePreview() {
@@ -779,7 +790,7 @@
 {/if}
 
 {#if showSettings}
-  <SettingsModal onClose={() => showSettings = false} />
+  <SettingsModal onClose={() => { showSettings = false; statusRefresh++; }} />
 {/if}
 
 {#if showNewProject}
@@ -826,7 +837,7 @@
 {/if}
 
 {#if showSync}
-  <SyncModal onClose={() => showSync = false} />
+  <SyncModal onClose={() => { showSync = false; statusRefresh++; }} />
 {/if}
 
 {#if showSyncing}
@@ -863,6 +874,7 @@
         onImportDocument={handleImportDocument}
         customTitlebar={customTitlebar}
         onToggleLog={handleToggleLog}
+        onToggleStatusBar={handleToggleStatusBar}
         onToggleSidebar={handleToggleSidebar}
         onToggleOutline={handleToggleOutline}
         onToggleTags={handleToggleTags}
@@ -876,6 +888,7 @@
         onShowSync={handleShowSync}
         projectOpen={projectState.isOpen}
         logVisible={layout.showLog}
+        statusBarVisible={layout.showStatusBar}
         sidebarVisible={layout.showSidebar}
         outlineVisible={layout.showOutline}
         tagsVisible={layout.showTags}
@@ -1006,6 +1019,12 @@
     </div>
   {/if}
   </div>
+
+  <!-- Full-width status bar pinned to the bottom of the column layout (must be
+       a child of .app-layout, not .app-body, so it spans under the toolbar). -->
+  {#if projectState.isOpen && layout.showStatusBar}
+    <StatusBar onShowSync={handleShowSync} refreshToken={statusRefresh} />
+  {/if}
 </div>
 
 <style>
