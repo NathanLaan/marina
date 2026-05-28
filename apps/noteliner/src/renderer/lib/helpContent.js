@@ -353,6 +353,8 @@ committed to Git in the background.
 - ` + '`Ctrl+Shift+F`' + ` — find in current file
 - ` + '`Ctrl+P`' + ` — toggle the Preview pane
 - ` + '`Ctrl+H`' + ` — toggle the History pane
+- ` + '`Alt+.`' + ` — insert right arrow (→) at caret
+- ` + '`Alt+,`' + ` — insert left arrow (←) at caret
 
 Headings, lists, code blocks, blockquotes, tables, images, and
 ` + '`[[wikilinks]]`' + ` all render in Preview exactly as you'd expect from

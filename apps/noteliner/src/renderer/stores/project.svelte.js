@@ -56,6 +56,17 @@ class ProjectState {
     if (!index.tagMeta || typeof index.tagMeta !== 'object') {
       index.tagMeta = {};
     }
+    // tagPalette is the durable set of tags known to this project. A tag
+    // stays in the palette after the last file unchecks it, so the chip
+    // remains visible in the TAGS pane and can be re-applied. Seed from
+    // file tags so legacy projects (pre-palette) start with the right set.
+    if (!Array.isArray(index.tagPalette)) {
+      const seed = new Set();
+      for (const file of (index.files || [])) {
+        if (file.tags) for (const t of file.tags) seed.add(t);
+      }
+      index.tagPalette = [...seed];
+    }
     this.index = index;
     this.isOpen = true;
     this.selectedFileId = null;
@@ -225,7 +236,9 @@ class ProjectState {
   }
 
   get allTags() {
-    const tagSet = new Set();
+    const tagSet = new Set(this.index.tagPalette || []);
+    // Union with file tags so a tag introduced outside the palette flow
+    // (frontmatter on disk, MCP write, import) still shows up.
     for (const file of this.index.files) {
       if (file.tags) {
         for (const tag of file.tags) tagSet.add(tag);
@@ -250,8 +263,13 @@ class ProjectState {
     if (!file) return;
     if (!file.tags) file.tags = [];
     const normalized = tag.trim();
-    if (normalized && !file.tags.includes(normalized)) {
+    if (!normalized) return;
+    if (!file.tags.includes(normalized)) {
       file.tags = [...file.tags, normalized];
+    }
+    if (!this.index.tagPalette) this.index.tagPalette = [];
+    if (!this.index.tagPalette.includes(normalized)) {
+      this.index.tagPalette = [...this.index.tagPalette, normalized];
     }
   }
 
@@ -259,6 +277,26 @@ class ProjectState {
     const file = this.index.files.find(f => f.id === fileId);
     if (!file || !file.tags) return;
     file.tags = file.tags.filter(t => t !== tag);
+    // Intentionally leave `tagPalette` alone — unchecking a tag must keep
+    // its chip visible so the user can re-check it without retyping.
+  }
+
+  // Drop a tag from the palette and from every file. Use this for an
+  // explicit "delete tag" action; the toggle-off in TagsPane does NOT
+  // call this (see removeTag).
+  deleteTagEntirely(tag) {
+    if (this.index.tagPalette) {
+      this.index.tagPalette = this.index.tagPalette.filter(t => t !== tag);
+    }
+    for (const file of this.index.files) {
+      if (file.tags && file.tags.includes(tag)) {
+        file.tags = file.tags.filter(t => t !== tag);
+      }
+    }
+    if (this.index.tagMeta && this.index.tagMeta[tag]) {
+      const { [tag]: _, ...rest } = this.index.tagMeta;
+      this.index.tagMeta = rest;
+    }
   }
 
   getFilesWithTag(tag) {

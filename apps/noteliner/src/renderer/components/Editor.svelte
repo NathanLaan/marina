@@ -126,6 +126,18 @@
             const line = view.state.doc.lineAt(pos);
             view.dispatch({ selection: { anchor: line.from, head: line.to } });
             return true;
+          },
+          keydown(event, view) {
+            // Use event.code (physical key) so the shortcut survives layouts
+            // where Alt+key produces a different character (notably macOS).
+            if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return false;
+            let insert;
+            if (event.code === 'Period') insert = '→';
+            else if (event.code === 'Comma') insert = '←';
+            else return false;
+            event.preventDefault();
+            view.dispatch(view.state.replaceSelection(insert));
+            return true;
           }
         }),
         EditorView.updateListener.of((update) => {
