@@ -45,7 +45,7 @@
     class:active={toolbarVisible}
     onclick={onToggleToolbar}
     aria-label="Toggle toolbar"
-    title="Toolbar"
+    title="Toolbar (Ctrl+Shift+E)"
   >
     <i class="fas fa-bars"></i>
   </button>
