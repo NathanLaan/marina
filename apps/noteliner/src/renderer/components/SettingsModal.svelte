@@ -167,13 +167,21 @@
   // registerCommands(); this list updates automatically.
   const shortcuts = $derived(commandRegistry.shortcutList());
 
-  // CodeMirror-handled shortcuts that aren't NoteLiner commands but are worth
-  // documenting alongside.
-  const editorShortcuts = [
+  // Shortcuts that aren't dispatched through the command registry (CodeMirror
+  // bindings, mouse-wheel gestures) but are worth documenting alongside.
+  const extraShortcuts = [
     { keys: 'Ctrl+Shift+F', action: 'Find in File', section: 'Editor' },
+    { keys: 'Ctrl+MouseWheelUp', action: 'Zoom In', section: 'View' },
+    { keys: 'Ctrl+MouseWheelDown', action: 'Zoom Out', section: 'View' },
   ];
 
-  const allShortcuts = $derived([...shortcuts, ...editorShortcuts]);
+  // Sort by section then action so the appended entries merge into the
+  // registry's existing groups (e.g. the mouse-wheel zooms land under View)
+  // instead of spawning a duplicate section header at the end.
+  const allShortcuts = $derived([...shortcuts, ...extraShortcuts].sort((a, b) => {
+    if (a.section !== b.section) return a.section.localeCompare(b.section);
+    return a.action.localeCompare(b.action);
+  }));
 
   const tabs = [
     { id: 'ui',        label: 'UI',                 render: uiTab },

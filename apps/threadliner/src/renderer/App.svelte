@@ -132,6 +132,27 @@
     }
   }
 
+  // Ctrl+MouseWheel adjusts UI scale: wheel up zooms in, wheel down zooms out.
+  // Needs passive:false so preventDefault stops the browser's native ctrl+wheel
+  // page zoom from fighting our scale CSS vars.
+  //
+  // A single physical scroll fires a burst of wheel events (and deltaY size
+  // varies wildly by device — mouse notch vs. trackpad momentum), so stepping
+  // on every event races to the 200% cap. Throttle to one step per cooldown
+  // window instead: device-independent and predictable. Bigger ms = slower.
+  let lastZoomTs = 0;
+  const ZOOM_COOLDOWN_MS = 200;
+  function handleGlobalWheel(e) {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    if (e.deltaY === 0) return;
+    e.preventDefault();
+    const now = Date.now();
+    if (now - lastZoomTs < ZOOM_COOLDOWN_MS) return;
+    lastZoomTs = now;
+    if (e.deltaY < 0) themeState.zoomIn();
+    else themeState.zoomOut();
+  }
+
   async function loadUIPrefs() {
     if (!window.api?.getUIPrefs) return;
     try {
@@ -157,6 +178,7 @@
     await loadUIPrefs();
     try { appVersion = await window.api.getAppVersion(); } catch { appVersion = 'x.x.x'; }
     window.addEventListener('keydown', handleGlobalKeydown);
+    window.addEventListener('wheel', handleGlobalWheel, { passive: false, capture: true });
     const isReady = await checkSetup();
     if (isReady) {
       await loadFeeds();
@@ -169,6 +191,7 @@
 
   onDestroy(() => {
     window.removeEventListener('keydown', handleGlobalKeydown);
+    window.removeEventListener('wheel', handleGlobalWheel, { capture: true });
     stopPolling();
     if (unsubFeedsUpdated) {
       unsubFeedsUpdated();
