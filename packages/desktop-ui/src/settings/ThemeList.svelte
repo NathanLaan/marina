@@ -4,62 +4,41 @@
   let { state = themeState } = $props();
 </script>
 
-<div class="theme-list">
+<select
+  class="theme-select"
+  aria-label="Theme"
+  value={state.current}
+  onchange={(e) => state.set(e.currentTarget.value)}
+>
   {#each state.list as t (t.id)}
-    <button
-      class="theme-option"
-      class:active={state.current === t.id}
-      onclick={() => state.set(t.id)}
-    >
-      <span class="theme-radio">
-        {#if state.current === t.id}
-          <i class="fas fa-circle-check"></i>
-        {:else}
-          <i class="far fa-circle"></i>
-        {/if}
-      </span>
+    <option value={t.id} style="background-color: {t.colors.accent}; color: {t.colors.accentOn};">
       {t.name}
-    </button>
+    </option>
   {/each}
-</div>
+</select>
 
 <style>
-  .theme-list {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .theme-option {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+  .theme-select {
+    width: 100%;
     padding: 10px 14px;
     background: var(--bg-button);
     color: var(--text-primary);
+    border: 1px solid var(--border);
     border-radius: 6px;
     font-size: 14px;
-    text-align: left;
     transition: background 0.15s;
   }
 
-  .theme-option:hover {
+  .theme-select:hover {
     background: var(--bg-button-hover);
   }
 
-  .theme-option.active {
-    background: var(--bg-selected);
+  .theme-select:focus {
     outline: 1px solid var(--accent);
   }
 
-  .theme-radio {
-    color: var(--text-muted);
-    font-size: 15px;
-    width: 18px;
-    text-align: center;
-  }
-
-  .theme-option.active .theme-radio {
-    color: var(--accent);
+  .theme-select option {
+    background: var(--bg-surface);
+    color: var(--text-primary);
   }
 </style>

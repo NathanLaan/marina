@@ -51,9 +51,11 @@
     { keys: 'Ctrl+I',       action: 'About',           section: 'App' },
     { keys: 'F1',           action: 'Help',            section: 'App' },
 
-    { keys: 'Ctrl+=',       action: 'Zoom in',         section: 'View' },
-    { keys: 'Ctrl+-',       action: 'Zoom out',        section: 'View' },
-    { keys: 'Ctrl+0',       action: 'Reset zoom',      section: 'View' },
+    { keys: 'Ctrl+=',              action: 'Zoom in',    section: 'View' },
+    { keys: 'Ctrl+-',              action: 'Zoom out',   section: 'View' },
+    { keys: 'Ctrl+0',              action: 'Reset zoom', section: 'View' },
+    { keys: 'Ctrl+MouseWheelUp',   action: 'Zoom in',    section: 'View' },
+    { keys: 'Ctrl+MouseWheelDown', action: 'Zoom out',   section: 'View' },
   ];
 
   onMount(async () => {

@@ -230,7 +230,22 @@ class ThemeState {
     const ids = this.themeAllowlist || Object.keys(THEMES);
     return ids
       .filter((id) => THEMES[id])
-      .map((id) => ({ id, name: THEMES[id].name }));
+      .map((id) => {
+        // Surface a few key colors so UI (e.g. the theme dropdown) can paint
+        // each row in that theme's own palette as a live preview.
+        const v = THEMES[id].vars;
+        return {
+          id,
+          name: THEMES[id].name,
+          colors: {
+            bg: v['--bg-surface'],
+            text: v['--text-primary'],
+            accent: v['--accent'],
+            accentOn: v['--accent-on'],
+            border: v['--border'],
+          },
+        };
+      });
   }
 
   get scaleList() {
