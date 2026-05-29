@@ -4,41 +4,39 @@
   let { state = themeState } = $props();
 </script>
 
-<div class="scale-list">
+<select
+  class="scale-select"
+  aria-label="UI scale"
+  value={state.scale}
+  onchange={(e) => state.setScale(e.currentTarget.value)}
+>
   {#each state.scaleList as scale (scale.id)}
-    <button
-      class="scale-option"
-      class:active={state.scale === scale.id}
-      onclick={() => state.setScale(scale.id)}
-    >
-      {scale.label}
-    </button>
+    <option value={scale.id}>{scale.label}</option>
   {/each}
-</div>
+</select>
 
 <style>
-  .scale-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-
-  .scale-option {
-    padding: 8px 14px;
+  .scale-select {
+    width: 100%;
+    padding: 10px 14px;
     background: var(--bg-button);
     color: var(--text-primary);
+    border: 1px solid var(--border);
     border-radius: 6px;
-    font-size: 13px;
+    font-size: 14px;
     transition: background 0.15s;
   }
 
-  .scale-option:hover {
+  .scale-select:hover {
     background: var(--bg-button-hover);
   }
 
-  .scale-option.active {
-    background: var(--bg-selected);
+  .scale-select:focus {
     outline: 1px solid var(--accent);
-    color: var(--accent);
+  }
+
+  .scale-select option {
+    background: var(--bg-surface);
+    color: var(--text-primary);
   }
 </style>
