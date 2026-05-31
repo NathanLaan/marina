@@ -10,6 +10,7 @@ NoteLiner should be considered BETA software. I wrote it for my own personal use
 - Markdown editor with syntax highlighting (CodeMirror 6)
 - Live markdown preview panel
 - File attachments (paste, drag-and-drop, or file picker) with image thumbnails
+- Reusable note templates with `{{title}}`/`{{date}}` placeholder substitution
 - Automatic Git commit on every change with debounced push to remote
 - Optional MCP server — expose the open project to AI assistants (Claude Code, Claude Desktop, Cursor) via local-only stdio bridge
 - Three built-in themes: Midnight, Dark, and Light
@@ -23,6 +24,7 @@ NoteLiner works with the concept of a **Project**, which is a folder on the user
 2. An index file (`noteliner.json`) tracking all files, their hierarchy, tags, and attachments.
 3. Markdown files (`.md`) in the project root.
 4. An `_attachments/` directory for files attached to notes (images, PDFs, etc.).
+5. An optional `_templates/` directory holding reusable note templates (plain `.md` files).
 
 Changes are committed locally whenever a file is added, removed, or modified. Commits are pushed to the remote repository on a 30-second debounce timer, enabling cross-device sync via Git.
 
@@ -68,6 +70,23 @@ Files can be attached to any note via:
 - **File picker** -- Click `[+]` in the attachments panel.
 
 Attachments are stored in the `_attachments/` directory and tracked in `noteliner.json`. A markdown reference is automatically inserted at the cursor: `![name](path)` for images, `[name](path)` for other files. Maximum file size is 30MB.
+
+## Templates
+
+Templates are reusable note skeletons stored as plain markdown files in the project's `_templates/` directory. They are **not** notes — they never appear in the file tree, search, or backlinks — but they are committed to Git alongside the rest of the project, so they version and sync like everything else.
+
+**Using a template.** When a project contains at least one template, the **New File** dialog (`Ctrl+N`) shows a *Template* dropdown. Pick a template and the new note starts from that template's body instead of a blank document. Choose *Blank* for the default behaviour.
+
+**Creating a template.** Select a note and run **Save as Template** from the Command Palette (`Ctrl+K`). The note's current name and editor contents are saved as a new template at `_templates/<name>.md`. Re-running it with the same name overwrites the existing template. You can also author templates by hand — just drop a `.md` file into `_templates/`.
+
+**Placeholders.** When a note is created from a template, the following placeholders in the template body are substituted automatically. Any other `{{...}}` text is left untouched.
+
+| Placeholder | Replaced with | Example |
+|---|---|---|
+| `{{title}}` | The new note's name | `Meeting Notes` |
+| `{{date}}` | Current date (`YYYY-MM-DD`) | `2026-05-31` |
+| `{{time}}` | Current time (`HH:MM`, 24-hour) | `14:30` |
+| `{{datetime}}` | Current date and time | `2026-05-31 14:30` |
 
 ## MCP Server
 

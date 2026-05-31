@@ -134,6 +134,8 @@
     C({ id: 'file.import', label: 'Import Document', section: 'File', shortcut: 'Ctrl+Shift+I',
         matches: (e) => ctrl(e) && e.shiftKey && !e.altKey && e.code === 'KeyI',
         when: projectOpen, run: () => handleImportDocument() });
+    C({ id: 'file.saveAsTemplate', label: 'Save as Template', section: 'File',
+        when: hasSelection, run: () => handleSaveAsTemplate() });
     C({ id: 'file.openFolder', label: 'Open Folder', section: 'File', shortcut: 'Ctrl+O',
         matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'o',
         run: () => handleOpenFolder() });
@@ -410,12 +412,25 @@
     showNewFile = true;
   }
 
-  async function handleNewFileConfirm({ name, tags }) {
+  async function handleNewFileConfirm({ name, tags, templateId }) {
     showNewFile = false;
     createFromWikilinkName = '';
-    const entry = await window.api.createFile(name, tags);
+    const entry = await window.api.createFile(name, tags, templateId);
     projectState.addFile(entry);
     projectState.selectFile(entry.id);
+  }
+
+  async function handleSaveAsTemplate() {
+    const file = projectState.selectedFile;
+    if (!file) return;
+    // The template inherits the current note's name and live editor body. Users
+    // can then edit _templates/<name>.md to add {{title}}/{{date}} placeholders.
+    const result = await window.api.saveTemplate?.(file.name, projectState.editorContent || '');
+    if (result?.error) {
+      logState.add(`Save as template failed: ${result.error}`);
+    } else if (result?.name) {
+      logState.add(`Saved template "${result.name}"`);
+    }
   }
 
   function handleDeleteFile() {

@@ -22,9 +22,9 @@ back changes at any time.
   describing what it does and which keyboard shortcut triggers it.
 - **Panels** — the Files, Outline, Tags, Search, Backlinks, Attachments,
   History, and Log panels each have their own page.
-- **Workflow guides** — how to create files, import documents, link notes
-  with ` + '`[[wikilinks]]`' + `, sync to a remote Git repository, and export to
-  HTML/PDF/Markdown.
+- **Workflow guides** — how to create files, start notes from templates,
+  import documents, link notes with ` + '`[[wikilinks]]`' + `, sync to a remote
+  Git repository, and export to HTML/PDF/Markdown.
 
 ## Tips for using this dialog
 
@@ -110,6 +110,50 @@ for a display name and an optional set of tags. The file is saved as
 
 New files can also be created on the fly by clicking a *dangling*
 ` + '`[[wikilink]]`' + ` in the Preview pane — see the **Wikilinks** page.
+
+If the project has any **templates**, the dialog shows a *Template* dropdown
+so a new note can start from a saved skeleton instead of a blank body — see
+the **Templates** page.
+`,
+  },
+
+  {
+    id: 'templates',
+    title: 'Templates',
+    section: 'Files',
+    body: `# Templates
+
+Templates are reusable note skeletons stored as plain markdown in the
+project's ` + '`_templates/`' + ` folder. They are **not** notes — they never
+appear in the file tree, search, or backlinks — but they are committed to git
+along with the rest of the project, so they version and sync like everything
+else.
+
+## Using a template
+
+When a project contains at least one template, the **New File** dialog
+(` + '`Ctrl+N`' + `) shows a *Template* dropdown. Pick one and the new note
+starts from that template's body instead of a blank document. Choose *Blank*
+for the default behaviour.
+
+## Creating a template
+
+Select a note and run **Save as Template** from the Command Palette
+(` + '`Ctrl+K`' + `). The note's current name and editor contents are saved as a
+new template. You can then open ` + '`_templates/<name>.md`' + ` and edit it —
+for example to add placeholders.
+
+## Placeholders
+
+When a note is created from a template, these placeholders in the template
+body are filled in automatically:
+
+- ` + '`{{title}}`' + ` — the new note's name (e.g. ` + '`Meeting Notes`' + `)
+- ` + '`{{date}}`' + ` — the current date, ` + '`YYYY-MM-DD`' + ` (e.g. ` + '`2026-05-31`' + `)
+- ` + '`{{time}}`' + ` — the current time, ` + '`HH:MM`' + ` 24-hour (e.g. ` + '`14:30`' + `)
+- ` + '`{{datetime}}`' + ` — date and time together (e.g. ` + '`2026-05-31 14:30`' + `)
+
+Any other ` + '`{{...}}`' + ` text is left untouched.
 `,
   },
 

@@ -7,6 +7,7 @@ const { ProjectService } = require('./project-service');
 const { WindowStateService } = require('./window-state-service');
 const { LinkGraphService } = require('./link-graph-service');
 const { ImportService } = require('./import-service');
+const { TemplateService } = require('./template-service');
 const { McpService } = require('./mcp-service');
 const perf = require('./perf');
 const { marked } = require('marked');
@@ -112,6 +113,7 @@ let gitService;
 let projectService;
 let linkGraphService;
 let importService;
+let templateService;
 let windowStateService;
 let mcpService;
 let boundsTimer = null;
@@ -229,6 +231,7 @@ function createWindow() {
   projectService.setWriteFrontmatter(uiPrefs.writeFrontmatter !== false);
   linkGraphService = new LinkGraphService(projectService);
   importService = new ImportService(projectService);
+  templateService = new TemplateService(projectService);
   windowStateService = new WindowStateService(
     path.join(app.getPath('userData'), 'window-state.json')
   );
@@ -649,10 +652,18 @@ ipcMain.handle('file:write', async (_event, filePath, content) => {
   }, { bytes: typeof content === 'string' ? content.length : 0 });
 });
 
-ipcMain.handle('file:create', async (_event, name, tags) => {
+ipcMain.handle('file:create', async (_event, name, tags, templateId) => {
   return perf.measure('file.create', async () => {
     try {
-      const entry = await projectService.createFile(name, tags);
+      // When a template is chosen, seed the new note with its substituted body
+      // ({{title}}/{{date}}/etc. resolved). Falls back to the default body when
+      // no template is given or the chosen one has gone missing.
+      const options = {};
+      if (templateId) {
+        const body = templateService.bodyFor(templateId, { title: name });
+        if (body != null) options.body = body;
+      }
+      const entry = await projectService.createFile(name, tags, options);
       // New file may resolve pre-existing dangling links elsewhere; full rebuild is cheap.
       await linkGraphService.rebuild();
       return entry;
@@ -661,6 +672,23 @@ ipcMain.handle('file:create', async (_event, name, tags) => {
       throw err;
     }
   });
+});
+
+// Templates (reusable note skeletons under _templates/)
+
+ipcMain.handle('templates:list', async () => {
+  if (!projectService.projectPath) return [];
+  return templateService.list();
+});
+
+ipcMain.handle('templates:save', async (_event, name, body) => {
+  if (!projectService.projectPath) return { error: 'no_project' };
+  try {
+    return await templateService.save(name, body);
+  } catch (err) {
+    if (err.code === 'GIT_CONFIG_REQUIRED') return { error: 'git_config_required' };
+    return { error: err.message };
+  }
 });
 
 ipcMain.handle('file:delete', async (_event, fileId) => {
