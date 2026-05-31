@@ -14,6 +14,29 @@
   let templates = $state([]);
   let selectedTemplate = $state('');
 
+  // Parent note for the new file. Empty string = "(None)" → root-level file.
+  let selectedParent = $state('');
+
+  // All files flattened into tree order (depth-first, unfiltered by the tag
+  // popover) with a depth so the dropdown can indent to show hierarchy.
+  let parentOptions = $derived.by(() => {
+    const out = [];
+    const walk = (parentId, depth) => {
+      for (const f of projectState.getAllChildren(parentId)) {
+        out.push({ id: f.id, name: f.name, depth });
+        walk(f.id, depth + 1);
+      }
+    };
+    walk(null, 0);
+    return out;
+  });
+
+  // Indent nested files with non-breaking spaces — plain spaces get collapsed
+  // in <option> labels, so the hierarchy wouldn't show otherwise.
+  function parentLabel(p) {
+    return '  '.repeat(p.depth) + p.name;
+  }
+
   onMount(() => {
     const p = window.api?.listTemplates?.();
     if (!p) return;
@@ -48,7 +71,12 @@
   function handleOk() {
     const name = fileName.trim();
     if (!name) return;
-    onConfirm({ name, tags: [...selectedTags], templateId: selectedTemplate || null });
+    onConfirm({
+      name,
+      tags: [...selectedTags],
+      templateId: selectedTemplate || null,
+      parentId: selectedParent || null,
+    });
   }
 </script>
 
@@ -61,6 +89,16 @@
       <div class="field">
         <label for="new-file-name">File Name:</label>
         <input id="new-file-name" type="text" bind:value={fileName} placeholder="Untitled" use:focusInput />
+      </div>
+
+      <div class="field">
+        <label for="new-file-parent">Parent:</label>
+        <select id="new-file-parent" bind:value={selectedParent}>
+          <option value="">(None)</option>
+          {#each parentOptions as p (p.id)}
+            <option value={p.id}>{parentLabel(p)}</option>
+          {/each}
+        </select>
       </div>
 
       {#if templates.length > 0}
@@ -146,7 +184,8 @@
   }
 
   .tag-list {
-    max-height: 260px;
+    /* Two rows shorter than before — each .tag-item is ~28px tall. */
+    max-height: 204px;
     overflow-y: auto;
     border: 1px solid var(--input-border);
     border-radius: 6px;
