@@ -12,6 +12,9 @@
 
   function select(id) {
     libraryState.formatFilter = id;
+    // Clicking a Library section is a navigation intent: leave reader mode (if
+    // open) and show the filtered library grid. No-op when already in the library.
+    libraryState.clearSelection();
   }
 </script>
 
