@@ -20,8 +20,15 @@
   let effectiveScale = $state(1);
 
   let canvasEl;
+  let textLayerEl;
   let containerWidth = $state(0);
   let renderTask = null;
+  let textLayerObj = null;
+
+  // Rendered page size in CSS px (canvas style size, sans device-pixel-ratio);
+  // the text layer + highlight overlay are sized/positioned against this.
+  let pageW = $state(0);
+  let pageH = $state(0);
 
   // Outline (table of contents), flattened with depth for the Contents pane.
   let outline = $state([]);
@@ -32,8 +39,13 @@
   let searching = $state(false);
   const textCache = [];
 
-  // Bookmarks (page-based). Highlights are deferred for PDF — see Phase 4 notes.
+  // Annotations.
   let bookmarks = $state([]);
+  let highlights = $state([]);
+  // Pending text selection awaiting promotion to a highlight (the toolbar button).
+  // rects are stored in page-space (scale-1 PDF units) so they survive zoom.
+  let pendingSel = $state(null);
+  let currentPageHighlights = $derived(highlights.filter((h) => h.page === page));
 
   // --- Sidebar panes (PaneHost) -----------------------------------------
   let paneOrder = $state(['contents', 'annotations', 'search']);
@@ -69,6 +81,9 @@
     canvasEl.style.width = `${Math.floor(viewport.width)}px`;
     canvasEl.style.height = `${Math.floor(viewport.height)}px`;
 
+    pageW = Math.floor(viewport.width);
+    pageH = Math.floor(viewport.height);
+
     if (renderTask) { try { renderTask.cancel(); } catch { /* ignore */ } }
     renderTask = pg.render({
       canvasContext: ctx,
@@ -76,6 +91,28 @@
       transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : undefined,
     });
     try { await renderTask.promise; } catch { /* cancelled by a newer render */ }
+
+    await renderTextLayer(pg, viewport, s);
+  }
+
+  // Selectable text layer overlaid on the canvas — enables copy/select and is
+  // the basis for highlighting. pdf.js positions the spans using the container's
+  // --scale-factor, which must equal the viewport scale.
+  async function renderTextLayer(pg, viewport, s) {
+    if (!textLayerEl) return;
+    if (textLayerObj) { try { textLayerObj.cancel(); } catch { /* ignore */ } }
+    textLayerEl.replaceChildren();
+    textLayerEl.style.setProperty('--scale-factor', String(s));
+    textLayerEl.style.width = `${pageW}px`;
+    textLayerEl.style.height = `${pageH}px`;
+    try {
+      textLayerObj = new pdfjsLib.TextLayer({
+        textContentSource: pg.streamTextContent({ includeMarkedContent: true, disableNormalization: true }),
+        container: textLayerEl,
+        viewport,
+      });
+      await textLayerObj.render();
+    } catch { /* text layer is best-effort; canvas still renders */ }
   }
 
   // Re-render whenever page, zoom, or available width changes.
@@ -103,6 +140,7 @@
     const next = Math.min(Math.max(1, n), numPages || 1);
     if (next === page) return;
     page = next;
+    pendingSel = null; // selection rects are page-specific
     saveProgress();
   }
 
@@ -125,8 +163,52 @@
   }
   function jumpAnnotation(a) { goToPage(a.page); }
   function deleteAnnotation(a) {
-    bookmarks = bookmarks.filter((b) => b.id !== a.id);
-    saveBookmarks();
+    if (a.kind === 'highlight') {
+      highlights = highlights.filter((h) => h.id !== a.id);
+      saveHighlights();
+    } else {
+      bookmarks = bookmarks.filter((b) => b.id !== a.id);
+      saveBookmarks();
+    }
+  }
+
+  // --- Highlights --------------------------------------------------------
+  function saveHighlights() {
+    window.api?.setBookState?.(book.id, { highlights: $state.snapshot(highlights) });
+  }
+
+  // Capture a text-layer selection into pendingSel, with rects normalised to
+  // scale-1 page units (zoom-independent). It only *sets* on a real selection —
+  // it never clears, so clicking the toolbar Highlight button (which collapses
+  // the selection) doesn't wipe what we're about to highlight. pendingSel is
+  // cleared explicitly on highlight-add and on page change.
+  function captureSelection() {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || sel.rangeCount === 0 || !textLayerEl) return;
+    const anchor = sel.anchorNode;
+    if (anchor && !textLayerEl.contains(anchor)) return;
+    const cont = textLayerEl.getBoundingClientRect();
+    const s = effectiveScale || 1;
+    const rects = [];
+    for (const r of sel.getRangeAt(0).getClientRects()) {
+      if (r.width < 1 || r.height < 1) continue;
+      rects.push({ x: (r.left - cont.left) / s, y: (r.top - cont.top) / s, w: r.width / s, h: r.height / s });
+    }
+    if (!rects.length) return;
+    const text = sel.toString().replace(/\s+/g, ' ').trim().slice(0, 120) || 'Highlight';
+    pendingSel = { page, rects, text };
+  }
+
+  function addHighlight() {
+    if (!pendingSel) return;
+    highlights = [...highlights, {
+      id: crypto.randomUUID(), kind: 'highlight',
+      page: pendingSel.page, rects: pendingSel.rects, text: pendingSel.text,
+      createdAt: new Date().toISOString(),
+    }];
+    saveHighlights();
+    try { window.getSelection()?.removeAllRanges(); } catch { /* ignore */ }
+    pendingSel = null;
   }
   function prevPage() { goToPage(page - 1); }
   function nextPage() { goToPage(page + 1); }
@@ -199,6 +281,7 @@
 
   onMount(async () => {
     window.addEventListener('keydown', onKeydown);
+    document.addEventListener('selectionchange', captureSelection);
     try {
       ensurePdfWorker();
       const data = await window.api.getBookData(book.id);
@@ -208,6 +291,7 @@
       const st = await window.api.getBookState?.(book.id);
       page = Math.min(Math.max(1, st?.page || 1), numPages);
       bookmarks = Array.isArray(st?.bookmarks) ? st.bookmarks : [];
+      highlights = Array.isArray(st?.highlights) ? st.highlights : [];
       await loadOutline();
       loading = false;
     } catch (err) {
@@ -218,9 +302,11 @@
 
   onDestroy(() => {
     window.removeEventListener('keydown', onKeydown);
+    document.removeEventListener('selectionchange', captureSelection);
     clearTimeout(saveTimer);
     libraryState.readingStatus = null;
     if (renderTask) { try { renderTask.cancel(); } catch { /* ignore */ } }
+    if (textLayerObj) { try { textLayerObj.cancel(); } catch { /* ignore */ } }
     if (pdfDoc) { try { pdfDoc.destroy(); } catch { /* ignore */ } }
   });
 </script>
@@ -245,7 +331,7 @@
 {/snippet}
 
 {#snippet annotationsPane()}
-  <AnnotationsPane {bookmarks} highlights={[]} showHighlights={false} onJump={jumpAnnotation} onDelete={deleteAnnotation} />
+  <AnnotationsPane {bookmarks} {highlights} onJump={jumpAnnotation} onDelete={deleteAnnotation} />
 {/snippet}
 
 {#snippet searchPane()}
@@ -282,6 +368,14 @@
 
     <button
       class="tb-btn icon"
+      class:active={!!pendingSel}
+      onclick={addHighlight}
+      disabled={!pendingSel}
+      title="Highlight selection"
+    ><i class="fas fa-highlighter"></i></button>
+
+    <button
+      class="tb-btn icon"
       class:active={currentBookmarked}
       onclick={toggleBookmark}
       title={currentBookmarked ? 'Remove bookmark' : 'Bookmark this page'}
@@ -313,7 +407,20 @@
       {:else if error}
         <div class="status error"><i class="fas fa-triangle-exclamation"></i> {error}</div>
       {/if}
-      <canvas bind:this={canvasEl} class:hidden={loading || error}></canvas>
+      <div class="page" class:hidden={loading || error} style="width: {pageW}px; height: {pageH}px;">
+        <canvas bind:this={canvasEl}></canvas>
+        <div class="hl-overlay">
+          {#each currentPageHighlights as h (h.id)}
+            {#each h.rects as r, ri (ri)}
+              <div
+                class="hl-rect"
+                style="left: {r.x * effectiveScale}px; top: {r.y * effectiveScale}px; width: {r.w * effectiveScale}px; height: {r.h * effectiveScale}px;"
+              ></div>
+            {/each}
+          {/each}
+        </div>
+        <div class="textLayer" bind:this={textLayerEl}></div>
+      </div>
     </div>
   </div>
 </div>
@@ -377,8 +484,55 @@
     align-items: flex-start;
     padding: 16px;
   }
-  canvas { box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35); background: #fff; }
-  canvas.hidden { display: none; }
+  .page {
+    position: relative;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+    background: #fff;
+    flex-shrink: 0;
+  }
+  .page.hidden { display: none; }
+  .page canvas { display: block; }
+
+  /* Highlight rectangles sit above the canvas but below the (transparent) text
+     layer; pointer-events:none so they never block text selection. */
+  .hl-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+  .hl-rect {
+    position: absolute;
+    background: rgba(240, 200, 0, 0.38);
+    border-radius: 1px;
+    mix-blend-mode: multiply;
+  }
+
+  /* pdf.js text layer base styles (it creates the spans; they need :global). */
+  .textLayer {
+    position: absolute;
+    inset: 0;
+    overflow: clip;
+    opacity: 1;
+    line-height: 1;
+    text-size-adjust: none;
+    forced-color-adjust: none;
+    transform-origin: 0 0;
+    z-index: 2;
+    cursor: text;
+  }
+  .textLayer :global(span),
+  .textLayer :global(br) {
+    color: transparent;
+    position: absolute;
+    white-space: pre;
+    cursor: text;
+    transform-origin: 0% 0%;
+  }
+  .textLayer :global(span)::selection { background: rgba(0, 100, 255, 0.3); }
+  .textLayer :global(.endOfContent) {
+    display: block;
+    position: absolute;
+    inset: 100% 0 0;
+    z-index: -1;
+    cursor: default;
+    user-select: none;
+  }
 
   .status { color: var(--text-muted); padding: 40px; font-size: 14px; }
   .status.error { color: #e0484d; }
