@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { PaneHost } from '@marina/desktop-ui/panels';
   import { pdfjsLib, ensurePdfWorker } from '../lib/pdfjs.js';
+  import AnnotationsPane from './AnnotationsPane.svelte';
 
   let { book, onClose } = $props();
 
@@ -30,15 +31,18 @@
   let searching = $state(false);
   const textCache = [];
 
+  // Bookmarks (page-based). Highlights are deferred for PDF — see Phase 4 notes.
+  let bookmarks = $state([]);
+
   // --- Sidebar panes (PaneHost) -----------------------------------------
-  let paneOrder = $state(['contents', 'search']);
-  let paneHeights = $state({ contents: 360, search: 220 });
+  let paneOrder = $state(['contents', 'annotations', 'search']);
+  let paneHeights = $state({ contents: 280, annotations: 200, search: 200 });
   let panes = $derived(
     paneOrder.map((id) => ({
       id,
-      title: id === 'contents' ? 'Contents' : 'Search',
+      title: id === 'contents' ? 'Contents' : id === 'annotations' ? 'Annotations' : 'Search',
       height: paneHeights[id],
-      render: id === 'contents' ? contentsPane : searchPane,
+      render: id === 'contents' ? contentsPane : id === 'annotations' ? annotationsPane : searchPane,
     }))
   );
   function handlePaneResize(id, h) { paneHeights = { ...paneHeights, [id]: h }; }
@@ -94,6 +98,29 @@
     if (next === page) return;
     page = next;
     saveProgress();
+  }
+
+  // --- Bookmarks ---------------------------------------------------------
+  let currentBookmarked = $derived(bookmarks.some((b) => b.page === page));
+
+  function saveBookmarks() {
+    window.api?.setBookState?.(book.id, { bookmarks: $state.snapshot(bookmarks) });
+  }
+  function toggleBookmark() {
+    if (currentBookmarked) {
+      bookmarks = bookmarks.filter((b) => b.page !== page);
+    } else {
+      bookmarks = [
+        ...bookmarks,
+        { id: crypto.randomUUID(), kind: 'bookmark', page, label: `Page ${page}`, createdAt: new Date().toISOString() },
+      ].sort((a, b) => a.page - b.page);
+    }
+    saveBookmarks();
+  }
+  function jumpAnnotation(a) { goToPage(a.page); }
+  function deleteAnnotation(a) {
+    bookmarks = bookmarks.filter((b) => b.id !== a.id);
+    saveBookmarks();
   }
   function prevPage() { goToPage(page - 1); }
   function nextPage() { goToPage(page + 1); }
@@ -174,6 +201,7 @@
       numPages = pdfDoc.numPages;
       const st = await window.api.getBookState?.(book.id);
       page = Math.min(Math.max(1, st?.page || 1), numPages);
+      bookmarks = Array.isArray(st?.bookmarks) ? st.bookmarks : [];
       await loadOutline();
       loading = false;
     } catch (err) {
@@ -209,6 +237,10 @@
   {/if}
 {/snippet}
 
+{#snippet annotationsPane()}
+  <AnnotationsPane {bookmarks} highlights={[]} showHighlights={false} onJump={jumpAnnotation} onDelete={deleteAnnotation} />
+{/snippet}
+
 {#snippet searchPane()}
   <div class="search">
     <form onsubmit={runSearch}>
@@ -240,6 +272,15 @@
     </button>
     <div class="tb-title" title={book.title}>{book.title}</div>
     <div class="tb-spacer"></div>
+
+    <button
+      class="tb-btn icon"
+      class:active={currentBookmarked}
+      onclick={toggleBookmark}
+      title={currentBookmarked ? 'Remove bookmark' : 'Bookmark this page'}
+    >
+      <i class="{currentBookmarked ? 'fas' : 'far'} fa-bookmark"></i>
+    </button>
 
     <div class="pager">
       <button class="tb-btn icon" onclick={prevPage} disabled={page <= 1} title="Previous page"><i class="fas fa-chevron-left"></i></button>

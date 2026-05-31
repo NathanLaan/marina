@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { PaneHost } from '@marina/desktop-ui/panels';
   import ePub from 'epubjs';
+  import AnnotationsPane from './AnnotationsPane.svelte';
 
   let { book, onClose } = $props();
 
@@ -15,6 +16,11 @@
 
   let toc = $state([]);                   // flattened [{label, href, depth}]
 
+  // Annotations.
+  let bookmarks = $state([]);
+  let highlights = $state([]);
+  let pendingSelection = $state(null);    // { cfiRange, text, contents }
+
   let containerEl;
   let bookObj = null;
   let rendition = null;
@@ -22,10 +28,15 @@
   let currentCfi = null;
 
   // --- Sidebar panes (PaneHost) -----------------------------------------
-  let paneOrder = $state(['contents']);
-  let paneHeights = $state({ contents: 480 });
+  let paneOrder = $state(['contents', 'annotations']);
+  let paneHeights = $state({ contents: 340, annotations: 240 });
   let panes = $derived(
-    paneOrder.map((id) => ({ id, title: 'Contents', height: paneHeights[id], render: contentsPane }))
+    paneOrder.map((id) => ({
+      id,
+      title: id === 'contents' ? 'Contents' : 'Annotations',
+      height: paneHeights[id],
+      render: id === 'contents' ? contentsPane : annotationsPane,
+    }))
   );
   function handlePaneResize(id, h) { paneHeights = { ...paneHeights, [id]: h }; }
   function handlePaneReorder(o) { paneOrder = o; }
@@ -86,6 +97,66 @@
     rendition?.display(href);
   }
 
+  // --- Annotations -------------------------------------------------------
+  const HL_STYLE = { fill: '#f0c800', 'fill-opacity': '0.3' };
+
+  let currentBookmarked = $derived(!!currentCfi && bookmarks.some((b) => b.cfi === currentCfi));
+
+  function saveBookmarks() {
+    window.api?.setBookState?.(book.id, { bookmarks: $state.snapshot(bookmarks) });
+  }
+  function saveHighlights() {
+    window.api?.setBookState?.(book.id, { highlights: $state.snapshot(highlights) });
+  }
+
+  function toggleBookmark() {
+    if (!currentCfi) return;
+    if (currentBookmarked) {
+      bookmarks = bookmarks.filter((b) => b.cfi !== currentCfi);
+    } else {
+      bookmarks = [...bookmarks, {
+        id: crypto.randomUUID(), kind: 'bookmark', cfi: currentCfi,
+        label: chapterLabel || 'Bookmark', createdAt: new Date().toISOString(),
+      }];
+    }
+    saveBookmarks();
+  }
+
+  function addHighlight() {
+    if (!pendingSelection || !rendition) return;
+    const { cfiRange, text } = pendingSelection;
+    if (highlights.some((h) => h.cfi === cfiRange)) { pendingSelection = null; return; }
+    try { rendition.annotations.add('highlight', cfiRange, {}, null, 'pl-hl', HL_STYLE); } catch { /* ignore */ }
+    const snippet = (text || '').replace(/\s+/g, ' ').trim().slice(0, 120) || 'Highlight';
+    highlights = [...highlights, {
+      id: crypto.randomUUID(), kind: 'highlight', cfi: cfiRange, text: snippet,
+      createdAt: new Date().toISOString(),
+    }];
+    saveHighlights();
+    try { pendingSelection.contents?.window?.getSelection?.()?.removeAllRanges(); } catch { /* ignore */ }
+    pendingSelection = null;
+  }
+
+  function applyStoredHighlights() {
+    for (const h of highlights) {
+      try { rendition.annotations.add('highlight', h.cfi, {}, null, 'pl-hl', HL_STYLE); } catch { /* ignore */ }
+    }
+  }
+
+  function jumpAnnotation(a) {
+    try { rendition?.display(a.cfi); } catch { /* ignore */ }
+  }
+  function deleteAnnotation(a) {
+    if (a.kind === 'highlight') {
+      try { rendition?.annotations.remove(a.cfi, 'highlight'); } catch { /* ignore */ }
+      highlights = highlights.filter((h) => h.id !== a.id);
+      saveHighlights();
+    } else {
+      bookmarks = bookmarks.filter((b) => b.id !== a.id);
+      saveBookmarks();
+    }
+  }
+
   function labelForHref(href) {
     if (!href) return '';
     const base = href.split('#')[0];
@@ -128,10 +199,13 @@
       applyTheme();
       applyFontSize();
 
-      // Restore saved position (CFI) or start at the beginning.
+      // Restore saved position (CFI) + annotations.
       const st = await window.api.getBookState?.(book.id);
+      bookmarks = Array.isArray(st?.bookmarks) ? st.bookmarks : [];
+      highlights = Array.isArray(st?.highlights) ? st.highlights : [];
       try { await rendition.display(st?.cfi || undefined); }
       catch { await rendition.display(); }
+      applyStoredHighlights();
 
       // Table of contents.
       bookObj.loaded.navigation.then((nav) => {
@@ -155,6 +229,13 @@
 
       // Page-turn from inside the content iframe (where parent keydown can't reach).
       rendition.on('keyup', onKeydown);
+
+      // Capture text selections so the user can promote one to a highlight.
+      rendition.on('selected', (cfiRange, contents) => {
+        let text = '';
+        try { text = contents?.window?.getSelection?.()?.toString() || ''; } catch { /* ignore */ }
+        pendingSelection = { cfiRange, text, contents };
+      });
 
       // Keep the rendition sized to its container (e.g. when the sidebar resizes).
       resizeObserver = new ResizeObserver(() => {
@@ -199,6 +280,10 @@
   {/if}
 {/snippet}
 
+{#snippet annotationsPane()}
+  <AnnotationsPane {bookmarks} {highlights} onJump={jumpAnnotation} onDelete={deleteAnnotation} />
+{/snippet}
+
 <div class="reader">
   <div class="toolbar">
     <button class="tb-btn" onclick={onClose} title="Back to Library">
@@ -206,6 +291,20 @@
     </button>
     <div class="tb-title" title={book.title}>{chapterLabel || book.title}</div>
     <div class="tb-spacer"></div>
+
+    <button
+      class="tb-btn icon"
+      class:active={!!pendingSelection}
+      onclick={addHighlight}
+      disabled={!pendingSelection}
+      title="Highlight selection"
+    ><i class="fas fa-highlighter"></i></button>
+    <button
+      class="tb-btn icon"
+      class:active={currentBookmarked}
+      onclick={toggleBookmark}
+      title={currentBookmarked ? 'Remove bookmark' : 'Bookmark this location'}
+    ><i class="{currentBookmarked ? 'fas' : 'far'} fa-bookmark"></i></button>
 
     <div class="group">
       <button class="tb-btn icon" onclick={() => setFontSize(fontSize - 10)} title="Smaller text"><i class="fas fa-minus"></i></button>
@@ -276,7 +375,9 @@
     font-size: 12px;
   }
   .tb-btn.icon { padding: 6px 9px; }
-  .tb-btn:hover { background: var(--bg-button-hover); }
+  .tb-btn:hover:not(:disabled) { background: var(--bg-button-hover); }
+  .tb-btn:disabled { opacity: 0.4; cursor: default; }
+  .tb-btn.active { background: var(--bg-selected); outline: 1px solid var(--accent); color: var(--accent); }
   .group { display: flex; align-items: center; gap: 4px; }
   .ind { font-size: 12px; color: var(--text-secondary); min-width: 42px; text-align: center; font-variant-numeric: tabular-nums; }
   .theme-select {
