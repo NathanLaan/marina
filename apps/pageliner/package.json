@@ -10,18 +10,18 @@
     "build": "vite build",
     "build:icons": "bash scripts/build-icons.sh",
     "build:linux": "npm run build && npm run build:icons && electron-builder --linux",
-    "build:win":   "npm run build && npm run build:icons && electron-builder --win",
-    "build:mac":   "npm run build && npm run build:icons && electron-builder --mac",
-    "build:all":   "npm run build && npm run build:icons && electron-builder -mwl",
+    "build:win": "npm run build && npm run build:icons && electron-builder --win",
+    "build:mac": "npm run build && npm run build:icons && electron-builder --mac",
+    "build:all": "npm run build && npm run build:icons && electron-builder -mwl",
     "electron:dev": "node scripts/dev.js",
     "start": "electron --class=PageLiner ."
   },
   "dependencies": {
-    "@marina/desktop-ui": "*",
     "@fortawesome/fontawesome-free": "^6.5.1",
-    "jszip": "^3.10.1"
+    "@marina/desktop-ui": "*",
+    "jszip": "^3.10.1",
+    "pdfjs-dist": "^4.10.38"
   },
-  "devDependencies": {},
   "build": {
     "appId": "com.pageliner.app",
     "productName": "PageLiner",
@@ -36,15 +36,22 @@
       "output": "release"
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "category": "Office;Viewer"
     },
     "mac": {
-      "target": ["dmg"],
+      "target": [
+        "dmg"
+      ],
       "category": "public.app-category.productivity"
     },
     "win": {
-      "target": ["nsis"]
+      "target": [
+        "nsis"
+      ]
     }
   }
 }

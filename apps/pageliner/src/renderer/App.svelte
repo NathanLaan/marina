@@ -5,6 +5,7 @@
   import { themeState } from '@marina/desktop-ui/theme';
   import SettingsModal from './components/SettingsModal.svelte';
   import LibraryGrid from './components/LibraryGrid.svelte';
+  import PdfReader from './components/PdfReader.svelte';
   import { libraryState } from './stores/library.svelte.js';
 
   const TITLEBAR_HEIGHT = '32px';
@@ -106,9 +107,12 @@
 {/if}
 
 <div class="app-shell">
-  {#if selectedBook}
-    <!-- Reader placeholder. The real EPUB/PDF rendering arrives in Phases 2–3;
-         for now opening a book confirms selection + state wiring end to end. -->
+  {#if selectedBook && selectedBook.format === 'pdf'}
+    {#key selectedBook.id}
+      <PdfReader book={selectedBook} onClose={() => libraryState.clearSelection()} />
+    {/key}
+  {:else if selectedBook}
+    <!-- EPUB rendering arrives in Phase 3. -->
     <main class="reader">
       <div class="reader-bar">
         <button class="back-btn" onclick={() => libraryState.clearSelection()}>
@@ -117,12 +121,10 @@
         <div class="reader-title">{selectedBook.title}</div>
       </div>
       <div class="reader-body">
-        <i class="fas {selectedBook.format === 'pdf' ? 'fa-file-pdf' : 'fa-book'}"></i>
+        <i class="fas fa-book"></i>
         <h1>{selectedBook.title}</h1>
         <p>{selectedBook.author || 'Unknown author'} · {selectedBook.format.toUpperCase()}</p>
-        <p class="hint">
-          Reading {selectedBook.format === 'pdf' ? 'PDF (Phase 2)' : 'EPUB (Phase 3)'} is not wired up yet.
-        </p>
+        <p class="hint">Reading EPUB (Phase 3) is not wired up yet.</p>
       </div>
     </main>
   {:else}

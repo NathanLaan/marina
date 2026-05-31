@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('api', {
   listBooks: () => ipcRenderer.invoke('library:list'),
   importBooks: () => ipcRenderer.invoke('library:import'),
   deleteBook: (id) => ipcRenderer.invoke('library:delete', id),
+  getBookData: (id) => ipcRenderer.invoke('library:getBookData', id),
   getCoverDataUrl: (id) => ipcRenderer.invoke('library:coverDataUrl', id),
   getBookState: (id) => ipcRenderer.invoke('library:getState', id),
   setBookState: (id, patch) => ipcRenderer.invoke('library:setState', id, patch),

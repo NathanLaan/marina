@@ -6,12 +6,16 @@ PageLiner is **early/scaffold-stage** software. See `docs/plans/ereader-report.m
 
 ## Status
 
-**Phase 0 — Shell (current).** A runnable app reusing the full marina chrome: custom titlebar, themes + zoom, command palette, tabbed settings, and a resizable/reorderable sidebar (`PaneHost`) with placeholder Library / Collections panes. No reading or import functionality yet.
+**Phase 2 — PDF reader (current).** Builds on the Phase 0 shell + Phase 1 library.
 
-Roadmap (from the design report):
+Done:
 
-- **Phase 1 — Library:** import documents, cover grid, metadata, tags/collections, full-library search.
-- **Phase 2 — PDF reader:** `pdf.js` integration, page nav, TOC, in-book search.
+- **Phase 0 — Shell:** marina chrome (custom titlebar, themes + zoom, command palette, tabbed settings).
+- **Phase 1 — Library:** import EPUB/PDF, cover grid with EPUB cover/metadata extraction, sort, delete, `pageliner.json` storage model.
+- **Phase 2 — PDF reader:** `pdf.js` rendering with page navigation (buttons + arrow/Page keys), zoom + fit-width, a `PaneHost` sidebar with **Contents** (PDF outline) and **Search** (in-document page search) panes, and persisted page position (resume on reopen).
+
+Remaining:
+
 - **Phase 3 — EPUB reader:** `epub.js` integration, pagination, reading settings, CFI position persistence, TOC.
 - **Phase 4 — Annotations & polish:** bookmarks, highlights, resume-on-open.
 - **Phase 5 (optional) — Sync:** opt-in git sync of the library index + reading state, mirroring ThreadLiner. Book blobs stay local by default.

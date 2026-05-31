@@ -54,6 +54,15 @@ function createWindow() {
 
   mainWindow = new BrowserWindow(opts);
 
+  // In dev, surface renderer warnings/errors + crashes in the terminal so a
+  // blank window is debuggable without manually opening DevTools.
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.webContents.on('console-message', (e) => {
+      if (e.level >= 2) console.log(`[renderer ${e.level}] ${e.message}`);
+    });
+    mainWindow.webContents.on('render-process-gone', (_e, d) => console.error('[renderer gone]', d));
+  }
+
   // scripts/dev.js sets NODE_ENV=development after Vite is ready; the renderer
   // is then served from the dev server with HMR. Anything else (npm run start,
   // packaged builds) loads the built file.
@@ -118,6 +127,14 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('library:delete', (_event, id) => libraryService.deleteBook(id));
+
+  // Raw document bytes for the in-renderer readers (pdf.js / epub.js). Returns
+  // a Buffer, which arrives in the renderer as a Uint8Array. Null if missing.
+  ipcMain.handle('library:getBookData', (_event, id) => {
+    const p = libraryService.bookFilePath(id);
+    if (!p || !fs.existsSync(p)) return null;
+    try { return fs.readFileSync(p); } catch { return null; }
+  });
 
   // Cover image as a data URL — simplest way to render on-disk covers in the
   // renderer without a custom protocol. Fine for typical library sizes.
