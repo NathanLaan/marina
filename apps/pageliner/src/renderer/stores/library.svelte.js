@@ -7,6 +7,10 @@ class LibraryState {
   selectedId = $state(null);
   loading = $state(false);
   sortMode = $state('addedAt-desc'); // addedAt-desc | title-asc | author-asc
+  formatFilter = $state('all');      // all | epub | pdf
+  // Transient one-line reading context surfaced in the status bar; readers set
+  // it on page/chapter change and clear it when they unmount.
+  readingStatus = $state(null);
 
   async load() {
     if (!window.api?.listBooks) return;
@@ -56,6 +60,21 @@ class LibraryState {
       default:
         return list.sort((a, b) => (b.addedAt || '').localeCompare(a.addedAt || ''));
     }
+  }
+
+  // Sorted list narrowed to the active format filter — what the grid renders.
+  get visibleBooks() {
+    if (this.formatFilter === 'all') return this.sortedBooks;
+    return this.sortedBooks.filter((b) => b.format === this.formatFilter);
+  }
+
+  get counts() {
+    let epub = 0, pdf = 0;
+    for (const b of this.books) {
+      if (b.format === 'epub') epub++;
+      else if (b.format === 'pdf') pdf++;
+    }
+    return { all: this.books.length, epub, pdf };
   }
 }
 

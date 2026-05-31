@@ -79,7 +79,7 @@ function registerIpcHandlers() {
   registerWindowHandlers({ getWindow: () => mainWindow });
   uiPrefsApi = registerUIPrefsHandlers({
     prefsPath: getUIPrefsPath(),
-    defaults: { customTitlebar: false },
+    defaults: { customTitlebar: false, sidebarVisible: true, statusBarVisible: true },
   });
 
   // The library's registerRelaunchHandler does `app.relaunch(); app.exit(0)`,

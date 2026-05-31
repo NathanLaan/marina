@@ -11,6 +11,7 @@ PageLiner is **early/scaffold-stage** software. See `docs/plans/ereader-report.m
 Done:
 
 - **Phase 0 — Shell:** marina chrome (custom titlebar, themes + zoom, command palette, tabbed settings).
+  - **App chrome (NoteLiner-parity):** optional custom titlebar (hamburger toggles the sidebar), a left **library sidebar** (All / EPUB / PDF filters with counts, `Ctrl+E`), and a bottom **status bar** (book count / current title + reading position + scale, `Ctrl+J`). Settings → UI offers **Theme**, **UI Scale**, and **Custom Window Titlebar**; sidebar/status-bar visibility persist via UI prefs.
 - **Phase 1 — Library:** import EPUB/PDF, cover grid with EPUB cover/metadata extraction, sort, delete, `pageliner.json` storage model.
 - **Phase 2 — PDF reader:** `pdf.js` rendering with page navigation (buttons + arrow/Page keys), zoom + fit-width, a `PaneHost` sidebar with **Contents** (PDF outline) and **Search** (in-document page search) panes, and persisted page position.
 - **Phase 3 — EPUB reader:** `epub.js` paginated rendition, prev/next + arrow-key page turns, **reading settings** (font size, Light/Sepia/Dark theme — persisted globally), a `PaneHost` **Contents** (TOC) pane, and **CFI position persistence**. EPUB content renders in a sandboxed iframe with embedded scripts disabled.

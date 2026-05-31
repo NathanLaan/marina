@@ -3,6 +3,7 @@
   import { PaneHost } from '@marina/desktop-ui/panels';
   import { pdfjsLib, ensurePdfWorker } from '../lib/pdfjs.js';
   import AnnotationsPane from './AnnotationsPane.svelte';
+  import { libraryState } from '../stores/library.svelte.js';
 
   let { book, onClose } = $props();
 
@@ -82,6 +83,11 @@
     // touch reactive deps so the effect re-runs on their change
     page; scale; fitWidth; containerWidth;
     if (!loading && pdfDoc) renderPage();
+  });
+
+  // Surface the current page in the app status bar.
+  $effect(() => {
+    if (!loading && numPages) libraryState.readingStatus = `Page ${page} / ${numPages}`;
   });
 
   // --- Navigation + persistence -----------------------------------------
@@ -213,6 +219,7 @@
   onDestroy(() => {
     window.removeEventListener('keydown', onKeydown);
     clearTimeout(saveTimer);
+    libraryState.readingStatus = null;
     if (renderTask) { try { renderTask.cancel(); } catch { /* ignore */ } }
     if (pdfDoc) { try { pdfDoc.destroy(); } catch { /* ignore */ } }
   });

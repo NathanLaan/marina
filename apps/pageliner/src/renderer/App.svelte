@@ -5,6 +5,8 @@
   import { themeState } from '@marina/desktop-ui/theme';
   import SettingsModal from './components/SettingsModal.svelte';
   import LibraryGrid from './components/LibraryGrid.svelte';
+  import LibrarySidebar from './components/LibrarySidebar.svelte';
+  import StatusBar from './components/StatusBar.svelte';
   import PdfReader from './components/PdfReader.svelte';
   import EpubReader from './components/EpubReader.svelte';
   import { libraryState } from './stores/library.svelte.js';
@@ -20,6 +22,10 @@
   // frame is on; only it controls whether <TitleBar/> renders.
   let customTitlebarApplied = $state(false);
 
+  // Layout toggles (persisted to UI prefs, like NoteLiner's layout state).
+  let sidebarVisible = $state(true);
+  let statusBarVisible = $state(true);
+
   // --- Commands ----------------------------------------------------------
   function registerCommands() {
     const C = (def) => commandRegistry.register(def);
@@ -30,6 +36,14 @@
         run: () => libraryState.importBooks() });
     C({ id: 'library.close', label: 'Close Book (Library)', section: 'Library',
         when: () => !!libraryState.selectedId, run: () => libraryState.clearSelection() });
+
+    C({ id: 'view.toggleSidebar', label: 'Toggle Sidebar', section: 'View', shortcut: 'Ctrl+E',
+        matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'e',
+        run: () => toggleSidebar() });
+    C({ id: 'view.toggleStatusBar', label: 'Toggle Status Bar', section: 'View', shortcut: 'Ctrl+J',
+        matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'j',
+        run: () => toggleStatusBar() });
+
     C({ id: 'app.settings', label: 'Settings', section: 'App', shortcut: 'Ctrl+,',
         matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === ',',
         run: () => { showSettings = true; } });
@@ -43,6 +57,15 @@
 
   function openBook(id) {
     libraryState.select(id);
+  }
+
+  function toggleSidebar() {
+    sidebarVisible = !sidebarVisible;
+    window.api?.setUIPrefs?.({ sidebarVisible }).catch(() => {});
+  }
+  function toggleStatusBar() {
+    statusBarVisible = !statusBarVisible;
+    window.api?.setUIPrefs?.({ statusBarVisible }).catch(() => {});
   }
 
   // --- Keyboard ----------------------------------------------------------
@@ -81,6 +104,8 @@
       try {
         const prefs = await window.api.getUIPrefs();
         customTitlebarApplied = !!prefs?.customTitlebar;
+        if (typeof prefs?.sidebarVisible === 'boolean') sidebarVisible = prefs.sidebarVisible;
+        if (typeof prefs?.statusBarVisible === 'boolean') statusBarVisible = prefs.statusBarVisible;
         document.documentElement.style.setProperty(
           '--titlebar-height',
           customTitlebarApplied ? TITLEBAR_HEIGHT : '0px',
@@ -96,6 +121,10 @@
   });
 
   const selectedBook = $derived(libraryState.selectedBook);
+  // The library sidebar is governed solely by the user's toggle — it stays
+  // visible in reader mode too (alongside the reader's own Contents/Annotations
+  // sidebar) and is only hidden when the user hides it (Ctrl+E / hamburger).
+  const showLibrarySidebar = $derived(sidebarVisible);
 </script>
 
 {#snippet titlebarActions()}
@@ -103,36 +132,52 @@
   <button class="title-action" onclick={() => (showSettings = true)} title="Settings"><i class="fas fa-gear"></i></button>
 {/snippet}
 
-{#if customTitlebarApplied}
-  <TitleBar appName="PageLiner" actions={titlebarActions} />
-{/if}
+<div class="app-layout">
+  {#if customTitlebarApplied}
+    <TitleBar
+      appName="PageLiner"
+      onToggleToolbar={toggleSidebar}
+      toolbarVisible={sidebarVisible}
+      actions={titlebarActions}
+    />
+  {/if}
 
-<div class="app-shell">
-  {#if selectedBook && selectedBook.format === 'pdf'}
-    {#key selectedBook.id}
-      <PdfReader book={selectedBook} onClose={() => libraryState.clearSelection()} />
-    {/key}
-  {:else if selectedBook && selectedBook.format === 'epub'}
-    {#key selectedBook.id}
-      <EpubReader book={selectedBook} onClose={() => libraryState.clearSelection()} />
-    {/key}
-  {:else if selectedBook}
-    <!-- Unsupported format fallback. -->
-    <main class="reader">
-      <div class="reader-bar">
-        <button class="back-btn" onclick={() => libraryState.clearSelection()}>
-          <i class="fas fa-arrow-left"></i> Library
-        </button>
-        <div class="reader-title">{selectedBook.title}</div>
-      </div>
-      <div class="reader-body">
-        <i class="fas fa-file-circle-question"></i>
-        <h1>{selectedBook.title}</h1>
-        <p>Unsupported format: {selectedBook.format.toUpperCase()}</p>
-      </div>
-    </main>
-  {:else}
-    <LibraryGrid onOpen={openBook} />
+  <div class="app-body">
+    {#if showLibrarySidebar}
+      <aside class="app-sidebar"><LibrarySidebar /></aside>
+    {/if}
+
+    <div class="content">
+      {#if selectedBook && selectedBook.format === 'pdf'}
+        {#key selectedBook.id}
+          <PdfReader book={selectedBook} onClose={() => libraryState.clearSelection()} />
+        {/key}
+      {:else if selectedBook && selectedBook.format === 'epub'}
+        {#key selectedBook.id}
+          <EpubReader book={selectedBook} onClose={() => libraryState.clearSelection()} />
+        {/key}
+      {:else if selectedBook}
+        <main class="reader">
+          <div class="reader-bar">
+            <button class="back-btn" onclick={() => libraryState.clearSelection()}>
+              <i class="fas fa-arrow-left"></i> Library
+            </button>
+            <div class="reader-title">{selectedBook.title}</div>
+          </div>
+          <div class="reader-body">
+            <i class="fas fa-file-circle-question"></i>
+            <h1>{selectedBook.title}</h1>
+            <p>Unsupported format: {selectedBook.format.toUpperCase()}</p>
+          </div>
+        </main>
+      {:else}
+        <LibraryGrid onOpen={openBook} />
+      {/if}
+    </div>
+  </div>
+
+  {#if statusBarVisible}
+    <StatusBar />
   {/if}
 </div>
 
@@ -157,10 +202,34 @@
 {/if}
 
 <style>
-  .app-shell {
+  .app-layout {
     display: flex;
+    flex-direction: column;
     zoom: var(--ui-zoom, 1);
-    height: calc(var(--ui-zoom-height, 100vh) - var(--titlebar-height, 0px));
+    height: var(--ui-zoom-height, 100vh);
+    width: var(--ui-zoom-width, 100vw);
+    overflow: hidden;
+  }
+
+  .app-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .app-sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    overflow: hidden;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+  }
+
+  .content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
     overflow: hidden;
     background: var(--bg-base);
   }
@@ -209,18 +278,23 @@
   }
   .reader-body i { font-size: 44px; opacity: 0.5; }
   .reader-body h1 { font-size: 22px; color: var(--text-primary); margin: 4px 0; }
-  .reader-body .hint { margin-top: 14px; font-size: 12px; color: var(--text-faint); }
 
+  /* Matches the library .titlebar-btn look for actions injected via the
+     <TitleBar actions={...}> snippet (the library scopes its own rules). */
   .title-action {
     -webkit-app-region: no-drag;
-    width: 36px;
+    width: 48px;
     height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: var(--accent-on);
     opacity: 0.75;
     background: transparent;
     border: none;
     cursor: pointer;
     font-size: 12px;
+    transition: background 0.15s, opacity 0.15s;
   }
   .title-action:hover { background: rgba(0, 0, 0, 0.18); opacity: 1; }
 </style>

@@ -3,6 +3,7 @@
   import { PaneHost } from '@marina/desktop-ui/panels';
   import ePub from 'epubjs';
   import AnnotationsPane from './AnnotationsPane.svelte';
+  import { libraryState } from '../stores/library.svelte.js';
 
   let { book, onClose } = $props();
 
@@ -224,6 +225,7 @@
       rendition.on('relocated', (loc) => {
         currentCfi = loc?.start?.cfi || currentCfi;
         chapterLabel = labelForHref(loc?.start?.href);
+        libraryState.readingStatus = chapterLabel || 'Reading';
         saveProgress();
       });
 
@@ -255,6 +257,7 @@
   onDestroy(() => {
     window.removeEventListener('keydown', onKeydown);
     clearTimeout(saveTimer);
+    libraryState.readingStatus = null;
     if (resizeObserver) { try { resizeObserver.disconnect(); } catch { /* ignore */ } }
     if (rendition) { try { rendition.destroy(); } catch { /* ignore */ } }
     if (bookObj) { try { bookObj.destroy(); } catch { /* ignore */ } }

@@ -47,7 +47,7 @@
     </div>
   {:else}
     <div class="grid">
-      {#each libraryState.sortedBooks as book (book.id)}
+      {#each libraryState.visibleBooks as book (book.id)}
         <BookCard
           {book}
           selected={libraryState.selectedId === book.id}
