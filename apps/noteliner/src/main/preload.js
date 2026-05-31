@@ -22,7 +22,7 @@ contextBridge.exposeInMainWorld('api', {
   // Files
   readFile: (filePath) => ipcRenderer.invoke('file:read', filePath),
   writeFile: (filePath, content) => ipcRenderer.invoke('file:write', filePath, content),
-  createFile: (name, tags) => ipcRenderer.invoke('file:create', name, tags),
+  createFile: (name, tags, templateId) => ipcRenderer.invoke('file:create', name, tags, templateId),
   deleteFile: (fileId) => ipcRenderer.invoke('file:delete', fileId),
   renameFile: (fileId, newName) => ipcRenderer.invoke('file:rename', fileId, newName),
 
@@ -73,6 +73,10 @@ contextBridge.exposeInMainWorld('api', {
   // Import
   openImportDialog: () => ipcRenderer.invoke('dialog:openImportFile'),
   importDocument: (sourcePath) => ipcRenderer.invoke('file:import', sourcePath),
+
+  // Templates (reusable note skeletons under _templates/)
+  listTemplates: () => ipcRenderer.invoke('templates:list'),
+  saveTemplate: (name, body) => ipcRenderer.invoke('templates:save', name, body),
 
   // System
   getSystemInfo: () => ipcRenderer.invoke('system:getInfo'),

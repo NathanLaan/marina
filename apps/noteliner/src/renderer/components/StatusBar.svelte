@@ -1,4 +1,5 @@
 <script>
+  import { onMount } from 'svelte';
   import { projectState } from '../stores/project.svelte.js';
 
   let {
@@ -13,6 +14,23 @@
   let branch = $state(null);
   let sync = $state(null);
   let mcpRunning = $state(false);
+  let spellCheckEnabled = $state(true);
+
+  // Mirror the spell-check pref the same way Editor.svelte does: read the
+  // initial value, then track the broadcast so the indicator and the editor
+  // stay in lockstep (toggled via F7 or the Settings dialog).
+  onMount(() => {
+    if (window.api?.getUIPrefs) {
+      window.api.getUIPrefs()
+        .then((prefs) => { spellCheckEnabled = prefs?.spellCheckEnabled !== false; })
+        .catch(() => { /* keep default */ });
+    }
+    let unsub = () => {};
+    if (window.api?.onSpellCheckChanged) {
+      unsub = window.api.onSpellCheckChanged((v) => { spellCheckEnabled = !!v; });
+    }
+    return () => unsub();
+  });
 
   async function refresh() {
     if (!projectState.isOpen) {
@@ -113,6 +131,13 @@
   <!-- Right: editor & repo state -->
   <div class="zone right">
     {#if projectState.selectedFile}
+      <span
+        class="seg spell"
+        title={spellCheckEnabled ? 'Spell check on (F7 to toggle)' : 'Spell check off (F7 to toggle)'}
+      >
+        <span class="dot {spellCheckEnabled ? 'dot-green' : 'dot-grey'}"></span>
+        Spell {spellCheckEnabled ? 'On' : 'Off'}
+      </span>
       <span class="seg">Ln {projectState.cursorLine}, Col {projectState.cursorCol}</span>
       <span class="seg">{wordCount} word{wordCount !== 1 ? 's' : ''}</span>
       <span class="seg muted">{charCount} char{charCount !== 1 ? 's' : ''}</span>

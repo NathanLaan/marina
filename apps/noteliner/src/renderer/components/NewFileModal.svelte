@@ -1,4 +1,5 @@
 <script>
+  import { onMount } from 'svelte';
   import { projectState } from '../stores/project.svelte.js';
 
   let { onConfirm, onCancel, initialName = '' } = $props();
@@ -8,6 +9,17 @@
   // svelte-ignore state_referenced_locally
   let fileName = $state(initialName);
   let selectedTags = $state(new Set());
+
+  // Templates from _templates/. Empty string = "Blank" (the default body).
+  let templates = $state([]);
+  let selectedTemplate = $state('');
+
+  onMount(() => {
+    const p = window.api?.listTemplates?.();
+    if (!p) return;
+    p.then((list) => { templates = Array.isArray(list) ? list : []; })
+     .catch(() => { templates = []; });
+  });
 
   let allTags = $derived(projectState.allTags);
 
@@ -36,7 +48,7 @@
   function handleOk() {
     const name = fileName.trim();
     if (!name) return;
-    onConfirm({ name, tags: [...selectedTags] });
+    onConfirm({ name, tags: [...selectedTags], templateId: selectedTemplate || null });
   }
 </script>
 
@@ -50,6 +62,18 @@
         <label for="new-file-name">File Name:</label>
         <input id="new-file-name" type="text" bind:value={fileName} placeholder="Untitled" use:focusInput />
       </div>
+
+      {#if templates.length > 0}
+        <div class="field">
+          <label for="new-file-template">Template:</label>
+          <select id="new-file-template" bind:value={selectedTemplate}>
+            <option value="">Blank</option>
+            {#each templates as t (t.id)}
+              <option value={t.id}>{t.name}</option>
+            {/each}
+          </select>
+        </div>
+      {/if}
 
       {#if allTags.length > 0}
         <div class="field">
@@ -98,7 +122,8 @@
     margin-bottom: 4px;
   }
 
-  .field input {
+  .field input,
+  .field select {
     width: 100%;
     padding: 8px 12px;
     background: var(--input-bg);
@@ -110,8 +135,14 @@
     box-sizing: border-box;
   }
 
-  .field input:focus {
+  .field input:focus,
+  .field select:focus {
     border-color: var(--input-border-focus);
+  }
+
+  .field select option {
+    background: var(--bg-surface);
+    color: var(--text-primary);
   }
 
   .tag-list {
