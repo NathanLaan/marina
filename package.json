@@ -7,14 +7,18 @@
     "build":                "npm run build -ws --if-present",
     "dev:noteliner":        "npm run dev -w noteliner",
     "dev:threadliner":      "npm run dev -w threadliner",
+    "dev:pageliner":        "npm run dev -w pageliner",
     "electron:noteliner":   "npm run electron:dev -w noteliner",
     "electron:threadliner": "npm run electron:dev -w threadliner",
+    "electron:pageliner":   "npm run electron:dev -w pageliner",
     "playground":           "npm run electron:dev -w @marina/desktop-ui-playground",
     "build:noteliner":      "npm run build -w noteliner",
     "build:threadliner":    "npm run build -w threadliner",
-    "icons:rasterize":      "npm run icons:rasterize:noteliner && npm run icons:rasterize:threadliner",
+    "build:pageliner":      "npm run build -w pageliner",
+    "icons:rasterize":      "npm run icons:rasterize:noteliner && npm run icons:rasterize:threadliner && npm run icons:rasterize:pageliner",
     "icons:rasterize:noteliner":   "electron scripts/rasterize-icon.js apps/noteliner/assets/icon.svg apps/noteliner/assets/icon.png 512",
-    "icons:rasterize:threadliner": "electron scripts/rasterize-icon.js apps/threadliner/assets/icon.svg apps/threadliner/assets/icon.png 512"
+    "icons:rasterize:threadliner": "electron scripts/rasterize-icon.js apps/threadliner/assets/icon.svg apps/threadliner/assets/icon.png 512",
+    "icons:rasterize:pageliner":   "electron scripts/rasterize-icon.js apps/pageliner/assets/icon.svg apps/pageliner/assets/icon.png 512"
   },
   "engines": { "node": ">=20" },
   "devDependencies": {

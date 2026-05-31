@@ -1,0 +1,220 @@
+<script>
+  import { onMount } from 'svelte';
+  import { TitleBar, AboutModal } from '@marina/desktop-ui/components';
+  import { CommandPalette, commandRegistry } from '@marina/desktop-ui/command-palette';
+  import { themeState } from '@marina/desktop-ui/theme';
+  import SettingsModal from './components/SettingsModal.svelte';
+  import LibraryGrid from './components/LibraryGrid.svelte';
+  import { libraryState } from './stores/library.svelte.js';
+
+  const TITLEBAR_HEIGHT = '32px';
+
+  let showAbout = $state(false);
+  let showSettings = $state(false);
+  let showPalette = $state(false);
+  let appVersion = $state('0.1.0');
+
+  // customTitlebarApplied is the startup value that decided whether the OS
+  // frame is on; only it controls whether <TitleBar/> renders.
+  let customTitlebarApplied = $state(false);
+
+  // --- Commands ----------------------------------------------------------
+  function registerCommands() {
+    const C = (def) => commandRegistry.register(def);
+    const ctrl = (e) => e.ctrlKey || e.metaKey;
+
+    C({ id: 'library.import', label: 'Import Book…', section: 'Library', shortcut: 'Ctrl+O',
+        matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'o',
+        run: () => libraryState.importBooks() });
+    C({ id: 'library.close', label: 'Close Book (Library)', section: 'Library',
+        when: () => !!libraryState.selectedId, run: () => libraryState.clearSelection() });
+    C({ id: 'app.settings', label: 'Settings', section: 'App', shortcut: 'Ctrl+,',
+        matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === ',',
+        run: () => { showSettings = true; } });
+    C({ id: 'app.about', label: 'About', section: 'App', shortcut: 'Ctrl+I',
+        matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'i',
+        run: () => { showAbout = true; } });
+    C({ id: 'app.commandPalette', label: 'Command Palette', section: 'App', shortcut: 'Ctrl+K',
+        matches: (e) => ctrl(e) && !e.altKey && !e.shiftKey && (e.key === 'k' || e.key === 'K'),
+        run: () => { showPalette = true; } });
+  }
+
+  function openBook(id) {
+    libraryState.select(id);
+  }
+
+  // --- Keyboard ----------------------------------------------------------
+  function handleKeydown(e) {
+    if (showPalette) return; // palette owns keys while open
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey) {
+      if (e.key === '=' || e.key === '+') { e.preventDefault(); themeState.zoomIn();    return; }
+      if (e.key === '-' || e.key === '_') { e.preventDefault(); themeState.zoomOut();   return; }
+      if (e.key === '0')                  { e.preventDefault(); themeState.zoomReset(); return; }
+    }
+    commandRegistry.dispatchKeyEvent(e);
+  }
+
+  // Ctrl+MouseWheel adjusts UI scale, throttled. Matches NoteLiner/ThreadLiner.
+  let lastZoomTs = 0;
+  const ZOOM_COOLDOWN_MS = 200;
+  function handleWheel(e) {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    if (e.deltaY === 0) return;
+    e.preventDefault();
+    const now = Date.now();
+    if (now - lastZoomTs < ZOOM_COOLDOWN_MS) return;
+    lastZoomTs = now;
+    if (e.deltaY < 0) themeState.zoomIn();
+    else themeState.zoomOut();
+  }
+
+  onMount(async () => {
+    registerCommands();
+    window.addEventListener('keydown', handleKeydown, true);
+    window.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+
+    libraryState.load();
+
+    if (window.api?.getUIPrefs) {
+      try {
+        const prefs = await window.api.getUIPrefs();
+        customTitlebarApplied = !!prefs?.customTitlebar;
+        document.documentElement.style.setProperty(
+          '--titlebar-height',
+          customTitlebarApplied ? TITLEBAR_HEIGHT : '0px',
+        );
+      } catch { /* non-critical */ }
+    }
+    try { appVersion = await window.api.getAppVersion(); } catch { /* keep default */ }
+
+    return () => {
+      window.removeEventListener('keydown', handleKeydown, true);
+      window.removeEventListener('wheel', handleWheel, { capture: true });
+    };
+  });
+
+  const selectedBook = $derived(libraryState.selectedBook);
+</script>
+
+{#snippet titlebarActions()}
+  <button class="title-action" onclick={() => (showAbout = true)} title="About"><i class="fas fa-circle-info"></i></button>
+  <button class="title-action" onclick={() => (showSettings = true)} title="Settings"><i class="fas fa-gear"></i></button>
+{/snippet}
+
+{#if customTitlebarApplied}
+  <TitleBar appName="PageLiner" actions={titlebarActions} />
+{/if}
+
+<div class="app-shell">
+  {#if selectedBook}
+    <!-- Reader placeholder. The real EPUB/PDF rendering arrives in Phases 2–3;
+         for now opening a book confirms selection + state wiring end to end. -->
+    <main class="reader">
+      <div class="reader-bar">
+        <button class="back-btn" onclick={() => libraryState.clearSelection()}>
+          <i class="fas fa-arrow-left"></i> Library
+        </button>
+        <div class="reader-title">{selectedBook.title}</div>
+      </div>
+      <div class="reader-body">
+        <i class="fas {selectedBook.format === 'pdf' ? 'fa-file-pdf' : 'fa-book'}"></i>
+        <h1>{selectedBook.title}</h1>
+        <p>{selectedBook.author || 'Unknown author'} · {selectedBook.format.toUpperCase()}</p>
+        <p class="hint">
+          Reading {selectedBook.format === 'pdf' ? 'PDF (Phase 2)' : 'EPUB (Phase 3)'} is not wired up yet.
+        </p>
+      </div>
+    </main>
+  {:else}
+    <LibraryGrid onOpen={openBook} />
+  {/if}
+</div>
+
+{#if showAbout}
+  <AboutModal
+    appName="PageLiner"
+    version={appVersion}
+    description="A desktop e-reader and document library built on the marina framework."
+    repoUrl="https://github.com/NathanLaan/marina"
+    repoLabel="github.com/NathanLaan/marina"
+    iconClass="fa-book"
+    onClose={() => (showAbout = false)}
+  />
+{/if}
+
+{#if showSettings}
+  <SettingsModal onClose={() => (showSettings = false)} />
+{/if}
+
+{#if showPalette}
+  <CommandPalette onClose={() => (showPalette = false)} />
+{/if}
+
+<style>
+  .app-shell {
+    display: flex;
+    zoom: var(--ui-zoom, 1);
+    height: calc(var(--ui-zoom-height, 100vh) - var(--titlebar-height, 0px));
+    overflow: hidden;
+    background: var(--bg-base);
+  }
+
+  .reader { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+
+  .reader-bar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--bg-button);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .back-btn:hover { background: var(--bg-button-hover); }
+  .reader-title {
+    font-size: 14px;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .reader-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 24px;
+  }
+  .reader-body i { font-size: 44px; opacity: 0.5; }
+  .reader-body h1 { font-size: 22px; color: var(--text-primary); margin: 4px 0; }
+  .reader-body .hint { margin-top: 14px; font-size: 12px; color: var(--text-faint); }
+
+  .title-action {
+    -webkit-app-region: no-drag;
+    width: 36px;
+    height: 32px;
+    color: var(--accent-on);
+    opacity: 0.75;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .title-action:hover { background: rgba(0, 0, 0, 0.18); opacity: 1; }
+</style>

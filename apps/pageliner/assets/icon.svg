@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- PageLiner icon: rounded tile with an open book. Placeholder art for the
+       Phase 0 scaffold — replace with final design later. -->
+  <defs>
+    <clipPath id="plFrameClip">
+      <rect x="22" y="22" width="468" height="468" rx="76" ry="76"/>
+    </clipPath>
+  </defs>
+
+  <rect x="22" y="22" width="468" height="468" rx="76" ry="76" fill="#1e1e2e" stroke="#11111b" stroke-width="8"/>
+
+  <g clip-path="url(#plFrameClip)">
+    <!-- Open book: two pages meeting at a center spine -->
+    <g fill="none" stroke="#89b4fa" stroke-width="18" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M256 150 C 210 122, 150 122, 110 140 L 110 360 C 150 342, 210 342, 256 370 Z"/>
+      <path d="M256 150 C 302 122, 362 122, 402 140 L 402 360 C 362 342, 302 342, 256 370 Z"/>
+      <line x1="256" y1="150" x2="256" y2="370"/>
+    </g>
+    <!-- A few text lines on each page -->
+    <g stroke="#a6adc8" stroke-width="9" stroke-linecap="round">
+      <line x1="150" y1="190" x2="232" y2="200"/>
+      <line x1="150" y1="225" x2="232" y2="235"/>
+      <line x1="150" y1="260" x2="232" y2="270"/>
+      <line x1="280" y1="200" x2="362" y2="190"/>
+      <line x1="280" y1="235" x2="362" y2="225"/>
+      <line x1="280" y1="270" x2="362" y2="260"/>
+    </g>
+  </g>
+</svg>
