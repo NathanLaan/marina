@@ -6,6 +6,7 @@
   import SettingsModal from './components/SettingsModal.svelte';
   import LibraryGrid from './components/LibraryGrid.svelte';
   import PdfReader from './components/PdfReader.svelte';
+  import EpubReader from './components/EpubReader.svelte';
   import { libraryState } from './stores/library.svelte.js';
 
   const TITLEBAR_HEIGHT = '32px';
@@ -111,8 +112,12 @@
     {#key selectedBook.id}
       <PdfReader book={selectedBook} onClose={() => libraryState.clearSelection()} />
     {/key}
+  {:else if selectedBook && selectedBook.format === 'epub'}
+    {#key selectedBook.id}
+      <EpubReader book={selectedBook} onClose={() => libraryState.clearSelection()} />
+    {/key}
   {:else if selectedBook}
-    <!-- EPUB rendering arrives in Phase 3. -->
+    <!-- Unsupported format fallback. -->
     <main class="reader">
       <div class="reader-bar">
         <button class="back-btn" onclick={() => libraryState.clearSelection()}>
@@ -121,10 +126,9 @@
         <div class="reader-title">{selectedBook.title}</div>
       </div>
       <div class="reader-body">
-        <i class="fas fa-book"></i>
+        <i class="fas fa-file-circle-question"></i>
         <h1>{selectedBook.title}</h1>
-        <p>{selectedBook.author || 'Unknown author'} · {selectedBook.format.toUpperCase()}</p>
-        <p class="hint">Reading EPUB (Phase 3) is not wired up yet.</p>
+        <p>Unsupported format: {selectedBook.format.toUpperCase()}</p>
       </div>
     </main>
   {:else}

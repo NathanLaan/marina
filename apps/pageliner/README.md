@@ -6,17 +6,17 @@ PageLiner is **early/scaffold-stage** software. See `docs/plans/ereader-report.m
 
 ## Status
 
-**Phase 2 — PDF reader (current).** Builds on the Phase 0 shell + Phase 1 library.
+**Phase 3 — EPUB reader (current).** Both formats now read end to end.
 
 Done:
 
 - **Phase 0 — Shell:** marina chrome (custom titlebar, themes + zoom, command palette, tabbed settings).
 - **Phase 1 — Library:** import EPUB/PDF, cover grid with EPUB cover/metadata extraction, sort, delete, `pageliner.json` storage model.
-- **Phase 2 — PDF reader:** `pdf.js` rendering with page navigation (buttons + arrow/Page keys), zoom + fit-width, a `PaneHost` sidebar with **Contents** (PDF outline) and **Search** (in-document page search) panes, and persisted page position (resume on reopen).
+- **Phase 2 — PDF reader:** `pdf.js` rendering with page navigation (buttons + arrow/Page keys), zoom + fit-width, a `PaneHost` sidebar with **Contents** (PDF outline) and **Search** (in-document page search) panes, and persisted page position.
+- **Phase 3 — EPUB reader:** `epub.js` paginated rendition, prev/next + arrow-key page turns, **reading settings** (font size, Light/Sepia/Dark theme — persisted globally), a `PaneHost` **Contents** (TOC) pane, and **CFI position persistence** (resume exactly where you left off). EPUB content renders in a sandboxed iframe with embedded scripts disabled.
 
 Remaining:
 
-- **Phase 3 — EPUB reader:** `epub.js` integration, pagination, reading settings, CFI position persistence, TOC.
 - **Phase 4 — Annotations & polish:** bookmarks, highlights, resume-on-open.
 - **Phase 5 (optional) — Sync:** opt-in git sync of the library index + reading state, mirroring ThreadLiner. Book blobs stay local by default.
 
