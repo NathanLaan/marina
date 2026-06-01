@@ -652,7 +652,7 @@ ipcMain.handle('file:write', async (_event, filePath, content) => {
   }, { bytes: typeof content === 'string' ? content.length : 0 });
 });
 
-ipcMain.handle('file:create', async (_event, name, tags, templateId) => {
+ipcMain.handle('file:create', async (_event, name, tags, templateId, parentId) => {
   return perf.measure('file.create', async () => {
     try {
       // When a template is chosen, seed the new note with its substituted body
@@ -663,6 +663,7 @@ ipcMain.handle('file:create', async (_event, name, tags, templateId) => {
         const body = templateService.bodyFor(templateId, { title: name });
         if (body != null) options.body = body;
       }
+      if (parentId) options.parentId = parentId;
       const entry = await projectService.createFile(name, tags, options);
       // New file may resolve pre-existing dangling links elsewhere; full rebuild is cheap.
       await linkGraphService.rebuild();

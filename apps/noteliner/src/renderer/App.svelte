@@ -412,10 +412,10 @@
     showNewFile = true;
   }
 
-  async function handleNewFileConfirm({ name, tags, templateId }) {
+  async function handleNewFileConfirm({ name, tags, templateId, parentId }) {
     showNewFile = false;
     createFromWikilinkName = '';
-    const entry = await window.api.createFile(name, tags, templateId);
+    const entry = await window.api.createFile(name, tags, templateId, parentId);
     projectState.addFile(entry);
     projectState.selectFile(entry.id);
   }

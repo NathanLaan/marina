@@ -219,13 +219,22 @@ class ProjectService {
     const id = uuidv4();
     const filename = this.uniqueFilename(this.slugify(name) + '.md');
 
+    // Parent the new file under an existing note when asked. Guard against a
+    // stale/unknown id by falling back to root (null).
+    const parentId = options.parentId && this.index.files.some(f => f.id === options.parentId)
+      ? options.parentId
+      : null;
+    // Order within the sibling set so the file appends after existing children
+    // of the same parent rather than relying on the global file count.
+    const order = this.index.files.filter(f => f.parentId === parentId).length;
+
     const nowIso = new Date().toISOString();
     const entry = {
       id,
       name,
       filename,
-      parentId: null,
-      order: this.index.files.length,
+      parentId,
+      order,
       tags: Array.isArray(tags) ? tags : [],
       attachments: [],
       createdAt: nowIso,
