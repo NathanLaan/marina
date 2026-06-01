@@ -19,4 +19,11 @@ contextBridge.exposeInMainWorld('api', {
   getCoverDataUrl: (id) => ipcRenderer.invoke('library:coverDataUrl', id),
   getBookState: (id) => ipcRenderer.invoke('library:getState', id),
   setBookState: (id, patch) => ipcRenderer.invoke('library:setState', id, patch),
+
+  // Git sync (opt-in)
+  gitGetInfo: () => ipcRenderer.invoke('git:getInfo'),
+  gitGetStatus: () => ipcRenderer.invoke('git:getStatus'),
+  gitEnable: () => ipcRenderer.invoke('git:enable'),
+  gitSetRemote: (url) => ipcRenderer.invoke('git:setRemote', url),
+  gitSyncNow: () => ipcRenderer.invoke('git:syncNow'),
 });

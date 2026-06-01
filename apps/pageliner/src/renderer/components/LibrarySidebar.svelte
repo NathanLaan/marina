@@ -43,6 +43,9 @@
       <i class="fas fa-gear"></i>
       <span>Settings</span>
     </button>
+    <button class="foot-btn icon" title="Git Sync (Ctrl+Shift+S)" onclick={() => commandRegistry.run('app.sync')}>
+      <i class="fas fa-rotate"></i>
+    </button>
     <button class="foot-btn icon" title="About" onclick={() => commandRegistry.run('app.about')}>
       <i class="fas fa-circle-info"></i>
     </button>

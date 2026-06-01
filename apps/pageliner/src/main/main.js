@@ -8,6 +8,7 @@ const {
   applyFrameFromPrefs,
 } = require('@marina/desktop-ui/electron-host');
 const { LibraryService } = require('./library-service');
+const gitSync = require('./git-sync');
 
 // Set app name early so Linux WM_CLASS is correct (for dock icon in dev mode).
 app.setName('PageLiner');
@@ -79,7 +80,7 @@ function registerIpcHandlers() {
   registerWindowHandlers({ getWindow: () => mainWindow });
   uiPrefsApi = registerUIPrefsHandlers({
     prefsPath: getUIPrefsPath(),
-    defaults: { customTitlebar: false, sidebarVisible: true, statusBarVisible: true },
+    defaults: { customTitlebar: false, sidebarVisible: true, statusBarVisible: true, gitSyncEnabled: false },
   });
 
   // The library's registerRelaunchHandler does `app.relaunch(); app.exit(0)`,
@@ -123,10 +124,15 @@ function registerIpcHandlers() {
       try { added.push(await libraryService.addBook(filePath)); }
       catch (err) { console.error('[pageliner] import failed:', filePath, err.message); }
     }
+    if (added.length) scheduleSync();
     return added;
   });
 
-  ipcMain.handle('library:delete', (_event, id) => libraryService.deleteBook(id));
+  ipcMain.handle('library:delete', (_event, id) => {
+    const res = libraryService.deleteBook(id);
+    scheduleSync();
+    return res;
+  });
 
   // Raw document bytes for the in-renderer readers (pdf.js / epub.js). Returns
   // a Buffer, which arrives in the renderer as a Uint8Array. Null if missing.
@@ -153,7 +159,115 @@ function registerIpcHandlers() {
   // Per-book reading state — wired now so the readers (Phase 2/3) can persist
   // position/bookmarks against a settled storage shape.
   ipcMain.handle('library:getState', (_event, id) => libraryService.getState(id));
-  ipcMain.handle('library:setState', (_event, id, patch) => libraryService.setState(id, patch));
+  ipcMain.handle('library:setState', (_event, id, patch) => {
+    const res = libraryService.setState(id, patch);
+    scheduleSync(); // reading position / annotations changed
+    return res;
+  });
+
+  // --- Git sync (opt-in; mirrors the ThreadLiner model) ---
+
+  ipcMain.handle('git:getInfo', async () => {
+    const dir = libraryService.libraryDir;
+    const enabled = isSyncEnabled();
+    const gitInstalled = await gitSync.isGitInstalled();
+    let repo = false, remoteUrl = null, branch = null;
+    if (gitInstalled && dir && await gitSync.isGitRepo(dir)) {
+      repo = true;
+      remoteUrl = await gitSync.getRemoteUrl(dir);
+      branch = await gitSync.getBranch(dir);
+    }
+    return { enabled, gitInstalled, repo, remoteUrl, branch, libraryDir: dir };
+  });
+
+  // Live ahead/behind vs. the upstream (network fetch — only on demand).
+  ipcMain.handle('git:getStatus', async () => {
+    const dir = libraryService.libraryDir;
+    if (!dir || !(await gitSync.isGitRepo(dir))) return { status: 'no-repo' };
+    return gitSync.getSyncStatus(dir);
+  });
+
+  // Turn sync on/off. Enabling initialises the repo + .gitignore (blobs stay
+  // local) and makes an initial commit. The gitSyncEnabled pref itself is owned
+  // by the renderer (setUIPrefs); this just does the git-side work.
+  ipcMain.handle('git:enable', async () => {
+    try { await ensureSyncRepo(); return { success: true }; }
+    catch (err) { return { error: err.message }; }
+  });
+
+  ipcMain.handle('git:setRemote', async (_event, url) => {
+    const dir = libraryService.libraryDir;
+    try {
+      if (!(await gitSync.isGitRepo(dir))) await ensureSyncRepo();
+      if (url) await gitSync.setRemoteUrl(dir, url);
+      else await gitSync.removeRemote(dir);
+      return { success: true };
+    } catch (err) { return { error: err.message }; }
+  });
+
+  // Manual full sync: commit local changes, rebase-pull, push. Returns result + status.
+  ipcMain.handle('git:syncNow', async () => {
+    const dir = libraryService.libraryDir;
+    if (!dir || !(await gitSync.isGitRepo(dir))) return { error: 'Sync is not set up.' };
+    try {
+      await gitSync.configureUser(dir);
+      await gitSync.commitAll(dir, 'Sync library');
+      const pulled = await gitSync.pull(dir);
+      if (!pulled.success) return { error: `Pull failed: ${pulled.error}`, status: await gitSync.getSyncStatus(dir) };
+      const pushed = await gitSync.push(dir);
+      if (!pushed.success) return { error: `Push failed: ${pushed.error}`, status: await gitSync.getSyncStatus(dir) };
+      return { success: true, status: await gitSync.getSyncStatus(dir) };
+    } catch (err) { return { error: err.message }; }
+  });
+}
+
+// --- Sync controller ---------------------------------------------------
+
+function isSyncEnabled() {
+  try { return !!uiPrefsApi?.read?.().gitSyncEnabled; } catch { return false; }
+}
+
+function writeGitignore(dir) {
+  const p = path.join(dir, '.gitignore');
+  const content = [
+    '# PageLiner sync: the library index + reading state (positions, bookmarks,',
+    '# highlights) are versioned; large book blobs and derived covers stay local.',
+    'books/',
+    'covers/',
+    '*.tmp',
+    '',
+  ].join('\n');
+  try { fs.writeFileSync(p, content, 'utf-8'); } catch { /* non-critical */ }
+}
+
+// Idempotent: initialise the repo if needed, ensure identity + .gitignore,
+// and make a commit so there's a branch to push.
+async function ensureSyncRepo() {
+  const dir = libraryService.libraryDir;
+  if (!dir) throw new Error('Library not initialised');
+  if (!(await gitSync.isGitInstalled())) throw new Error('Git is not installed or not on PATH.');
+  if (!(await gitSync.isGitRepo(dir))) await gitSync.initRepo(dir, null);
+  else await gitSync.configureUser(dir);
+  writeGitignore(dir);
+  await gitSync.commitAll(dir, 'Configure PageLiner sync');
+}
+
+// Debounced commit + push on library changes. Auto-sync intentionally does NOT
+// pull — that's reserved for the explicit "Sync Now" to avoid surprise rebases
+// mid-session. No-op unless sync is enabled.
+let syncTimer = null;
+function scheduleSync() {
+  if (!isSyncEnabled()) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(async () => {
+    const dir = libraryService.libraryDir;
+    try {
+      const changed = await gitSync.commitAll(dir, 'Update library');
+      if (changed) await gitSync.push(dir);
+    } catch (err) {
+      console.error('[pageliner] auto-sync failed:', err.message);
+    }
+  }, 8000);
 }
 
 app.whenReady().then(() => {
@@ -163,6 +277,12 @@ app.whenReady().then(() => {
   libraryService.init(path.join(app.getPath('userData'), 'library'));
 
   registerIpcHandlers();
+
+  // If sync was left enabled, make sure the repo/identity/.gitignore are intact.
+  if (isSyncEnabled()) {
+    ensureSyncRepo().catch((err) => console.error('[pageliner] sync init failed:', err.message));
+  }
+
   createWindow();
 });
 

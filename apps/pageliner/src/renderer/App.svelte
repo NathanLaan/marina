@@ -4,6 +4,7 @@
   import { CommandPalette, commandRegistry } from '@marina/desktop-ui/command-palette';
   import { themeState } from '@marina/desktop-ui/theme';
   import SettingsModal from './components/SettingsModal.svelte';
+  import SyncModal from './components/SyncModal.svelte';
   import LibraryGrid from './components/LibraryGrid.svelte';
   import LibrarySidebar from './components/LibrarySidebar.svelte';
   import StatusBar from './components/StatusBar.svelte';
@@ -15,6 +16,7 @@
 
   let showAbout = $state(false);
   let showSettings = $state(false);
+  let showSync = $state(false);
   let showPalette = $state(false);
   let appVersion = $state('0.1.0');
 
@@ -44,6 +46,9 @@
         matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'j',
         run: () => toggleStatusBar() });
 
+    C({ id: 'app.sync', label: 'Git Sync', section: 'App', shortcut: 'Ctrl+Shift+S',
+        matches: (e) => ctrl(e) && e.shiftKey && !e.altKey && e.code === 'KeyS',
+        run: () => { showSync = true; } });
     C({ id: 'app.settings', label: 'Settings', section: 'App', shortcut: 'Ctrl+,',
         matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === ',',
         run: () => { showSettings = true; } });
@@ -195,6 +200,10 @@
 
 {#if showSettings}
   <SettingsModal onClose={() => (showSettings = false)} />
+{/if}
+
+{#if showSync}
+  <SyncModal onClose={() => (showSync = false)} />
 {/if}
 
 {#if showPalette}

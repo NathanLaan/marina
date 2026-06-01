@@ -6,7 +6,7 @@ PageLiner is **early/scaffold-stage** software. See `docs/plans/ereader-report.m
 
 ## Status
 
-**Phase 4 — Annotations (current).** Reading, navigation, and annotations are in place for both formats.
+**Phase 5 — Git sync (current).** All planned phases are implemented; the core e-reader is feature-complete.
 
 Done:
 
@@ -17,9 +17,7 @@ Done:
 - **Phase 3 — EPUB reader:** `epub.js` paginated rendition, prev/next + arrow-key page turns, **reading settings** (font size, Light/Sepia/Dark theme — persisted globally), a `PaneHost` **Contents** (TOC) pane, and **CFI position persistence**. EPUB content renders in a sandboxed iframe with embedded scripts disabled.
 - **Phase 4 — Annotations:** **bookmarks** for both formats (PDF page / EPUB CFI) and **highlights** for both — EPUB via epub.js CFI ranges, PDF via a pdf.js **text layer** (which also enables text selection/copy) with selection rectangles stored in zoom-independent page units. Surfaced in a shared **Annotations** pane (jump + delete) in each reader's `PaneHost` sidebar. Annotations persist in `state/<id>.json` and reapply on reopen. Resume-on-open ships from Phases 2–3.
 
-Remaining:
-
-- **Phase 5 (optional) — Sync:** opt-in git sync of the library index + reading state, mirroring ThreadLiner. Book blobs stay local by default.
+- **Phase 5 — Git sync (opt-in):** versions the library index (`pageliner.json`) and `state/` (reading positions, bookmarks, highlights) through a Git remote; **book blobs and covers stay local** (`books/`, `covers/` are git-ignored). Enable it in the **Git Sync** dialog (`Ctrl+Shift+S`, or the sidebar footer): initialises the repo, lets you set a remote, and offers **Sync Now** (commit → rebase-pull → push) with ahead/behind status. Library changes auto-commit + push on an 8 s debounce. Mirrors the ThreadLiner model; uses the system `git` (no extra dependency).
 
 ## Planned storage model
 
