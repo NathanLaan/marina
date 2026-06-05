@@ -118,6 +118,33 @@ function getUIPrefsPath() {
 
 // --- Window ---
 
+// Route link clicks to the user's default browser instead of letting them
+// navigate the app's window (plain links) or spawn a bare Electron window
+// (target="_blank" / window.open). Applied to every BrowserWindow's
+// webContents — see createWindow and the help window's onCreate hook.
+function openLinksExternally(contents) {
+  // target="_blank" and window.open() flow through here. Never let Electron
+  // open its own window; hand http(s) URLs to the OS browser.
+  contents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  // Plain <a href> clicks (and location changes) try to navigate the window
+  // itself. Allow same-origin navigation (initial load, dev-server reloads);
+  // send cross-origin web links to the browser.
+  contents.on('will-navigate', (event, url) => {
+    let sameOrigin = false;
+    try {
+      sameOrigin = new URL(url).origin === new URL(contents.getURL()).origin;
+    } catch { /* malformed URL — treat as external */ }
+    if (!sameOrigin && /^https?:\/\//i.test(url)) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
+}
+
 function createWindow() {
   const uiPrefs = uiPrefsApi.read();
   mainWindow = new BrowserWindow({
@@ -141,6 +168,8 @@ function createWindow() {
 
   // window:maximized-change broadcasts come from the library's
   // registerWindowHandlers via its app.on('browser-window-created') hook.
+
+  openLinksExternally(mainWindow.webContents);
 
   // scripts/dev.js sets NODE_ENV=development when it spawns Electron after
   // Vite is ready; the renderer is then served from the dev server with HMR.
@@ -492,6 +521,7 @@ function registerIpcHandlers() {
       prodFile: path.join(__dirname, '..', '..', 'dist', 'renderer', 'help.html'),
       isDev: process.env.NODE_ENV === 'development',
       width: 1000, height: 720, minWidth: 560, minHeight: 360,
+      onCreate: (win) => openLinksExternally(win.webContents),
     });
   }
 
