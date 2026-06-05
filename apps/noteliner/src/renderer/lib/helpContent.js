@@ -163,7 +163,7 @@ Any other ` + '`{{...}}`' + ` text is left untouched.
     section: 'Toolbar',
     body: `# Import Document
 
-**Shortcut:** ` + '`Ctrl+Shift+I`' + `
+**Shortcut:** ` + '`Ctrl+Alt+I`' + `
 
 Imports an external document into the current project, converting it to
 markdown. Embedded images are extracted into the project's ` + '`_attachments/`' + `
@@ -237,7 +237,7 @@ is enabled in Settings — otherwise they live only in the project index.
     section: 'Toolbar',
     body: `# Attachments Panel
 
-**Shortcut:** ` + '`Ctrl+B`' + `
+**Shortcut:** ` + '`Ctrl+Shift+A`' + `
 
 Toggles the **Attachments** side panel (right side). Shows every file in
 the project's ` + '`_attachments/`' + ` folder — images, PDFs, and other binary
@@ -361,7 +361,7 @@ Opens the **Settings** dialog with two tabs:
     section: 'Toolbar',
     body: `# About
 
-**Shortcut:** ` + '`Ctrl+I`' + `
+**Shortcut:** ` + '`Ctrl+Shift+I`' + `
 
 Shows the **About** dialog with the application name, version, and a
 link to the GitHub repository.
@@ -394,6 +394,8 @@ committed to Git in the background.
 
 ## Useful editor shortcuts
 
+- ` + '`Ctrl+B`' + ` — bold the selection (wraps it in ` + '`**`' + `, or toggles it off)
+- ` + '`Ctrl+I`' + ` — italicize the selection (wraps it in ` + '`*`' + `, or toggles it off)
 - ` + '`Ctrl+Shift+F`' + ` — find in current file
 - ` + '`Ctrl+P`' + ` — toggle the Preview pane
 - ` + '`Ctrl+H`' + ` — toggle the History pane
@@ -578,7 +580,8 @@ Highlights:
 - ` + '`Ctrl+F`' + ` / ` + '`Ctrl+Shift+F`' + ` — project search / find in file
 - ` + '`Ctrl+Shift+S`' + ` — remote sync
 - ` + '`Ctrl+,`' + ` / ` + '`Ctrl+Shift+,`' + ` — settings / project settings
-- ` + '`Ctrl+I`' + ` — about
+- ` + '`Ctrl+B`' + ` / ` + '`Ctrl+I`' + ` — bold / italic (in editor)
+- ` + '`Ctrl+Shift+I`' + ` — about
 `,
   },
 ];

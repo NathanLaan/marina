@@ -48,7 +48,7 @@
     { keys: 'Ctrl+Shift+E', action: 'Toggle Toolbar',  section: 'Panels' },
 
     { keys: 'Ctrl+,',       action: 'Settings',        section: 'App' },
-    { keys: 'Ctrl+I',       action: 'About',           section: 'App' },
+    { keys: 'Ctrl+Shift+I', action: 'About',           section: 'App' },
     { keys: 'F1',           action: 'Help',            section: 'App' },
 
     { keys: 'Ctrl+=',              action: 'Zoom in',    section: 'View' },

@@ -115,6 +115,7 @@
         case 's': e.preventDefault(); showSyncModal = true; return;
         case 'e': e.preventDefault(); toolbarVisible = !toolbarVisible; return;
         case 'm': e.preventDefault(); handleMarkUnreadShortcut(); return;
+        case 'i': e.preventDefault(); showAboutModal = true; return;
       }
       return;
     }
@@ -127,7 +128,6 @@
         return;
       case 'd': e.preventDefault(); handleRemoveShortcut();    return;
       case 'm': e.preventDefault(); handleMarkReadShortcut();  return;
-      case 'i': e.preventDefault(); showAboutModal = true;     return;
       case ',': e.preventDefault(); showSettingsModal = true;  return;
     }
   }

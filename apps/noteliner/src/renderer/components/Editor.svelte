@@ -8,7 +8,7 @@
   import { indentWithTab, selectAll } from '@codemirror/commands';
   import { markdown } from '@codemirror/lang-markdown';
   import { languages } from '@codemirror/language-data';
-  import { EditorState, Compartment } from '@codemirror/state';
+  import { EditorState, EditorSelection, Compartment } from '@codemirror/state';
   import { oneDark } from '@codemirror/theme-one-dark';
   import { openSearchPanel } from '@codemirror/search';
   import { autocompletion } from '@codemirror/autocomplete';
@@ -103,6 +103,46 @@
     return { from: match.from + 2, options, validFor: /^[^\]]*$/ };
   }
 
+  // Wrap each selection range in a Markdown emphasis marker (`**` for bold,
+  // `*` for italic). If a range is already wrapped in that exact marker, the
+  // markers are stripped instead, so the shortcut toggles. With an empty
+  // selection the paired markers are inserted and the caret parked between
+  // them, ready for the user to type the emphasized text.
+  function toggleMarker(marker) {
+    return (view) => {
+      const len = marker.length;
+      const tr = view.state.changeByRange((range) => {
+        const { from, to } = range;
+        if (from !== to
+            && view.state.sliceDoc(Math.max(0, from - len), from) === marker
+            && view.state.sliceDoc(to, to + len) === marker) {
+          return {
+            changes: [
+              { from: from - len, to: from, insert: '' },
+              { from: to, to: to + len, insert: '' },
+            ],
+            range: EditorSelection.range(from - len, to - len),
+          };
+        }
+        if (from === to) {
+          return {
+            changes: { from, insert: marker + marker },
+            range: EditorSelection.cursor(from + len),
+          };
+        }
+        return {
+          changes: [
+            { from, insert: marker },
+            { from: to, insert: marker },
+          ],
+          range: EditorSelection.range(from + len, to + len),
+        };
+      });
+      view.dispatch(tr, { scrollIntoView: true, userEvent: 'input' });
+      return true;
+    };
+  }
+
   function createEditor() {
     if (editorView) {
       editorView.destroy();
@@ -112,7 +152,12 @@
       doc: projectState.editorContent || '',
       extensions: [
         basicSetup,
-        keymap.of([indentWithTab, { key: 'Mod-Shift-f', run: openSearchPanel }]),
+        keymap.of([
+          indentWithTab,
+          { key: 'Mod-Shift-f', run: openSearchPanel },
+          { key: 'Mod-b', run: toggleMarker('**') },
+          { key: 'Mod-i', run: toggleMarker('*') },
+        ]),
         markdown({ codeLanguages: languages }),
         autocompletion({ override: [wikilinkCompletions] }),
         getEditorTheme(),

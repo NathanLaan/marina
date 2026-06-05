@@ -170,6 +170,8 @@
   // Shortcuts that aren't dispatched through the command registry (CodeMirror
   // bindings, mouse-wheel gestures) but are worth documenting alongside.
   const extraShortcuts = [
+    { keys: 'Ctrl+B', action: 'Bold', section: 'Editor' },
+    { keys: 'Ctrl+I', action: 'Italic', section: 'Editor' },
     { keys: 'Ctrl+Shift+F', action: 'Find in File', section: 'Editor' },
     { keys: 'Ctrl+MouseWheelUp', action: 'Zoom In', section: 'View' },
     { keys: 'Ctrl+MouseWheelDown', action: 'Zoom Out', section: 'View' },
