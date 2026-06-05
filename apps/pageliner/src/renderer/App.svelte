@@ -52,8 +52,8 @@
     C({ id: 'app.settings', label: 'Settings', section: 'App', shortcut: 'Ctrl+,',
         matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === ',',
         run: () => { showSettings = true; } });
-    C({ id: 'app.about', label: 'About', section: 'App', shortcut: 'Ctrl+I',
-        matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'i',
+    C({ id: 'app.about', label: 'About', section: 'App', shortcut: 'Ctrl+Shift+I',
+        matches: (e) => ctrl(e) && e.shiftKey && !e.altKey && e.code === 'KeyI',
         run: () => { showAbout = true; } });
     C({ id: 'app.commandPalette', label: 'Command Palette', section: 'App', shortcut: 'Ctrl+K',
         matches: (e) => ctrl(e) && !e.altKey && !e.shiftKey && (e.key === 'k' || e.key === 'K'),

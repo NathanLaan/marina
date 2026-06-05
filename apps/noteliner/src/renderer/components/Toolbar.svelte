@@ -29,14 +29,14 @@
     {#if !customTitlebar}
       <ToolbarDivider />
       <ToolbarButton icon="fa-file-circle-plus" onclick={onNewFile} title="New File (Ctrl+N)" />
-      <ToolbarButton icon="fa-file-import" onclick={onImportDocument} title="Import Document (Ctrl+Shift+I)" />
+      <ToolbarButton icon="fa-file-import" onclick={onImportDocument} title="Import Document (Ctrl+Alt+I)" />
       <ToolbarDivider />
     {/if}
 
     <ToolbarButton icon="fa-bars-staggered" active={sidebarVisible} onclick={onToggleSidebar} title="Files (Ctrl+E)" />
     <ToolbarButton icon="fa-list-ol" active={outlineVisible} onclick={onToggleOutline} title="Outline (Ctrl+Shift+O)" />
     <ToolbarButton icon="fa-tag" active={tagsVisible} onclick={onToggleTags} title="Tags (Ctrl+Shift+T)" />
-    <ToolbarButton icon="fa-paperclip" active={attachmentsVisible} onclick={onToggleAttachments} title="Attachments (Ctrl+B)" />
+    <ToolbarButton icon="fa-paperclip" active={attachmentsVisible} onclick={onToggleAttachments} title="Attachments (Ctrl+Shift+A)" />
 
     <ToolbarDivider />
 
@@ -67,7 +67,7 @@
   <button
     class="about-btn"
     onclick={onShowAbout}
-    title={updateReady ? `Update ${updateState.state === 'downloaded' ? 'ready to install' : 'available'} — About (Ctrl+I)` : 'About (Ctrl+I)'}
+    title={updateReady ? `Update ${updateState.state === 'downloaded' ? 'ready to install' : 'available'} — About (Ctrl+Shift+I)` : 'About (Ctrl+Shift+I)'}
     aria-label="About"
   >
     <i class="fas fa-circle-info"></i>

@@ -87,6 +87,6 @@
   <ToolbarDivider />
 
   <ToolbarButton icon="fa-gear"            title="Settings (Ctrl+,)" label="Settings" active={settingsOpen} onclick={onOpenSettings} />
-  <ToolbarButton icon="fa-circle-info"     title="About (Ctrl+I)"    label="About"    active={aboutOpen}    onclick={onOpenAbout} />
+  <ToolbarButton icon="fa-circle-info"     title="About (Ctrl+Shift+I)"    label="About"    active={aboutOpen}    onclick={onOpenAbout} />
   <ToolbarButton icon="fa-circle-question" title="Help (F1)"         label="Help"     onclick={onOpenHelp} />
 </ToolbarShell>

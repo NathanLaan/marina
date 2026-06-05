@@ -131,8 +131,8 @@
     C({ id: 'file.delete', label: 'Delete File', section: 'File', shortcut: 'Ctrl+D',
         matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'd',
         when: hasSelection, run: () => handleDeleteFile() });
-    C({ id: 'file.import', label: 'Import Document', section: 'File', shortcut: 'Ctrl+Shift+I',
-        matches: (e) => ctrl(e) && e.shiftKey && !e.altKey && e.code === 'KeyI',
+    C({ id: 'file.import', label: 'Import Document', section: 'File', shortcut: 'Ctrl+Alt+I',
+        matches: (e) => ctrl(e) && e.altKey && !e.shiftKey && e.code === 'KeyI',
         when: projectOpen, run: () => handleImportDocument() });
     C({ id: 'file.saveAsTemplate', label: 'Save as Template', section: 'File',
         when: hasSelection, run: () => handleSaveAsTemplate() });
@@ -173,8 +173,8 @@
     C({ id: 'view.toggleTags', label: 'Toggle Tags', section: 'View', shortcut: 'Ctrl+Shift+T',
         matches: (e) => ctrl(e) && e.shiftKey && !e.altKey && e.code === 'KeyT',
         when: projectOpen, run: () => handleToggleTags() });
-    C({ id: 'view.toggleAttachments', label: 'Toggle Attachments', section: 'View', shortcut: 'Ctrl+B',
-        matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'b',
+    C({ id: 'view.toggleAttachments', label: 'Toggle Attachments', section: 'View', shortcut: 'Ctrl+Shift+A',
+        matches: (e) => ctrl(e) && e.shiftKey && !e.altKey && e.code === 'KeyA',
         run: () => handleToggleAttachments() });
     C({ id: 'view.toggleSearch', label: 'Toggle Search', section: 'View', shortcut: 'Ctrl+F',
         matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'f',
@@ -228,8 +228,8 @@
     C({ id: 'app.settings', label: 'Settings', section: 'App', shortcut: 'Ctrl+,',
         matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === ',',
         run: () => handleShowSettings() });
-    C({ id: 'app.about', label: 'About', section: 'App', shortcut: 'Ctrl+I',
-        matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'i',
+    C({ id: 'app.about', label: 'About', section: 'App', shortcut: 'Ctrl+Shift+I',
+        matches: (e) => ctrl(e) && e.shiftKey && !e.altKey && e.code === 'KeyI',
         run: () => handleShowAbout() });
     C({ id: 'app.help', label: 'Help', section: 'App', shortcut: 'F1',
         matches: (e) => !ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'F1',
@@ -800,7 +800,7 @@
     <button class="title-action" onclick={handleNewFile} aria-label="New File" title="New File (Ctrl+N)">
       <i class="fas fa-file-circle-plus"></i>
     </button>
-    <button class="title-action" onclick={handleImportDocument} aria-label="Import Document" title="Import Document (Ctrl+Shift+I)">
+    <button class="title-action" onclick={handleImportDocument} aria-label="Import Document" title="Import Document (Ctrl+Alt+I)">
       <i class="fas fa-file-import"></i>
     </button>
   {/if}
