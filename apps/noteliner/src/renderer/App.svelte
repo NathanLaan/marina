@@ -75,6 +75,10 @@
   // Bumped to make the StatusBar re-fetch git/MCP state without polling.
   let statusRefresh = $state(0);
   let showNewFile = $state(false);
+  let showDuplicateFile = $state(false);
+  // Source note for the open Duplicate dialog — supplies its default name,
+  // pre-checked tags, and parent. Cleared when the dialog closes.
+  let duplicateSource = $state(null);
   let showDeleteFile = $state(false);
   let showSyncing = $state(false);
   let showImporting = $state(false);
@@ -131,6 +135,9 @@
     C({ id: 'file.delete', label: 'Delete File', section: 'File', shortcut: 'Ctrl+D',
         matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'd',
         when: hasSelection, run: () => handleDeleteFile() });
+    C({ id: 'file.duplicate', label: 'Duplicate File', section: 'File', shortcut: 'Ctrl+Shift+D',
+        matches: (e) => ctrl(e) && e.shiftKey && !e.altKey && e.code === 'KeyD',
+        when: hasSelection, run: () => handleDuplicateFile() });
     C({ id: 'file.import', label: 'Import Document', section: 'File', shortcut: 'Ctrl+Alt+I',
         matches: (e) => ctrl(e) && e.altKey && !e.shiftKey && e.code === 'KeyI',
         when: projectOpen, run: () => handleImportDocument() });
@@ -420,6 +427,24 @@
     projectState.selectFile(entry.id);
   }
 
+  function handleDuplicateFile() {
+    if (!projectState.isOpen) return;
+    const file = projectState.selectedFile;
+    if (!file) return;
+    duplicateSource = file;
+    showDuplicateFile = true;
+  }
+
+  async function handleDuplicateFileConfirm({ name, tags, parentId }) {
+    const source = duplicateSource;
+    showDuplicateFile = false;
+    duplicateSource = null;
+    if (!source) return;
+    const entry = await window.api.duplicateFile(source.id, name, tags, parentId);
+    projectState.addFile(entry);
+    projectState.selectFile(entry.id);
+  }
+
   async function handleSaveAsTemplate() {
     const file = projectState.selectedFile;
     if (!file) return;
@@ -656,6 +681,11 @@
           window.api.openPath(projectState.folderPath);
         }
         break;
+      case 'duplicate':
+        projectState.selectFile(file.id);
+        duplicateSource = file;
+        showDuplicateFile = true;
+        break;
       case 'delete':
         projectState.selectFile(file.id);
         showDeleteFile = true;
@@ -843,6 +873,18 @@
     initialName={createFromWikilinkName}
     onConfirm={handleNewFileConfirm}
     onCancel={() => { showNewFile = false; createFromWikilinkName = ''; }}
+  />
+{/if}
+
+{#if showDuplicateFile && duplicateSource}
+  <NewFileModal
+    title="Duplicate"
+    showTemplate={false}
+    initialName={`${duplicateSource.name}-Copy`}
+    initialTags={duplicateSource.tags || []}
+    initialParentId={duplicateSource.parentId || ''}
+    onConfirm={handleDuplicateFileConfirm}
+    onCancel={() => { showDuplicateFile = false; duplicateSource = null; }}
   />
 {/if}
 

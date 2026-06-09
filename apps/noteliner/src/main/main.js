@@ -675,6 +675,30 @@ ipcMain.handle('file:create', async (_event, name, tags, templateId, parentId) =
   });
 });
 
+ipcMain.handle('file:duplicate', async (_event, sourceId, name, tags, parentId) => {
+  return perf.measure('file.duplicate', async () => {
+    try {
+      // Seed the new note with the source note's body so it's a true copy.
+      // readFile strips frontmatter; createFile re-mirrors fresh frontmatter
+      // (new id, name, tags) onto the body when it writes.
+      const source = projectService.getIndex()?.files.find(f => f.id === sourceId);
+      const options = {};
+      if (source) {
+        const body = await projectService.readFile(source.filename);
+        if (body != null) options.body = body;
+      }
+      if (parentId) options.parentId = parentId;
+      const entry = await projectService.createFile(name, tags, options);
+      // Copied body may carry wikilinks; rebuild so backlinks reflect the copy.
+      await linkGraphService.rebuild();
+      return entry;
+    } catch (err) {
+      if (err.code === 'GIT_CONFIG_REQUIRED') return { error: 'git_config_required' };
+      throw err;
+    }
+  });
+});
+
 // Templates (reusable note skeletons under _templates/)
 
 ipcMain.handle('templates:list', async () => {

@@ -2,20 +2,32 @@
   import { onMount } from 'svelte';
   import { projectState } from '../stores/project.svelte.js';
 
-  let { onConfirm, onCancel, initialName = '' } = $props();
+  let {
+    onConfirm,
+    onCancel,
+    initialName = '',
+    initialTags = [],
+    initialParentId = '',
+    title = 'New File',
+    // Hidden in Duplicate mode — the copy's body comes from the source note,
+    // so a template picker would have nothing to act on.
+    showTemplate = true,
+  } = $props();
 
   // Prop-initialized state: the parent always remounts this modal via {#if showNewFile},
   // so the initial-capture semantics are exactly what we want — no re-sync needed.
   // svelte-ignore state_referenced_locally
   let fileName = $state(initialName);
-  let selectedTags = $state(new Set());
+  // svelte-ignore state_referenced_locally
+  let selectedTags = $state(new Set(initialTags));
 
   // Templates from _templates/. Empty string = "Blank" (the default body).
   let templates = $state([]);
   let selectedTemplate = $state('');
 
   // Parent note for the new file. Empty string = "(None)" → root-level file.
-  let selectedParent = $state('');
+  // svelte-ignore state_referenced_locally
+  let selectedParent = $state(initialParentId);
 
   // All files flattened into tree order (depth-first, unfiltered by the tag
   // popover) with a depth so the dropdown can indent to show hierarchy.
@@ -38,6 +50,7 @@
   }
 
   onMount(() => {
+    if (!showTemplate) return;
     const p = window.api?.listTemplates?.();
     if (!p) return;
     p.then((list) => { templates = Array.isArray(list) ? list : []; })
@@ -83,7 +96,7 @@
 <div class="modal-overlay" onclick={(e) => { if (e.target === e.currentTarget) onCancel(); }} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
   <div class="modal new-file-modal">
     <div class="modal-header">
-      <h2>New File</h2>
+      <h2>{title}</h2>
     </div>
     <div class="modal-body">
       <div class="field">
@@ -101,7 +114,7 @@
         </select>
       </div>
 
-      {#if templates.length > 0}
+      {#if showTemplate && templates.length > 0}
         <div class="field">
           <label for="new-file-template">Template:</label>
           <select id="new-file-template" bind:value={selectedTemplate}>

@@ -36,6 +36,15 @@ export function installTestHelpers(projectState) {
       return entry;
     },
 
+    async duplicateFile(sourceId, name, tags = [], parentId = null) {
+      const entry = await window.api.duplicateFile(sourceId, name, tags, parentId);
+      if (entry && !entry.error) {
+        projectState.addFile(entry);
+        await projectState.selectFile(entry.id);
+      }
+      return entry;
+    },
+
     async selectFile(fileId) {
       await projectState.selectFile(fileId);
     },
