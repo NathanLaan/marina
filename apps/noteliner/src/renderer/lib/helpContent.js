@@ -186,8 +186,12 @@ Toggles the **Files** sidebar pane. The Files pane lists every note in the
 project. Click a file to open it in the editor.
 
 Right-click a file for a context menu with quick actions: open in your
-system file manager, delete the file, clear all tags, toggle preview, or
-export the note to HTML, PDF, or Markdown.
+system file manager, duplicate (` + '`Ctrl+Shift+D`' + `) or rename the file,
+delete the file, clear all tags, toggle preview, or export the note to
+HTML, PDF, or Markdown.
+
+**Duplicate** opens a dialog pre-filled with the source note's tags and a
+` + '`<name>-Copy`' + ` name, then creates a copy of the note's body.
 
 Use ` + '`Ctrl+PgUp`' + ` / ` + '`Ctrl+PgDn`' + ` to step through files without leaving
 the keyboard.
@@ -574,6 +578,7 @@ Highlights:
 
 - ` + '`Ctrl+K`' + ` — Command Palette
 - ` + '`Ctrl+N`' + ` / ` + '`Ctrl+D`' + ` — new / delete file
+- ` + '`Ctrl+Shift+D`' + ` — duplicate file
 - ` + '`Ctrl+O`' + ` — open folder
 - ` + '`Ctrl+P`' + ` / ` + '`Ctrl+H`' + ` — preview / history
 - ` + '`Ctrl+E`' + ` / ` + '`Ctrl+Shift+E`' + ` — toggle sidebar / toolbar

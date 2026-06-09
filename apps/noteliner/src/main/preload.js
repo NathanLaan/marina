@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('api', {
   readFile: (filePath) => ipcRenderer.invoke('file:read', filePath),
   writeFile: (filePath, content) => ipcRenderer.invoke('file:write', filePath, content),
   createFile: (name, tags, templateId, parentId) => ipcRenderer.invoke('file:create', name, tags, templateId, parentId),
+  duplicateFile: (sourceId, name, tags, parentId) => ipcRenderer.invoke('file:duplicate', sourceId, name, tags, parentId),
   deleteFile: (fileId) => ipcRenderer.invoke('file:delete', fileId),
   renameFile: (fileId, newName) => ipcRenderer.invoke('file:rename', fileId, newName),
 
