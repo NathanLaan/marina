@@ -187,11 +187,15 @@ project. Click a file to open it in the editor.
 
 Right-click a file for a context menu with quick actions: open in your
 system file manager, duplicate (` + '`Ctrl+Shift+D`' + `) or rename the file,
-delete the file, clear all tags, toggle preview, or export the note to
-HTML, PDF, or Markdown.
+move the file to a new parent, delete the file, clear all tags, toggle
+preview, or export the note to HTML, PDF, or Markdown.
 
 **Duplicate** opens a dialog pre-filled with the source note's tags and a
 ` + '`<name>-Copy`' + ` name, then creates a copy of the note's body.
+
+**Move** opens a dialog showing the file's current parent and lets you pick a
+new one — or ` + '`(None)`' + ` to move it to the top level. The file itself and its
+descendants are excluded so you can't create a loop.
 
 Use ` + '`Ctrl+PgUp`' + ` / ` + '`Ctrl+PgDn`' + ` to step through files without leaving
 the keyboard.

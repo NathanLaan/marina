@@ -13,6 +13,7 @@
   import ProjectSettingsModal from './components/ProjectSettingsModal.svelte';
   import NewProjectModal from './components/NewProjectModal.svelte';
   import NewFileModal from './components/NewFileModal.svelte';
+  import MoveFileModal from './components/MoveFileModal.svelte';
   import DeleteFileModal from './components/DeleteFileModal.svelte';
   import ClearTagsModal from './components/ClearTagsModal.svelte';
   import SyncModal from './components/SyncModal.svelte';
@@ -79,6 +80,10 @@
   // Source note for the open Duplicate dialog — supplies its default name,
   // pre-checked tags, and parent. Cleared when the dialog closes.
   let duplicateSource = $state(null);
+  let showMoveFile = $state(false);
+  // Source note for the open Move dialog — supplies its current parent and the
+  // subtree to exclude from the parent picker. Cleared when the dialog closes.
+  let moveSource = $state(null);
   let showDeleteFile = $state(false);
   let showSyncing = $state(false);
   let showImporting = $state(false);
@@ -445,6 +450,23 @@
     projectState.selectFile(entry.id);
   }
 
+  async function handleMoveFileConfirm({ parentId }) {
+    const file = moveSource;
+    showMoveFile = false;
+    moveSource = null;
+    if (!file) return;
+    const storeFile = projectState.index.files.find(f => f.id === file.id);
+    if (!storeFile) return;
+    const newParentId = parentId || null;
+    if (storeFile.parentId === newParentId) return;
+    // Mirror the drag-to-child reparent: land the file at the end of the new
+    // parent's children so it doesn't collide with an existing order slot.
+    storeFile.parentId = newParentId;
+    const siblings = projectState.getAllChildren(newParentId).filter(f => f.id !== storeFile.id);
+    storeFile.order = siblings.length;
+    await window.api.saveIndex($state.snapshot(projectState.index));
+  }
+
   async function handleSaveAsTemplate() {
     const file = projectState.selectedFile;
     if (!file) return;
@@ -686,6 +708,11 @@
         duplicateSource = file;
         showDuplicateFile = true;
         break;
+      case 'move':
+        projectState.selectFile(file.id);
+        moveSource = file;
+        showMoveFile = true;
+        break;
       case 'delete':
         projectState.selectFile(file.id);
         showDeleteFile = true;
@@ -885,6 +912,14 @@
     initialParentId={duplicateSource.parentId || ''}
     onConfirm={handleDuplicateFileConfirm}
     onCancel={() => { showDuplicateFile = false; duplicateSource = null; }}
+  />
+{/if}
+
+{#if showMoveFile && moveSource}
+  <MoveFileModal
+    file={moveSource}
+    onConfirm={handleMoveFileConfirm}
+    onCancel={() => { showMoveFile = false; moveSource = null; }}
   />
 {/if}
 
