@@ -45,6 +45,20 @@ export function installTestHelpers(projectState) {
       return entry;
     },
 
+    async moveFile(fileId, newParentId = null) {
+      const file = projectState.index.files.find(f => f.id === fileId);
+      if (!file) return null;
+      const parentId = newParentId || null;
+      if (file.parentId === parentId) return file;
+      file.parentId = parentId;
+      const siblings = projectState.getAllChildren(parentId).filter(f => f.id !== fileId);
+      file.order = siblings.length;
+      // Plain-object clone for IPC — this file is a plain .js module, so the
+      // $state.snapshot rune the .svelte callers use isn't available here.
+      await window.api.saveIndex(JSON.parse(JSON.stringify(projectState.index)));
+      return file;
+    },
+
     async selectFile(fileId) {
       await projectState.selectFile(fileId);
     },

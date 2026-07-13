@@ -107,6 +107,7 @@
         { label: 'Save to Markdown', icon: 'fa-file-lines', action: () => onContextAction('convertToMarkdown', file) },
         { separator: true },
         { label: 'Duplicate...', icon: 'fa-clone', shortcut: 'Ctrl+Shift+D', action: () => onContextAction('duplicate', file) },
+        { label: 'Move...', icon: 'fa-arrows-up-down-left-right', action: () => onContextAction('move', file) },
         { label: 'Rename', icon: 'fa-pen', action: () => onStartRename(file.id, file.name) },
         { label: 'Clear Tags', icon: 'fa-tags', action: () => onContextAction('clearTags', file) },
         { label: 'Delete', icon: 'fa-trash', shortcut: 'Ctrl+D', action: () => onContextAction('delete', file) },
