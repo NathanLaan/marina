@@ -1,6 +1,6 @@
 # Presentations in NoteLiner
 
-Status: **selected approach (2026-08-10); Phase 1 complete, Phase 2 next.**
+Status: **selected approach (2026-08-10); Phases 1–2 complete, Phase 3 next.**
 Chosen over
 `docs/plans/plan-slideliner.md` (repo root), which proposed a separate app and
 is now shelved.
@@ -566,18 +566,51 @@ Deviations from this plan, and what the visual review found:
 - Polish for Phase 5: `split` and `grid` bodies are top-aligned, which leaves
   a lot of dead space at the bottom of a sparse slide.
 
-**Phase 2 — Creation UI + slide management (2–3 days).**
-Entry points first: the Type selector in `NewFileModal.svelte` with `kind`
-filtering on the Template dropdown, "Convert to Presentation…" / "Convert to
-Note" in the `FileTree` context menu, the derived `deck` flag in
-`noteliner.json` and the deck icon in the tree. Then
-`SlidesPane.svelte` + `lib/slideEdits.js` + context menu + commands +
-`PresentationSettingsModal.svelte` + status-bar additions + slide-header
-editing.
+**Phase 2 — Creation UI + slide management. ✅ Done 2026-08-10.**
+Shipped: `lib/slideEdits.js` (insert, duplicate, delete, reorder/move, merge,
+split, retitle, set-layout, toggle-notes — all pure, 86 assertions),
+`SlidesPane.svelte` (thumbnails via the same `Slide.svelte`, caret tracking,
+click-to-jump, drag-to-reorder, context menu, inline retitle),
+`PresentationSettingsModal.svelte`, the Type selector in `NewFileModal.svelte`
+with `kind`-filtered templates, Convert to Presentation/Note in the `FileTree`
+menu, the deck icon, deck-gated toolbar button and commands, and slide/duration
+segments in the status bar.
+
+Write plumbing added: `ProjectService.setPresentation()` +
+`file:setPresentation` IPC + preload method; the derived `deck` flag on index
+entries (`applyDeckFlag`, refreshed by `reconcileFrontmatter` — which already
+parsed every note on open, so it costs no extra I/O); `TemplateService.list()`
+now reports `kind`, and `createFile` merges a template's own frontmatter while
+stripping `kind`; `projectState.applySlideEdit()` and `selectionRange`.
+
 *Done when:* a presentation can be created from the New File dialog or
 converted from any existing note, and its slides can be created, reordered,
 split, merged, retitled, and deleted from the pane with the markdown staying
-clean and the caret tracking correctly.
+clean and the caret tracking correctly. **Verified** — 86 new unit assertions,
+4 new e2e specs driving the real modal/context menu/keyboard, 18 e2e passing,
+plus a visual review of the pane, menu, dialog, and settings.
+
+What the work turned up:
+
+- **Separator decks are the fragile case, as predicted.** A `---` boundary is
+  its own line and belongs to the *end* of the preceding slide's region, so
+  moving the last slide to the front orphaned that separator at EOF and fused
+  two slides. Reordering now strips the boundary off the block it moves and
+  re-establishes boundaries at both seams (`insertSlideBlock`, `ensureBoundary`,
+  `trimOrphanTail`). Heading-break decks never hit any of this; the machinery
+  exists purely for separator decks, and the tests cover both.
+- Blank-line hygiene is handled at splice seams only (`tidyRange`,
+  `tidyJunction`), never by reformatting the whole note — a slide edit must not
+  produce diff churn in parts of the note the user didn't touch.
+- Fixed during visual review: the layout submenu checked both "Automatic" and
+  the inferred layout; the check now marks what the slide *declares*, and
+  Automatic names the inference (`Layout: Automatic (title-body)`).
+- **The §3.1 title/subtitle finding is resolved without a parser change.**
+  `# Title` / `## Subtitle` still splits — the rule stays predictable — but the
+  SLIDES pane makes the split visible immediately, and "Merge Into Previous" is
+  a one-click fix (covered by a unit test). Deck templates should model
+  `# Title` + a plain subtitle paragraph so the idiom is taught by example
+  rather than special-cased in the parser.
 
 **Phase 3 — Detached preview window + PDF export (2–3 days).**
 `present.html` entry, `present-service.js`, display picker, fullscreen,
@@ -643,12 +676,12 @@ the document — actually argues for folding it into the note-taking app.
    or present-only, opened on demand?
 4. **Export destination** — keep the existing `~/Downloads` convention, or
    move decks to a save dialog (proposed) and leave note exports as they are?
-5. **Type control style** — segmented buttons (proposed, both options visible
-   so the feature is discoverable), or a `<select>` matching the modal's
-   existing Parent/Template idiom? A `<select>` is more consistent; buttons
-   advertise better.
-6. **Derived `deck` flag in `noteliner.json`** — worth it for distinct file-tree
-   icons (proposed), or keep the index untouched and show the deck affordances
-   only for the open note?
-7. **Does this replace `plan-slideliner.md`,** or does that stay on the shelf
+5. ~~**Type control style**~~ — settled in Phase 2: segmented buttons. Both
+   options are visible, which is what makes the Presentation type discoverable.
+6. ~~**Derived `deck` flag in `noteliner.json`**~~ — settled in Phase 2: yes.
+   `reconcileFrontmatter` already parsed every note on open, so the flag is
+   free, and the file-tree icon is the main signal that a note is a deck.
+7. ~~**Title/subtitle splitting**~~ — settled in Phase 2: no parser change; the
+   pane makes it visible and "Merge Into Previous" fixes it.
+8. **Does this replace `plan-slideliner.md`,** or does that stay on the shelf
    in case presentations outgrow NoteLiner?

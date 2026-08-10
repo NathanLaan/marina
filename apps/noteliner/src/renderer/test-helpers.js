@@ -6,11 +6,31 @@
 // so tests exercise the real persistence and reactive paths without driving every
 // modal click.
 
-export function installTestHelpers(projectState) {
+import { DEFAULT_PRESENTATION, slideAtLine } from './lib/slides.js';
+
+// `hooks` lets App.svelte expose actions that live in component state rather
+// than the store (opening a modal, for instance) without the tests having to
+// simulate every click that leads there.
+export function installTestHelpers(projectState, hooks = {}) {
   const params = new URLSearchParams(window.location.search);
   if (params.get('test') !== '1') return;
 
   window.__nlTest = {
+    // Presentation helpers. These do the conversion only — the UI flow that
+    // also opens Presentation Settings is covered by driving the real context
+    // menu in tests/e2e/11-slide-management.spec.js.
+    async convertToPresentation(fileId, presentation = null) {
+      return projectState.setPresentation(fileId, presentation || { ...DEFAULT_PRESENTATION });
+    },
+
+    async convertToNote(fileId) {
+      return projectState.setPresentation(fileId, null);
+    },
+
+    openPresentationSettings() {
+      hooks.openPresentationSettings?.();
+    },
+
     async initProject(folderPath, remoteUrl = null) {
       const result = await window.api.initProject(folderPath, remoteUrl);
       if (result?.status === 'loaded') {
@@ -102,11 +122,13 @@ export function installTestHelpers(projectState) {
     // Deck state for the presentation tests: whether the open note is a deck
     // and what the parser made of it, without reaching into the DOM.
     deckSnapshot() {
+      const deck = projectState.deck;
       return {
         isDeck: projectState.isDeck,
-        slideCount: projectState.deck?.slides.length ?? 0,
-        titles: projectState.deck?.slides.map((s) => s.title) ?? [],
-        layouts: projectState.deck?.slides.map((s) => s.layout) ?? [],
+        slideCount: deck?.slides.length ?? 0,
+        titles: deck?.slides.map((s) => s.title) ?? [],
+        layouts: deck?.slides.map((s) => s.layout) ?? [],
+        activeIndex: deck ? slideAtLine(deck, projectState.cursorLine)?.index ?? null : null,
       };
     },
 
@@ -116,6 +138,7 @@ export function installTestHelpers(projectState) {
         folderPath: projectState.folderPath,
         selectedFileId: projectState.selectedFileId,
         editorContent: projectState.editorContent,
+        saveStatus: projectState.saveStatus,
         files: projectState.index.files.map(f => ({
           id: f.id,
           name: f.name,

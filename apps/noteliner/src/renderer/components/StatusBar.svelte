@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { projectState } from '../stores/project.svelte.js';
+  import { slideAtLine, estimateDuration } from '../lib/slides.js';
 
   let {
     // Opens the Remote Sync modal when the branch/sync chip is clicked.
@@ -54,6 +55,20 @@
   const text = $derived(projectState.editorContent || '');
   const wordCount = $derived((text.match(/\S+/g) || []).length);
   const charCount = $derived(text.length);
+
+  // Deck-only segments: which slide the caret is in, and a rough speaking time
+  // from the words the presenter actually says (visible text plus notes).
+  const WPM = 130;
+  const deckInfo = $derived.by(() => {
+    const deck = projectState.deck;
+    if (!deck || deck.slides.length === 0) return null;
+    const { minutes } = estimateDuration(deck, WPM);
+    return {
+      total: deck.slides.length,
+      current: slideAtLine(deck, projectState.cursorLine)?.index ?? 1,
+      minutes: Math.max(1, Math.round(minutes)),
+    };
+  });
 
   const saveLabel = $derived(
     projectState.saveStatus === 'saving' ? 'Saving…'
@@ -141,6 +156,15 @@
       <span class="seg">Ln {projectState.cursorLine}, Col {projectState.cursorCol}</span>
       <span class="seg">{wordCount} word{wordCount !== 1 ? 's' : ''}</span>
       <span class="seg muted">{charCount} char{charCount !== 1 ? 's' : ''}</span>
+      {#if deckInfo}
+        <span class="seg" title="Slide {deckInfo.current} of {deckInfo.total}">
+          <i class="fas fa-person-chalkboard"></i>
+          Slide {deckInfo.current}/{deckInfo.total}
+        </span>
+        <span class="seg muted" title="Estimated speaking time at {WPM} words per minute">
+          ~{deckInfo.minutes} min
+        </span>
+      {/if}
     {/if}
     {#if mcpRunning}
       <span class="seg muted" title="MCP server is running">

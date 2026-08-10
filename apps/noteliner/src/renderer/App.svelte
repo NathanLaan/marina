@@ -24,6 +24,9 @@
   import TagEditorModal from './components/TagEditorModal.svelte';
   import HistoryPanel from './components/HistoryPanel.svelte';
   import AttachmentPanel from './components/AttachmentPanel.svelte';
+  import PresentationSettingsModal from './components/PresentationSettingsModal.svelte';
+  import { DEFAULT_PRESENTATION, slideAtLine } from './lib/slides.js';
+  import { insertSlide, moveSlide, splitAtLine, toggleNotes } from './lib/slideEdits.js';
   import { CommandPalette, fuzzyScore } from '@marina/desktop-ui/command-palette';
   import { projectState } from './stores/project.svelte.js';
   import { themeState } from '@marina/desktop-ui/theme';
@@ -32,9 +35,11 @@
   import { commandRegistry } from '@marina/desktop-ui/command-palette';
   import { installTestHelpers } from './test-helpers.js';
 
-  const VALID_PANE_KEYS = ['files', 'outline', 'tags', 'search', 'backlinks'];
+  const VALID_PANE_KEYS = ['files', 'outline', 'slides', 'tags', 'search', 'backlinks'];
 
   const DEFAULT_LAYOUT = {
+    showSlides: false,
+    slidesHeight: 220,
     showPreview: false,
     showHistory: false,
     showLog: false,
@@ -55,7 +60,7 @@
     tagsHeight: 100,
     searchHeight: 200,
     backlinksHeight: 180,
-    paneOrder: ['files', 'outline', 'tags', 'search', 'backlinks'],
+    paneOrder: ['files', 'outline', 'slides', 'tags', 'search', 'backlinks'],
   };
 
   function normalizePaneOrder(order) {
@@ -76,6 +81,7 @@
   // Bumped to make the StatusBar re-fetch git/MCP state without polling.
   let statusRefresh = $state(0);
   let showNewFile = $state(false);
+  let newFileType = $state('note');
   let showDuplicateFile = $state(false);
   // Source note for the open Duplicate dialog — supplies its default name,
   // pre-checked tags, and parent. Cleared when the dialog closes.
@@ -91,6 +97,7 @@
   let showClearTags = $state(false);
   let clearTagsFile = $state(null);
   let showTagEditor = $state(false);
+  let showPresentationSettings = $state(false);
   let projectSettingsRequired = $state(false);
   // Queue of pending MCP confirm-before-write prompts. Main may push multiple
   // before the user answers the first, so we serialize them — only the head
@@ -157,6 +164,42 @@
     C({ id: 'file.next', label: 'Next File', section: 'File', shortcut: 'Ctrl+PgDn',
         matches: (e) => ctrl(e) && !e.altKey && e.key === 'PageDown',
         when: projectOpen, run: () => projectState.selectNextFile() });
+
+    // Presentations. Every command is gated on the open note actually being a
+    // deck, so an ordinary note's palette is untouched. Shortcuts avoid the
+    // fully-allocated Ctrl+letter space (see the View section below).
+    const isDeck = () => projectState.isOpen && projectState.isDeck;
+    const deckMd = () => projectState.editorContent;
+
+    C({ id: 'deck.new', label: 'New Presentation...', section: 'Presentation',
+        when: projectOpen, run: () => handleNewPresentation() });
+    C({ id: 'deck.convert', label: 'Convert to Presentation', section: 'Presentation',
+        when: () => hasSelection() && !projectState.isDeck,
+        run: () => handleConvertToPresentation() });
+    C({ id: 'deck.convertBack', label: 'Convert to Note', section: 'Presentation',
+        when: isDeck, run: () => handleConvertToNote() });
+    C({ id: 'deck.settings', label: 'Presentation Settings', section: 'Presentation',
+        when: isDeck, run: () => { showPresentationSettings = true; } });
+    C({ id: 'deck.toggleSlides', label: 'Toggle Slides Panel', section: 'Presentation', shortcut: 'Ctrl+Shift+G',
+        matches: (e) => ctrl(e) && e.shiftKey && !e.altKey && e.code === 'KeyG',
+        when: isDeck, run: () => handleToggleSlides() });
+    C({ id: 'deck.newSlide', label: 'New Slide', section: 'Presentation', shortcut: 'Ctrl+Enter',
+        matches: (e) => ctrl(e) && !e.shiftKey && !e.altKey && e.key === 'Enter',
+        when: isDeck, run: () => handleNewSlide() });
+    C({ id: 'deck.splitSlide', label: 'Split Slide at Cursor', section: 'Presentation', shortcut: 'Ctrl+Shift+Enter',
+        matches: (e) => ctrl(e) && e.shiftKey && !e.altKey && e.key === 'Enter',
+        when: isDeck,
+        run: () => projectState.applySlideEdit(
+          splitAtLine(deckMd(), projectState.deck, projectState.cursorLine)) });
+    C({ id: 'deck.moveSlideUp', label: 'Move Slide Up', section: 'Presentation', shortcut: 'Alt+Up',
+        matches: (e) => e.altKey && !ctrl(e) && !e.shiftKey && e.key === 'ArrowUp',
+        when: isDeck, run: () => moveCurrentSlide('up') });
+    C({ id: 'deck.moveSlideDown', label: 'Move Slide Down', section: 'Presentation', shortcut: 'Alt+Down',
+        matches: (e) => e.altKey && !ctrl(e) && !e.shiftKey && e.key === 'ArrowDown',
+        when: isDeck, run: () => moveCurrentSlide('down') });
+    C({ id: 'deck.toggleNotes', label: 'Mark as Speaker Notes', section: 'Presentation', shortcut: 'Ctrl+Shift+V',
+        matches: (e) => ctrl(e) && e.shiftKey && !e.altKey && e.code === 'KeyV',
+        when: isDeck, run: () => handleToggleSpeakerNotes() });
 
     // Tags — registered before View so Ctrl+Shift++ wins over zoom-in when the TAGS pane is open.
     // zoom-in's matcher also accepts e.key === '+' (Ctrl+Shift+=), and the dispatcher returns on
@@ -282,7 +325,9 @@
   onMount(() => {
     // themeState.init() runs at module scope in main.js before mount — don't repeat here.
 
-    installTestHelpers(projectState);
+    installTestHelpers(projectState, {
+      openPresentationSettings: () => { showPresentationSettings = true; },
+    });
     registerCommands();
 
     if (window.api?.getUIPrefs) {
@@ -421,15 +466,95 @@
 
   function handleNewFile() {
     if (!projectState.isOpen) return;
+    newFileType = 'note';
     showNewFile = true;
   }
 
-  async function handleNewFileConfirm({ name, tags, templateId, parentId }) {
+  // Same dialog, Type preset to Presentation — the palette's direct route.
+  function handleNewPresentation() {
+    if (!projectState.isOpen) return;
+    newFileType = 'deck';
+    showNewFile = true;
+  }
+
+  async function handleNewFileConfirm({ name, tags, templateId, parentId, type }) {
     showNewFile = false;
     createFromWikilinkName = '';
     const entry = await window.api.createFile(name, tags, templateId, parentId);
     projectState.addFile(entry);
+
+    // Presentation type seeds the `presentation:` block — unless the chosen
+    // template already carried one, in which case its settings win.
+    if (type === 'deck' && !entry.error) {
+      if (!templateId) {
+        await window.api.writeFile(entry.filename, blankDeckBody(name));
+      }
+      if (!entry.deck) {
+        await projectState.setPresentation(entry.id, { ...DEFAULT_PRESENTATION });
+      }
+    }
+
     projectState.selectFile(entry.id);
+  }
+
+  // Starter body for "Blank Presentation": a title slide, a speaker-note block
+  // to show the convention, and one content slide to type into.
+  function blankDeckBody(name) {
+    return `# ${name}\n\n<!-- notes\nOpening line.\n-->\n\n## First point\n\n- \n`;
+  }
+
+  async function handleConvertToPresentation(file) {
+    const target = file || projectState.selectedFile;
+    if (!target) return;
+    if (target.deck) { showPresentationSettings = true; return; }
+    await projectState.selectFile(target.id);
+    const res = await projectState.setPresentation(target.id, { ...DEFAULT_PRESENTATION });
+    if (res?.error === 'git_config_required') {
+      projectSettingsRequired = true;
+      showProjectSettings = true;
+      return;
+    }
+    // Land the user in settings so theme/aspect are one step away, and so it's
+    // obvious what "became a presentation" means.
+    showPresentationSettings = true;
+    if (!layout.showSlides) handleToggleSlides();
+  }
+
+  // Adds a slide after the one the caret is in, so "new slide" means "next",
+  // not "at the end of the deck".
+  function handleNewSlide() {
+    const deck = projectState.deck;
+    if (!deck) return;
+    const current = slideAtLine(deck, projectState.cursorLine);
+    if (!layout.showSlides) handleToggleSlides();
+    return projectState.applySlideEdit(
+      insertSlide(projectState.editorContent, deck, { after: current?.index ?? deck.slides.length })
+    );
+  }
+
+  function moveCurrentSlide(direction) {
+    const deck = projectState.deck;
+    const current = deck ? slideAtLine(deck, projectState.cursorLine) : null;
+    if (!current) return;
+    return projectState.applySlideEdit(
+      moveSlide(projectState.editorContent, deck, current.index, direction)
+    );
+  }
+
+  // Wraps the editor's selection (or the caret's line) in a notes block.
+  function handleToggleSpeakerNotes() {
+    if (!projectState.isDeck) return;
+    const sel = projectState.selectionRange;
+    const from = sel?.fromLine ?? projectState.cursorLine;
+    const to = sel?.toLine ?? projectState.cursorLine;
+    return projectState.applySlideEdit(toggleNotes(projectState.editorContent, from, to));
+  }
+
+  async function handleConvertToNote(file) {
+    const target = file || projectState.selectedFile;
+    if (!target?.deck) return;
+    await projectState.setPresentation(target.id, null);
+    if (layout.showSlides) layout.showSlides = false;
   }
 
   function handleDuplicateFile() {
@@ -597,6 +722,15 @@
     layout.showOutline = !layout.showOutline;
   }
 
+  function handleToggleSlides() {
+    layout.showSlides = !layout.showSlides;
+  }
+
+  // The SLIDES pane only exists for a deck. Gating on `isDeck` rather than
+  // clearing `showSlides` means the preference survives switching to an
+  // ordinary note and back.
+  const slidesPaneVisible = $derived(layout.showSlides && projectState.isDeck);
+
   function handleToggleTags() {
     layout.showTags = !layout.showTags;
   }
@@ -634,6 +768,7 @@
     switch (paneKey) {
       case 'files': layout.showSidebar = false; break;
       case 'outline': layout.showOutline = false; break;
+      case 'slides': layout.showSlides = false; break;
       case 'tags': layout.showTags = false; break;
       case 'search': layout.showSearch = false; break;
       case 'backlinks': layout.showBacklinks = false; break;
@@ -734,6 +869,16 @@
         break;
       case 'convertToMarkdown':
         handleSaveToMarkdown();
+        break;
+      case 'convertToPresentation':
+        await handleConvertToPresentation(file);
+        break;
+      case 'convertToNote':
+        await handleConvertToNote(file);
+        break;
+      case 'presentationSettings':
+        await projectState.selectFile(file.id);
+        showPresentationSettings = true;
         break;
     }
   }
@@ -898,15 +1043,21 @@
 {#if showNewFile}
   <NewFileModal
     initialName={createFromWikilinkName}
+    initialType={newFileType}
     onConfirm={handleNewFileConfirm}
-    onCancel={() => { showNewFile = false; createFromWikilinkName = ''; }}
+    onCancel={() => { showNewFile = false; createFromWikilinkName = ''; newFileType = 'note'; }}
   />
+{/if}
+
+{#if showPresentationSettings && projectState.isDeck}
+  <PresentationSettingsModal onClose={() => showPresentationSettings = false} />
 {/if}
 
 {#if showDuplicateFile && duplicateSource}
   <NewFileModal
     title="Duplicate"
     showTemplate={false}
+    showType={false}
     initialName={`${duplicateSource.name}-Copy`}
     initialTags={duplicateSource.tags || []}
     initialParentId={duplicateSource.parentId || ''}
@@ -993,6 +1144,7 @@
         onToggleSidebar={handleToggleSidebar}
         onToggleOutline={handleToggleOutline}
         onToggleTags={handleToggleTags}
+        onToggleSlides={handleToggleSlides}
         onToggleAttachments={handleToggleAttachments}
         onToggleSearch={handleToggleSearch}
         onToggleBacklinks={handleToggleBacklinks}
@@ -1006,6 +1158,8 @@
         statusBarVisible={layout.showStatusBar}
         sidebarVisible={layout.showSidebar}
         outlineVisible={layout.showOutline}
+        slidesVisible={slidesPaneVisible}
+        isDeck={projectState.isDeck}
         tagsVisible={layout.showTags}
         attachmentsVisible={layout.showAttachments}
         searchVisible={layout.showSearch}
@@ -1024,17 +1178,19 @@
   {:else}
     <div class="main-area">
       <div class="content-area" class:with-log={layout.showLog}>
-        {#if layout.showSidebar || layout.showOutline || layout.showTags || layout.showSearch || layout.showBacklinks}
+        {#if layout.showSidebar || layout.showOutline || slidesPaneVisible || layout.showTags || layout.showSearch || layout.showBacklinks}
           <div class="sidebar" style="width: {layout.sidebarWidth}px">
             <Sidebar
               {tagAction}
               filesVisible={layout.showSidebar}
               outlineVisible={layout.showOutline}
+              slidesVisible={slidesPaneVisible}
               tagsVisible={layout.showTags}
               searchVisible={layout.showSearch}
               backlinksVisible={layout.showBacklinks}
               searchFocusRequest={searchFocusTs}
               outlineHeight={layout.outlineHeight}
+              slidesHeight={layout.slidesHeight}
               tagsHeight={layout.tagsHeight}
               searchHeight={layout.searchHeight}
               backlinksHeight={layout.backlinksHeight}
@@ -1047,6 +1203,8 @@
               onOpenTagEditor={() => showTagEditor = true}
               onClosePane={handleClosePane}
               onBacklinkSelect={handleBacklinkSelect}
+              onNewSlide={handleNewSlide}
+              onOpenPresentationSettings={() => showPresentationSettings = true}
             />
           </div>
           <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->

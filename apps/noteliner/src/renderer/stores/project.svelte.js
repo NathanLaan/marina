@@ -42,6 +42,9 @@ class ProjectState {
   cursorCol = $state(1);
   // Length (in characters) of the current editor selection; 0 when none.
   selectionLength = $state(0);
+  // 1-based line span of the selection, or null when it's a bare caret. Used by
+  // line-oriented commands like "mark as speaker notes".
+  selectionRange = $state(null);
   // Autosave indicator for the status bar: 'saved' | 'saving' | 'unsaved'.
   // Editor.svelte drives the transitions; reset to 'saved' on file load.
   saveStatus = $state('saved');
@@ -155,6 +158,50 @@ class ProjectState {
   deck = $derived.by(() =>
     this.isDeck ? parseDeck(this.editorContent, this.frontmatter.presentation) : null
   );
+
+  // Adds, updates, or (with null) removes a note's `presentation:` block.
+  // Also keeps the index entry's derived `deck` flag in step so the file-tree
+  // icon updates without a reload.
+  async setPresentation(fileId, presentation) {
+    const file = this.index.files.find((f) => f.id === fileId);
+    if (!file) return { error: 'not_found' };
+
+    const res = await window.api.setPresentation(file.filename, presentation);
+    if (res?.error) return res;
+
+    if (res.presentation) file.deck = true;
+    else delete file.deck;
+
+    if (this.selectedFileId === fileId) {
+      const next = { ...this.frontmatter };
+      if (res.presentation) next.presentation = res.presentation;
+      else delete next.presentation;
+      this.frontmatter = next;
+    }
+    return res;
+  }
+
+  // Applies a lib/slideEdits result: pushes the rewritten markdown into the
+  // editor (Editor.svelte syncs external content changes, and its own autosave
+  // is suppressed for them — hence the explicit write), then parks the caret on
+  // the slide that was edited.
+  async applySlideEdit(edit) {
+    if (!edit || edit.markdown == null) return;
+    const file = this.selectedFile;
+    if (edit.markdown === this.editorContent) return;
+
+    this.editorContent = edit.markdown;
+    if (edit.caretLine) this.scrollToLine = { line: edit.caretLine, ts: Date.now() };
+    if (!file) return;
+
+    this.saveStatus = 'saving';
+    try {
+      await window.api.writeFile(file.filename, edit.markdown);
+      this.saveStatus = 'saved';
+    } catch {
+      this.saveStatus = 'unsaved';
+    }
+  }
 
   get selectedFile() {
     if (!this.selectedFileId) return null;
