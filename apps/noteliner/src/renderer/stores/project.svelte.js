@@ -2,6 +2,7 @@
 // Exported as a singleton module-level instance.
 
 import { SvelteSet } from 'svelte/reactivity';
+import { parseDeck, normalizePresentation } from '../lib/slides.js';
 
 // Sentinel used in `hiddenTags` to represent "files with no tags". A leading
 // space can't appear in a real tag (FrontmatterService normalizes), so a
@@ -31,6 +32,10 @@ class ProjectState {
   index = $state({ version: 2, files: [] });
   selectedFileId = $state(null);
   editorContent = $state('');
+  // Frontmatter data for the selected file. readFile strips frontmatter, so
+  // user-authored fields arrive separately over file:getFrontmatter. Currently
+  // read for the `presentation:` block that marks a note as a deck.
+  frontmatter = $state({});
   scrollToLine = $state(null);
   cursorLine = $state(1);
   // 1-based caret column, surfaced in the status bar.
@@ -71,6 +76,7 @@ class ProjectState {
     this.isOpen = true;
     this.selectedFileId = null;
     this.editorContent = '';
+    this.frontmatter = {};
     this.scrollToLine = null;
   }
 
@@ -80,6 +86,7 @@ class ProjectState {
     this.index = { version: 2, files: [] };
     this.selectedFileId = null;
     this.editorContent = '';
+    this.frontmatter = {};
     this.scrollToLine = null;
     this.hiddenTags.clear();
   }
@@ -93,6 +100,7 @@ class ProjectState {
     if (this.selectedFileId === fileId) {
       this.selectedFileId = null;
       this.editorContent = '';
+      this.frontmatter = {};
     }
   }
 
@@ -111,12 +119,42 @@ class ProjectState {
     this.cursorCol = 1;
     this.selectionLength = 0;
     this.saveStatus = 'saved';
+    // Clear eagerly so a slow frontmatter read can't leave the previous
+    // note's `presentation:` block applied to this one.
+    this.frontmatter = {};
     const file = this.index.files.find(f => f.id === fileId);
     if (file) {
-      const content = await window.api.readFile(file.filename);
+      const [content, frontmatter] = await Promise.all([
+        window.api.readFile(file.filename),
+        window.api.getFrontmatter?.(file.filename) ?? Promise.resolve({}),
+      ]);
+      // A faster subsequent selection may have already moved on; don't clobber it.
+      if (this.selectedFileId !== fileId) return;
       this.editorContent = content;
+      this.frontmatter = frontmatter || {};
     }
   }
+
+  // ─── Presentations ────────────────────────────────────────────────────
+  //
+  // A note is a deck iff its frontmatter carries a `presentation:` block —
+  // the single definition, so a note converted by hand-editing frontmatter
+  // behaves exactly like one created from the New File dialog. See
+  // docs/plans/plan-presentations.md §2.1.
+
+  get presentation() {
+    return normalizePresentation(this.frontmatter?.presentation);
+  }
+
+  get isDeck() {
+    return this.presentation !== null;
+  }
+
+  // Parsed slide model for the open note, or null when it isn't a deck.
+  // Lazily recomputed by Svelte, so non-deck notes never pay for parsing.
+  deck = $derived.by(() =>
+    this.isDeck ? parseDeck(this.editorContent, this.frontmatter.presentation) : null
+  );
 
   get selectedFile() {
     if (!this.selectedFileId) return null;

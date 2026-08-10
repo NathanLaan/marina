@@ -99,6 +99,17 @@ export function installTestHelpers(projectState) {
       return att;
     },
 
+    // Deck state for the presentation tests: whether the open note is a deck
+    // and what the parser made of it, without reaching into the DOM.
+    deckSnapshot() {
+      return {
+        isDeck: projectState.isDeck,
+        slideCount: projectState.deck?.slides.length ?? 0,
+        titles: projectState.deck?.slides.map((s) => s.title) ?? [],
+        layouts: projectState.deck?.slides.map((s) => s.layout) ?? [],
+      };
+    },
+
     snapshot() {
       return {
         isOpen: projectState.isOpen,

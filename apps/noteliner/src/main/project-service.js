@@ -164,6 +164,17 @@ class ProjectService {
     return this.frontmatter.stripBody(raw);
   }
 
+  // The frontmatter data block, for renderer features driven by user-authored
+  // fields that readFile deliberately strips — currently the `presentation:`
+  // block that marks a note as a deck. Returns {} when the file or its
+  // frontmatter is missing, so callers can read it unconditionally.
+  async readFrontmatter(filename) {
+    const filePath = path.join(this.projectPath, filename);
+    if (!fs.existsSync(filePath)) return {};
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    return this.frontmatter.parse(raw).data || {};
+  }
+
   // Writes the body, reattaching mirrored frontmatter from the index entry.
   // When the writeFrontmatter toggle is off, the body is written raw — any
   // existing frontmatter on disk is dropped on the next save.

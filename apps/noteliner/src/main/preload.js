@@ -21,6 +21,8 @@ contextBridge.exposeInMainWorld('api', {
 
   // Files
   readFile: (filePath) => ipcRenderer.invoke('file:read', filePath),
+  // Frontmatter data block (readFile strips it) — drives deck detection.
+  getFrontmatter: (filePath) => ipcRenderer.invoke('file:getFrontmatter', filePath),
   writeFile: (filePath, content) => ipcRenderer.invoke('file:write', filePath, content),
   createFile: (name, tags, templateId, parentId) => ipcRenderer.invoke('file:create', name, tags, templateId, parentId),
   duplicateFile: (sourceId, name, tags, parentId) => ipcRenderer.invoke('file:duplicate', sourceId, name, tags, parentId),
