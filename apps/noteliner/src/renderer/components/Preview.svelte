@@ -2,6 +2,8 @@
   import { projectState } from '../stores/project.svelte.js';
   import { marked } from 'marked';
   import ContextMenu from './ContextMenu.svelte';
+  import DeckPreview from './DeckPreview.svelte';
+  import { resolveAttachmentUrls } from '../lib/attachments.js';
 
   let {
     onClose = () => {},
@@ -55,14 +57,6 @@
 
   marked.use({ extensions: [wikilinkExtension] });
 
-  function resolveAttachmentUrls(rawHtml) {
-    return rawHtml.replace(
-      /(?:src|href)="\.?\/?_attachments\/([^"]+)"/g,
-      (match, filename) => match.replace(`./_attachments/${filename}`, `attachment:///${encodeURIComponent(filename)}`)
-        .replace(`_attachments/${filename}`, `attachment:///${encodeURIComponent(filename)}`)
-    );
-  }
-
   function handlePreviewClick(e) {
     const link = e.target.closest('.wikilink');
     if (!link) return;
@@ -109,6 +103,11 @@
     contextMenu = { x: e.clientX / zoom, y: e.clientY / zoom, items };
   }
 
+  // A deck renders as slides instead of a flowing document. The `source`
+  // override (help window, history preview) always takes the document path —
+  // it isn't a project note and has no presentation frontmatter.
+  let isDeck = $derived(source == null && projectState.isDeck);
+
   // When `source` is provided, render it as-is (no attachment-URL resolution —
   // help/static content doesn't reference the project's _attachments folder).
   // Otherwise fall back to the active project file.
@@ -125,17 +124,24 @@
 <div class="preview-wrapper">
   {#if showToolbar}
     <div class="preview-toolbar">
-      <span class="preview-title">PREVIEW</span>
+      <span class="preview-title">{isDeck ? 'SLIDES' : 'PREVIEW'}</span>
       <button class="close-btn" onclick={onClose} title="Close Preview">
         <i class="fas fa-xmark"></i>
       </button>
     </div>
   {/if}
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <div class="preview-content" bind:this={previewContentEl} oncontextmenu={handleContextMenu} onclick={handlePreviewClick}>
-    {@html html}
-  </div>
+  {#if isDeck}
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="preview-deck" oncontextmenu={handleContextMenu}>
+      <DeckPreview />
+    </div>
+  {:else}
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div class="preview-content" bind:this={previewContentEl} oncontextmenu={handleContextMenu} onclick={handlePreviewClick}>
+      {@html html}
+    </div>
+  {/if}
 </div>
 
 {#if contextMenu}
@@ -194,6 +200,15 @@
     padding: 16px;
     overflow-y: auto;
     line-height: 1.6;
+  }
+
+  /* Deck mode: DeckPreview owns its own scrolling, so this is just the flex
+     slot it fills. */
+  .preview-deck {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   .preview-content :global(h1) { font-size: 24px; margin-bottom: 12px; color: var(--text-primary); }

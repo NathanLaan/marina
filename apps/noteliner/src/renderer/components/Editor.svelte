@@ -198,6 +198,14 @@
             projectState.cursorLine = line.number;
             projectState.cursorCol = sel.head - line.from + 1;
             projectState.selectionLength = Math.abs(sel.to - sel.from);
+            // Line span drives line-oriented commands (e.g. wrapping a
+            // selection as speaker notes); null means "just a caret".
+            projectState.selectionRange = sel.from === sel.to
+              ? null
+              : {
+                  fromLine: update.state.doc.lineAt(sel.from).number,
+                  toLine: update.state.doc.lineAt(sel.to).number,
+                };
           }
         }),
         EditorView.lineWrapping

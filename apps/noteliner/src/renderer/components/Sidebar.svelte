@@ -4,6 +4,7 @@
   import FileTree from './FileTree.svelte';
   import TagsPane from './TagsPane.svelte';
   import OutlinePane from './OutlinePane.svelte';
+  import SlidesPane from './SlidesPane.svelte';
   import SearchPane from './SearchPane.svelte';
   import BacklinksPane from './BacklinksPane.svelte';
   import TagFilterPopover from './TagFilterPopover.svelte';
@@ -14,16 +15,18 @@
     tagAction = null,
     filesVisible = true,
     outlineVisible = false,
+    slidesVisible = false,
     tagsVisible = true,
     searchVisible = false,
     backlinksVisible = false,
     searchFocusRequest = null,
     filesHeight = 200,
     outlineHeight = 150,
+    slidesHeight = 220,
     tagsHeight = 100,
     searchHeight = 200,
     backlinksHeight = 180,
-    paneOrder = ['files', 'outline', 'tags', 'search', 'backlinks'],
+    paneOrder = ['files', 'outline', 'slides', 'tags', 'search', 'backlinks'],
     onPaneResize,
     onPaneReorder,
     onContextAction,
@@ -31,6 +34,8 @@
     onOpenTagEditor,
     onClosePane,
     onBacklinkSelect,
+    onNewSlide,
+    onOpenPresentationSettings,
   } = $props();
 
   let editingId = $state(null);
@@ -141,6 +146,7 @@
   const PANE_HEIGHT_KEY = {
     files: 'filesHeight',
     outline: 'outlineHeight',
+    slides: 'slidesHeight',
     tags: 'tagsHeight',
     search: 'searchHeight',
     backlinks: 'backlinksHeight',
@@ -156,6 +162,7 @@
   const panes = $derived([
     filesVisible && { id: 'files', title: 'FILES', height: filesHeight, render: filesPane, headerExtra: filesHeaderExtra },
     outlineVisible && { id: 'outline', title: 'OUTLINE', height: outlineHeight, render: outlinePaneBody },
+    slidesVisible && { id: 'slides', title: 'SLIDES', height: slidesHeight, render: slidesPaneBody, headerExtra: slidesHeaderExtra },
     tagsVisible && { id: 'tags', title: 'TAGS', height: tagsHeight, render: tagsPaneBody, headerExtra: tagsHeaderExtra },
     searchVisible && { id: 'search', title: 'SEARCH', height: searchHeight, render: searchPaneBody },
     backlinksVisible && { id: 'backlinks', title: 'BACKLINKS', height: backlinksHeight, render: backlinksPaneBody },
@@ -182,6 +189,33 @@
 
 {#snippet outlinePaneBody()}
   <OutlinePane />
+{/snippet}
+
+{#snippet slidesPaneBody()}
+  <SlidesPane onOpenSettings={() => onOpenPresentationSettings?.()} />
+{/snippet}
+
+{#snippet slidesHeaderExtra()}
+  <button
+    class="pane-header-btn"
+    onclick={(e) => { e.stopPropagation(); onNewSlide?.(); }}
+    onmousedown={(e) => e.stopPropagation()}
+    disabled={!projectState.isDeck}
+    title="New Slide (Ctrl+Enter)"
+    aria-label="New Slide"
+  >
+    <i class="fas fa-plus"></i>
+  </button>
+  <button
+    class="pane-header-btn"
+    onclick={(e) => { e.stopPropagation(); onOpenPresentationSettings?.(); }}
+    onmousedown={(e) => e.stopPropagation()}
+    disabled={!projectState.isDeck}
+    title="Presentation Settings"
+    aria-label="Presentation Settings"
+  >
+    <i class="fas fa-sliders"></i>
+  </button>
 {/snippet}
 
 {#snippet tagsPaneBody()}

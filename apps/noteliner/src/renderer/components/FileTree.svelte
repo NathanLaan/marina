@@ -106,6 +106,17 @@
         { label: 'Save to PDF', icon: 'fa-file-pdf', action: () => onContextAction('convertToPdf', file) },
         { label: 'Save to Markdown', icon: 'fa-file-lines', action: () => onContextAction('convertToMarkdown', file) },
         { separator: true },
+        // Converting an existing note is the main way decks get made — the
+        // notes are already written. See docs/plans/plan-presentations.md §3.1.
+        ...(file.deck
+          ? [
+              { label: 'Presentation Settings...', icon: 'fa-sliders', action: () => onContextAction('presentationSettings', file) },
+              { label: 'Convert to Note', icon: 'fa-file-lines', action: () => onContextAction('convertToNote', file) },
+            ]
+          : [
+              { label: 'Convert to Presentation...', icon: 'fa-person-chalkboard', action: () => onContextAction('convertToPresentation', file) },
+            ]),
+        { separator: true },
         { label: 'Duplicate...', icon: 'fa-clone', shortcut: 'Ctrl+Shift+D', action: () => onContextAction('duplicate', file) },
         { label: 'Move...', icon: 'fa-arrows-up-down-left-right', action: () => onContextAction('move', file) },
         { label: 'Rename', icon: 'fa-pen', action: () => onStartRename(file.id, file.name) },
@@ -150,7 +161,9 @@
         use:autoFocus
       />
     {:else}
-      <i class="fas fa-file-lines file-icon"></i>
+      <!-- `deck` is a derived cache on the index entry, so the tree can show
+           this without reading every note's frontmatter. -->
+      <i class="fas {file.deck ? 'fa-person-chalkboard' : 'fa-file-lines'} file-icon"></i>
       <span class="file-name">{file.name}</span>
       {#if file.attachments && file.attachments.length > 0}
         <i class="fas fa-paperclip attachment-indicator" title="Has attachments"></i>

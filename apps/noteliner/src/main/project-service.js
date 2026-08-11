@@ -58,6 +58,10 @@ class ProjectService {
           await this.gitService.commit(this.projectPath, `Sync frontmatter on ${rewritten} note${rewritten === 1 ? '' : 's'}`);
           this.gitService.schedulePush(this.projectPath);
         }
+      } else {
+        // Can't commit yet, but the derived deck flags are still wanted so the
+        // file tree renders correctly on this first open.
+        this.reconcileFrontmatter({ rewrite: false });
       }
       return { status: 'loaded', index: this.index, needsGitConfig };
     }
@@ -164,6 +168,17 @@ class ProjectService {
     return this.frontmatter.stripBody(raw);
   }
 
+  // The frontmatter data block, for renderer features driven by user-authored
+  // fields that readFile deliberately strips — currently the `presentation:`
+  // block that marks a note as a deck. Returns {} when the file or its
+  // frontmatter is missing, so callers can read it unconditionally.
+  async readFrontmatter(filename) {
+    const filePath = path.join(this.projectPath, filename);
+    if (!fs.existsSync(filePath)) return {};
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    return this.frontmatter.parse(raw).data || {};
+  }
+
   // Writes the body, reattaching mirrored frontmatter from the index entry.
   // When the writeFrontmatter toggle is off, the body is written raw — any
   // existing frontmatter on disk is dropped on the next save.
@@ -179,6 +194,9 @@ class ProjectService {
         ? this.frontmatter.mirrorFromIndexEntry(entry, existingData)
         : existingData;
       outContent = this.frontmatter.serialize(body, data);
+      // A note can become (or stop being) a deck through any write path,
+      // including MCP and imports — keep the derived flag in step.
+      if (entry) this.applyDeckFlag(entry, data);
     }
     fs.writeFileSync(filePath, outContent, 'utf-8');
 
@@ -253,8 +271,15 @@ class ProjectService {
       initialBody = `# ${name} ${yyyy}-${mm}-${dd}\n`;
     }
     if (this.writeFrontmatter) {
-      const data = this.frontmatter.mirrorFromIndexEntry(entry);
-      fs.writeFileSync(filePath, this.frontmatter.serialize(initialBody, data), 'utf-8');
+      // A template body can carry its own frontmatter (a deck template supplies
+      // the `presentation:` block). Merge those fields in, minus `kind`, which
+      // classifies the *template* and has no business in the new note.
+      const seeded = this.frontmatter.parse(initialBody);
+      const templateData = { ...seeded.data };
+      delete templateData.kind;
+      const data = this.frontmatter.mirrorFromIndexEntry(entry, templateData);
+      fs.writeFileSync(filePath, this.frontmatter.serialize(seeded.body, data), 'utf-8');
+      this.applyDeckFlag(entry, data);
     } else {
       fs.writeFileSync(filePath, initialBody, 'utf-8');
     }
@@ -369,15 +394,20 @@ class ProjectService {
   // is missing or diverges from the index. Returns the count of files
   // rewritten so the caller can decide whether to make a single commit.
   // No-op when writeFrontmatter is disabled.
-  reconcileFrontmatter() {
-    if (!this.writeFrontmatter) return 0;
+  // Walks every note once. Always refreshes the derived `deck` flag; rewrites
+  // divergent frontmatter mirrors only when `rewrite` is on (the caller turns
+  // it off when a commit isn't possible yet, e.g. missing git config).
+  reconcileFrontmatter({ rewrite = true } = {}) {
     if (!this.index?.files) return 0;
+    const canRewrite = rewrite && this.writeFrontmatter;
     let rewritten = 0;
     for (const entry of this.index.files) {
       const filePath = path.join(this.projectPath, entry.filename);
       if (!fs.existsSync(filePath)) continue;
       const raw = fs.readFileSync(filePath, 'utf-8');
       const parsed = this.frontmatter.parse(raw);
+      this.applyDeckFlag(entry, parsed.data);
+      if (!canRewrite) continue;
       const wanted = this.frontmatter.mirrorFromIndexEntry(entry, parsed.data);
       if (this.frontmatter.mirrorDiverges(parsed.data, wanted)) {
         const next = this.frontmatter.serialize(parsed.body, wanted);
@@ -388,6 +418,44 @@ class ProjectService {
       }
     }
     return rewritten;
+  }
+
+  // `deck` on an index entry is a derived cache of "does this note's
+  // frontmatter carry a presentation block?", so the file tree can show a deck
+  // icon without reading every note. Frontmatter stays authoritative — this is
+  // refreshed on open and on every write, and a full reconcile recomputes it.
+  applyDeckFlag(entry, data) {
+    const isDeck = !!(data && data.presentation);
+    if (isDeck) entry.deck = true;
+    else delete entry.deck;
+    return isDeck;
+  }
+
+  // Adds, replaces, or (with null) removes the `presentation:` block on a note.
+  // This is the one write path for turning a note into a deck and back.
+  async setPresentation(filename, presentation) {
+    const filePath = path.join(this.projectPath, filename);
+    if (!fs.existsSync(filePath)) throw new Error('File does not exist');
+
+    const { data, body } = this.frontmatter.parse(fs.readFileSync(filePath, 'utf-8'));
+    const next = { ...data };
+    if (presentation == null) delete next.presentation;
+    else next.presentation = presentation;
+
+    fs.writeFileSync(filePath, this.frontmatter.serialize(body, next), 'utf-8');
+
+    const entry = this.index?.files.find((f) => f.filename === filename);
+    if (entry) {
+      this.applyDeckFlag(entry, next);
+      entry.modifiedAt = new Date().toISOString();
+      try { fs.writeFileSync(this.indexPath(), JSON.stringify(this.index, null, 2)); }
+      catch { /* the note itself is saved; a stale index recovers on reconcile */ }
+    }
+
+    const verb = presentation == null ? 'Convert to note' : 'Update presentation settings';
+    await this.gitService.commit(this.projectPath, `${verb}: ${filename}`);
+    this.gitService.schedulePush(this.projectPath);
+    return next.presentation ?? null;
   }
 
   attachmentsDir() {

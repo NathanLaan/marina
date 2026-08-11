@@ -6,12 +6,13 @@
 
   let {
     onGoHome, onOpenFolder, onNewFile, onImportDocument,
-    onToggleSidebar, onToggleOutline, onToggleTags,
+    onToggleSidebar, onToggleOutline, onToggleSlides, onToggleTags,
     onToggleLog, onToggleStatusBar, onToggleAttachments, onToggleSearch, onToggleBacklinks,
     onShowAbout, onShowSettings, onShowProjectSettings, onShowSync, onShowHelp,
     projectOpen,
     customTitlebar = false,
     logVisible = false, statusBarVisible = true, sidebarVisible = true, outlineVisible = false,
+    slidesVisible = false, isDeck = false,
     tagsVisible = true, attachmentsVisible = false,
     searchVisible = false, backlinksVisible = false,
   } = $props();
@@ -35,6 +36,11 @@
 
     <ToolbarButton icon="fa-bars-staggered" active={sidebarVisible} onclick={onToggleSidebar} title="Files (Ctrl+E)" />
     <ToolbarButton icon="fa-list-ol" active={outlineVisible} onclick={onToggleOutline} title="Outline (Ctrl+Shift+O)" />
+    <!-- Presentation-only: shown just for decks so an ordinary note's toolbar
+         is unchanged. -->
+    {#if isDeck}
+      <ToolbarButton icon="fa-person-chalkboard" active={slidesVisible} onclick={onToggleSlides} title="Slides (Ctrl+Shift+G)" />
+    {/if}
     <ToolbarButton icon="fa-tag" active={tagsVisible} onclick={onToggleTags} title="Tags (Ctrl+Shift+T)" />
     <ToolbarButton icon="fa-paperclip" active={attachmentsVisible} onclick={onToggleAttachments} title="Attachments (Ctrl+Shift+A)" />
 

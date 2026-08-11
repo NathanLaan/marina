@@ -35,16 +35,32 @@ class TemplateService {
       .replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
-  // [{ id, name }] for every *.md in _templates/, sorted by display name.
+  // [{ id, name, kind }] for every *.md in _templates/, sorted by display name.
   // id is the on-disk filename — the stable handle the renderer passes back.
+  //
+  // `kind` comes from the template's own frontmatter (`kind: deck | slide`) and
+  // defaults to 'note', so every pre-existing template keeps its behaviour. The
+  // New File dialog uses it to show only templates matching the chosen type;
+  // createFile strips the field so it never lands in the created note.
   list() {
     if (!this.projectPath) return [];
     const dir = this.dir();
     if (!fs.existsSync(dir)) return [];
     return fs.readdirSync(dir)
       .filter((f) => f.toLowerCase().endsWith('.md'))
-      .map((f) => ({ id: f, name: this.prettify(f) }))
+      .map((f) => ({ id: f, name: this.prettify(f), kind: this.kindOf(dir, f) }))
       .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  // Frontmatter read is cheap here — templates are a handful of small files.
+  kindOf(dir, filename) {
+    try {
+      const raw = fs.readFileSync(path.join(dir, filename), 'utf-8');
+      const kind = this.projectService.frontmatter.parse(raw).data?.kind;
+      return kind === 'deck' || kind === 'slide' ? kind : 'note';
+    } catch {
+      return 'note';
+    }
   }
 
   // Replace the supported placeholders. Kept deliberately small and

@@ -638,6 +638,26 @@ ipcMain.handle('file:read', async (_event, filePath) => {
   return perf.measure('file.read', () => projectService.readFile(filePath));
 });
 
+// Frontmatter data only. file:read strips it, but presentation support needs
+// the user-authored `presentation:` block to know whether a note is a deck.
+ipcMain.handle('file:getFrontmatter', async (_event, filePath) => {
+  if (!projectService.projectPath) return {};
+  return projectService.readFrontmatter(filePath);
+});
+
+// Turns a note into a deck, updates its presentation settings, or (with null)
+// turns it back into an ordinary note.
+ipcMain.handle('file:setPresentation', async (_event, filePath, presentation) => {
+  if (!projectService.projectPath) return { error: 'no_project' };
+  try {
+    const saved = await projectService.setPresentation(filePath, presentation);
+    return { presentation: saved };
+  } catch (err) {
+    if (err.code === 'GIT_CONFIG_REQUIRED') return { error: 'git_config_required' };
+    return { error: err.message };
+  }
+});
+
 ipcMain.handle('file:write', async (_event, filePath, content) => {
   return perf.measure('file.write', async () => {
     try {

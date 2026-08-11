@@ -12,6 +12,9 @@
     // Hidden in Duplicate mode — the copy's body comes from the source note,
     // so a template picker would have nothing to act on.
     showTemplate = true,
+    // Also hidden in Duplicate mode: a copy inherits its source's type.
+    showType = true,
+    initialType = 'note',
   } = $props();
 
   // Prop-initialized state: the parent always remounts this modal via {#if showNewFile},
@@ -24,6 +27,30 @@
   // Templates from _templates/. Empty string = "Blank" (the default body).
   let templates = $state([]);
   let selectedTemplate = $state('');
+
+  // 'note' | 'deck'. A creation-time seed, not a property of the note: picking
+  // Presentation seeds the `presentation:` frontmatter block, and that block
+  // being present is the only definition of "is a deck".
+  // svelte-ignore state_referenced_locally
+  let fileType = $state(initialType);
+
+  // Type filters the template list, which is why it sits above the name field.
+  // Templates predating the `kind` field default to 'note', so nothing that
+  // already exists disappears.
+  let visibleTemplates = $derived(
+    templates.filter((t) => (t.kind || 'note') === (fileType === 'deck' ? 'deck' : 'note'))
+  );
+
+  // Keep the selection valid when the type flips under it.
+  $effect(() => {
+    if (selectedTemplate && !visibleTemplates.some((t) => t.id === selectedTemplate)) {
+      selectedTemplate = '';
+    }
+  });
+
+  const modalTitle = $derived(
+    showType && fileType === 'deck' && title === 'New File' ? 'New Presentation' : title
+  );
 
   // Parent note for the new file. Empty string = "(None)" → root-level file.
   // svelte-ignore state_referenced_locally
@@ -89,6 +116,7 @@
       tags: [...selectedTags],
       templateId: selectedTemplate || null,
       parentId: selectedParent || null,
+      type: showType ? fileType : 'note',
     });
   }
 </script>
@@ -96,9 +124,37 @@
 <div class="modal-overlay" onclick={(e) => { if (e.target === e.currentTarget) onCancel(); }} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
   <div class="modal new-file-modal">
     <div class="modal-header">
-      <h2>{title}</h2>
+      <h2>{modalTitle}</h2>
     </div>
     <div class="modal-body">
+      {#if showType}
+        <div class="field">
+          <div class="field-label" id="new-file-type-label">Type:</div>
+          <div class="type-toggle" role="radiogroup" aria-labelledby="new-file-type-label">
+            <button
+              class="type-option"
+              class:selected={fileType === 'note'}
+              role="radio"
+              aria-checked={fileType === 'note'}
+              onclick={() => fileType = 'note'}
+            >
+              <i class="fas fa-file-lines"></i>
+              <span>Note</span>
+            </button>
+            <button
+              class="type-option"
+              class:selected={fileType === 'deck'}
+              role="radio"
+              aria-checked={fileType === 'deck'}
+              onclick={() => fileType = 'deck'}
+            >
+              <i class="fas fa-person-chalkboard"></i>
+              <span>Presentation</span>
+            </button>
+          </div>
+        </div>
+      {/if}
+
       <div class="field">
         <label for="new-file-name">File Name:</label>
         <input id="new-file-name" type="text" bind:value={fileName} placeholder="Untitled" use:focusInput />
@@ -114,12 +170,12 @@
         </select>
       </div>
 
-      {#if showTemplate && templates.length > 0}
+      {#if showTemplate && (visibleTemplates.length > 0 || fileType === 'deck')}
         <div class="field">
           <label for="new-file-template">Template:</label>
           <select id="new-file-template" bind:value={selectedTemplate}>
-            <option value="">Blank</option>
-            {#each templates as t (t.id)}
+            <option value="">{fileType === 'deck' ? 'Blank Presentation' : 'Blank'}</option>
+            {#each visibleTemplates as t (t.id)}
               <option value={t.id}>{t.name}</option>
             {/each}
           </select>
@@ -194,6 +250,40 @@
   .field select option {
     background: var(--bg-surface);
     color: var(--text-primary);
+  }
+
+  /* Segmented control rather than a <select>: with two options, showing both
+     is what makes the Presentation type discoverable at all. */
+  .type-toggle {
+    display: flex;
+    gap: 6px;
+  }
+
+  .type-option {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+  }
+
+  .type-option:hover {
+    color: var(--text-primary);
+    background: var(--bg-button-hover);
+  }
+
+  .type-option.selected {
+    color: var(--accent);
+    background: var(--bg-selected);
+    border-color: var(--accent);
   }
 
   .tag-list {

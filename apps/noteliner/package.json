@@ -17,8 +17,9 @@
   "scripts": {
     "dev": "vite",
     "bundle:preload": "esbuild src/main/preload.js --bundle --platform=node --target=node20 --external:electron --outfile=dist/preload.cjs",
-    "prebuild": "npm run bundle:preload",
     "build": "vite build",
+    "// postbuild": "Must run AFTER vite build: the renderer's outDir is dist/ with emptyOutDir, so bundling the preload first would have it deleted.",
+    "postbuild": "npm run bundle:preload",
     "build:icons": "bash scripts/build-icons.sh",
     "build:linux": "npm run build && npm run build:icons && electron-builder --linux",
     "build:win": "npm run build && npm run build:icons && electron-builder --win",
@@ -32,6 +33,7 @@
     "test:debug": "PWDEBUG=1 playwright test",
     "test:mcp": "node tests/integration/mcp-bridge.test.js",
     "test:import": "node tests/integration/pptx-import.test.js",
+    "test:slides": "node --no-warnings tests/integration/slides-parser.test.mjs",
     "bench:gen": "node scripts/bench/generate-vault.js",
     "bench:run": "node scripts/bench/run-bench.js",
     "postinstall": "bash scripts/install-desktop.sh"
