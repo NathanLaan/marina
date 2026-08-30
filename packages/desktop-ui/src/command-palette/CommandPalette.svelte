@@ -142,7 +142,7 @@
   aria-modal="true"
   tabindex="-1"
 >
-  <div class="palette" onclick={(e) => e.stopPropagation()}>
+  <div class="palette">
     <div class="palette-input-row">
       <i class="fas fa-magnifying-glass"></i>
       <input
@@ -154,17 +154,23 @@
         use:focusOnMount
       />
     </div>
-    <ul class="palette-list" bind:this={listEl}>
+    <ul class="palette-list" bind:this={listEl} role="listbox" aria-label="Results">
       {#if items.length === 0}
-        <li class="palette-empty">No matching commands.</li>
+        <li class="palette-empty" role="presentation">No matching commands.</li>
       {:else}
         {#each items as it, i (it.id)}
           {#if i > 0 && items[i - 1].kind !== it.kind}
             <li class="palette-divider" aria-hidden="true"></li>
           {/if}
+          <!-- Rows are driven from the input: Arrow/Home/End move the
+               selection and Enter runs it, all handled by onKeydown on the
+               backdrop, so the row itself needs no key handler of its own. -->
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
           <li
             class="palette-row"
             class:selected={i === selectedIndex}
+            role="option"
+            aria-selected={i === selectedIndex}
             onmouseenter={() => (selectedIndex = i)}
             onclick={() => activate(it)}
           >

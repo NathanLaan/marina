@@ -23,7 +23,7 @@
     projectActions = true,
   } = $props();
 
-  let previewContentEl;
+  let previewContentEl = $state(null);
   let contextMenu = $state(null);
 
   const nameToId = $derived.by(() => {

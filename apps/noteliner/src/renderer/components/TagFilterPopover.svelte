@@ -38,8 +38,7 @@
   }
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="tag-filter-popover" bind:this={panel} onkeydown={handleKeydown} role="dialog" aria-label="Filter files by tags">
+<div class="tag-filter-popover" bind:this={panel} onkeydown={handleKeydown} role="dialog" aria-label="Filter files by tags" tabindex="-1">
   <div class="popover-header">Filter by tags</div>
 
   <div class="popover-rows">
