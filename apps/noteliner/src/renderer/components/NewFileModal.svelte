@@ -76,6 +76,15 @@
     return '  '.repeat(p.depth) + p.name;
   }
 
+  // The FILES-panel selection is the common case for "nest this under what I'm
+  // looking at", but it isn't the default parent (root is), so it gets a
+  // one-click shortcut rather than becoming the initial value.
+  let currentFile = $derived(projectState.selectedFile);
+
+  function useCurrentFile() {
+    if (currentFile) selectedParent = currentFile.id;
+  }
+
   onMount(() => {
     if (!showTemplate) return;
     const p = window.api?.listTemplates?.();
@@ -162,12 +171,22 @@
 
       <div class="field">
         <label for="new-file-parent">Parent:</label>
-        <select id="new-file-parent" bind:value={selectedParent}>
-          <option value="">(None)</option>
-          {#each parentOptions as p (p.id)}
-            <option value={p.id}>{parentLabel(p)}</option>
-          {/each}
-        </select>
+        <div class="parent-row">
+          <select id="new-file-parent" bind:value={selectedParent}>
+            <option value="">(None)</option>
+            {#each parentOptions as p (p.id)}
+              <option value={p.id}>{parentLabel(p)}</option>
+            {/each}
+          </select>
+          <button
+            class="current-file-btn"
+            onclick={useCurrentFile}
+            disabled={!currentFile}
+            title={currentFile ? `Set parent to "${currentFile.name}"` : 'No file selected in FILES'}
+          >
+            Current File
+          </button>
+        </div>
       </div>
 
       {#if showTemplate && (visibleTemplates.length > 0 || fileType === 'deck')}
@@ -211,7 +230,7 @@
 <style>
   .new-file-modal {
     max-width: 480px;
-    max-height: 520px;
+    max-height: 572px;
     height: auto;
     margin: auto;
     width: 100%;
@@ -250,6 +269,42 @@
   .field select option {
     background: var(--bg-surface);
     color: var(--text-primary);
+  }
+
+  .parent-row {
+    display: flex;
+    gap: 6px;
+  }
+
+  /* min-width:0 lets the select shrink below its longest option label, which is
+     what keeps a deeply-indented parent name from pushing the button off-row. */
+  .parent-row select {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+
+  .current-file-btn {
+    flex-shrink: 0;
+    padding: 8px 12px;
+    font-size: 13px;
+    white-space: nowrap;
+    color: var(--text-secondary);
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+  }
+
+  .current-file-btn:hover:not(:disabled) {
+    color: var(--text-primary);
+    background: var(--bg-button-hover);
+  }
+
+  .current-file-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
   }
 
   /* Segmented control rather than a <select>: with two options, showing both

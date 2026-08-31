@@ -34,6 +34,7 @@
     "test:mcp": "node tests/integration/mcp-bridge.test.js",
     "test:import": "node tests/integration/pptx-import.test.js",
     "test:slides": "node --no-warnings tests/integration/slides-parser.test.mjs",
+    "test:lists": "node --no-warnings tests/integration/list-edits.test.mjs",
     "bench:gen": "node scripts/bench/generate-vault.js",
     "bench:run": "node scripts/bench/run-bench.js",
     "postinstall": "bash scripts/install-desktop.sh"

@@ -13,6 +13,9 @@
   import { openSearchPanel } from '@codemirror/search';
   import { autocompletion } from '@codemirror/autocomplete';
   import ContextMenu from './ContextMenu.svelte';
+  import {
+    toOrderedList, toUnorderedList, indentAsSubList, classifySpan,
+  } from '../lib/listEdits.js';
 
   const lightTheme = EditorView.theme({
     '&': { backgroundColor: '#ffffff', color: '#1a1a1a' },
@@ -143,6 +146,105 @@
     };
   }
 
+  // Line-oriented list commands. A pure lib/listEdits function rewrites the
+  // lines the selection touches (or, with a bare caret, just the caret's line),
+  // and the whole span goes back as ONE change — so the action is a single undo
+  // step, and the transformed lines end up selected, ready for the other list
+  // button to act on the same block.
+  function applyListEdit(fn) {
+    return (view) => {
+      const { state } = view;
+      const sel = state.selection.main;
+      const doc = state.doc;
+      const fromLine = doc.lineAt(sel.from).number;
+      const toLine = doc.lineAt(sel.to).number;
+      const lines = doc.toString().split('\n');
+
+      const edit = fn(lines, fromLine, toLine);
+      if (!edit.changed) return false;
+
+      const from = doc.line(fromLine).from;
+      const to = doc.line(toLine).to;
+      const insert = edit.lines.join('\n');
+
+      // With a caret rather than a selection, shift it by however much the
+      // marker grew or shrank so it stays on the same character instead of
+      // snapping to column 0.
+      let selection;
+      if (sel.empty) {
+        const col = sel.head - from;
+        const delta = edit.lines[0].length - lines[fromLine - 1].length;
+        selection = EditorSelection.cursor(
+          from + Math.max(0, Math.min(col + delta, edit.lines[0].length))
+        );
+      } else {
+        selection = EditorSelection.range(from, from + insert.length);
+      }
+
+      view.dispatch({
+        changes: { from, to, insert },
+        selection,
+        scrollIntoView: true,
+        userEvent: 'input.format.list',
+      });
+      return true;
+    };
+  }
+
+  const orderedListCommand = applyListEdit(toOrderedList);
+  const unorderedListCommand = applyListEdit(toUnorderedList);
+
+  // Indent is a single-line action even with a selection active — it nests the
+  // line holding the caret, not the whole span.
+  function indentSubListCommand(view) {
+    const { state } = view;
+    const doc = state.doc;
+    const sel = state.selection.main;
+    const line = doc.lineAt(sel.head);
+
+    const edit = indentAsSubList(doc.toString().split('\n'), line.number);
+    if (!edit.changed) return false;
+
+    const insert = edit.lines[0];
+    const col = sel.head - line.from;
+    const delta = insert.length - line.text.length;
+
+    view.dispatch({
+      changes: { from: line.from, to: line.to, insert },
+      selection: EditorSelection.cursor(
+        line.from + Math.max(0, Math.min(col + delta, insert.length))
+      ),
+      scrollIntoView: true,
+      userEvent: 'input.format.list',
+    });
+    return true;
+  }
+
+  function runListCommand(command) {
+    if (!editorView) return;
+    editorView.focus();
+    command(editorView);
+  }
+
+  const handleOrderedList = () => runListCommand(orderedListCommand);
+  const handleUnorderedList = () => runListCommand(unorderedListCommand);
+  const handleIndentSubList = () => runListCommand(indentSubListCommand);
+
+  // Keeps a toolbar click from blurring the editor, so the selection stays
+  // highlighted while the command runs.
+  function keepEditorFocus(e) {
+    e.preventDefault();
+  }
+
+  // The lines the list buttons would act on: the selection when there is one,
+  // otherwise the caret's line. Drives the buttons' active state.
+  const listKind = $derived.by(() => {
+    const range = projectState.selectionRange;
+    const fromLine = range ? range.fromLine : (projectState.cursorLine || 1);
+    const toLine = range ? range.toLine : fromLine;
+    return classifySpan((projectState.editorContent || '').split('\n'), fromLine, toLine);
+  });
+
   function createEditor() {
     if (editorView) {
       editorView.destroy();
@@ -175,14 +277,31 @@
           keydown(event, view) {
             // Use event.code (physical key) so the shortcut survives layouts
             // where Alt+key produces a different character (notably macOS).
-            if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return false;
-            let insert;
-            if (event.code === 'Period') insert = '→';
-            else if (event.code === 'Comma') insert = '←';
-            else return false;
-            event.preventDefault();
-            view.dispatch(view.state.replaceSelection(insert));
-            return true;
+            if (event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+              let insert;
+              if (event.code === 'Period') insert = '→';
+              else if (event.code === 'Comma') insert = '←';
+              else return false;
+              event.preventDefault();
+              view.dispatch(view.state.replaceSelection(insert));
+              return true;
+            }
+
+            // Ctrl/Cmd+Shift+7 / +8 for the list commands. Matched on code for
+            // the same reason: Shift+7 is "&" on a US layout and something else
+            // again elsewhere, so a keymap binding on the character would only
+            // work for some users.
+            if ((event.ctrlKey || event.metaKey) && event.shiftKey && !event.altKey) {
+              let command;
+              if (event.code === 'Digit7') command = orderedListCommand;
+              else if (event.code === 'Digit8') command = unorderedListCommand;
+              else return false;
+              event.preventDefault();
+              command(view);
+              return true;
+            }
+
+            return false;
           }
         }),
         EditorView.updateListener.of((update) => {
@@ -417,6 +536,10 @@
         { label: 'Copy', icon: 'fa-copy', shortcut: 'Ctrl+C', action: handleCopy },
         { label: 'Paste', icon: 'fa-paste', shortcut: 'Ctrl+V', action: handlePasteFromClipboard },
         { separator: true },
+        // Unconditional: with no selection these act on the caret's line.
+        { label: 'Ordered List', icon: 'fa-list-ol', shortcut: 'Ctrl+Shift+7', action: handleOrderedList },
+        { label: 'Unordered List', icon: 'fa-list-ul', shortcut: 'Ctrl+Shift+8', action: handleUnorderedList },
+        { separator: true },
         { label: 'Save to HTML', icon: 'fa-file-code', action: onSaveToHtml },
         { label: 'Save to PDF', icon: 'fa-file-pdf', action: onSaveToPdf },
         { label: 'Save to Markdown', icon: 'fa-file-lines', action: onSaveToMarkdown },
@@ -513,6 +636,36 @@
     <div class="editor-actions">
       <button
         class="editor-btn"
+        class:active={listKind === 'ordered'}
+        onmousedown={keepEditorFocus}
+        onclick={handleOrderedList}
+        title="Ordered List (Ctrl+Shift+7)"
+        aria-label="Ordered List"
+      >
+        <i class="fas fa-list-ol"></i>
+      </button>
+      <button
+        class="editor-btn"
+        class:active={listKind === 'unordered'}
+        onmousedown={keepEditorFocus}
+        onclick={handleUnorderedList}
+        title="Unordered List (Ctrl+Shift+8)"
+        aria-label="Unordered List"
+      >
+        <i class="fas fa-list-ul"></i>
+      </button>
+      <button
+        class="editor-btn"
+        onmousedown={keepEditorFocus}
+        onclick={handleIndentSubList}
+        title="Indent as Sub-list"
+        aria-label="Indent as Sub-list"
+      >
+        <i class="fas fa-indent"></i>
+      </button>
+      <span class="editor-divider"></span>
+      <button
+        class="editor-btn"
         class:active={showHistory}
         onclick={onToggleHistory}
         title="Toggle History (Ctrl+H)"
@@ -600,6 +753,14 @@
 
   .editor-btn.active {
     color: var(--accent);
+  }
+
+  .editor-divider {
+    width: 1px;
+    height: 18px;
+    background: var(--border);
+    margin: 0 2px;
+    flex-shrink: 0;
   }
 
   .editor-container {
