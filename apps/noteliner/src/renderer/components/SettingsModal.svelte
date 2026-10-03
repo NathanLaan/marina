@@ -130,8 +130,8 @@
     ? JSON.stringify({
         mcpServers: {
           noteliner: {
-            command: 'node',
-            args: [mcpStatus.bridgePath],
+            command: mcpStatus.bridgeCommand ?? 'node',
+            args: mcpStatus.bridgeArgs ?? [mcpStatus.bridgePath],
           },
         },
       }, null, 2)
@@ -364,6 +364,8 @@
 {#if showMcpWalkthrough}
   <McpWalkthroughModal
     bridgePath={mcpStatus?.bridgePath || ''}
+    bridgeCommand={mcpStatus?.bridgeCommand ?? 'node'}
+    bridgeArgs={mcpStatus?.bridgeArgs ?? null}
     onEnable={handleWalkthroughEnable}
     onCancel={handleWalkthroughCancel}
   />

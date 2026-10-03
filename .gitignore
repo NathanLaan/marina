@@ -5,3 +5,7 @@ release/
 out/
 *.log
 .DS_Store
+
+# Rust / Tauri
+target/
+apps/*/src-tauri/gen/

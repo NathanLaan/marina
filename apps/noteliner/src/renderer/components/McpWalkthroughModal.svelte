@@ -4,19 +4,20 @@
   // here; Cancel leaves MCP disabled. Re-runs on every re-enable so the
   // architecture and config snippet are always in view before exposure.
 
-  let { bridgePath, onEnable, onCancel } = $props();
+  let { bridgePath, bridgeCommand = 'node', bridgeArgs = null, onEnable, onCancel } = $props();
   let copied = $state(false);
 
   // The snippet mirrors what Settings → MCP shows once the server is live,
   // so users see the same JSON before and after enabling. Bridge path is
   // resolved by main and shipped via getMcpStatus, so it's always correct
-  // for the current install (dev vs packaged).
+  // for the current install (dev vs packaged). The native build is its own
+  // bridge (`noteliner --mcp-bridge`) and supplies bridgeCommand/bridgeArgs.
   let snippet = $derived(bridgePath
     ? JSON.stringify({
         mcpServers: {
           noteliner: {
-            command: 'node',
-            args: [bridgePath],
+            command: bridgeCommand,
+            args: bridgeArgs ?? [bridgePath],
           },
         },
       }, null, 2)

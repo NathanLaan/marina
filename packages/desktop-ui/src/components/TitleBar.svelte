@@ -36,10 +36,19 @@
     if (e.target.closest('button')) return;
     window.api?.windowMaximize();
   }
+
+  // Electron honours `-webkit-app-region: drag` below; under Tauri the
+  // window is moved explicitly. Single primary-button presses only, so the
+  // double-click handler above still toggles max/restore.
+  function onTitlebarMouseDown(e) {
+    if (!window.__TAURI_INTERNALS__ || e.button !== 0 || e.detail > 1) return;
+    if (e.target.closest('button, select, input, a')) return;
+    window.api?.windowStartDragging?.();
+  }
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
-<div class="titlebar" ondblclick={onTitlebarDblClick}>
+<div class="titlebar" ondblclick={onTitlebarDblClick} onmousedown={onTitlebarMouseDown}>
   <button
     class="titlebar-btn toolbar-toggle"
     class:active={toolbarVisible}

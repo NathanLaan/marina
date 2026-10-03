@@ -1,6 +1,8 @@
 # Native Linux Apps — Migration Plan
 
-Status: **proposal (2026-10-02).** No stack selected. Nothing implemented.
+Status: **Option A implemented (2026-10-03); Option B next.** Decision
+recorded 2026-10-02: do A + B, completing all of A first. See
+[Option A — implementation record](#option-a--implementation-record).
 
 Converts NoteLiner, ThreadLiner and PageLiner from Electron + Svelte into
 native Linux applications. Lays out the stack options, a recommendation, and
@@ -233,3 +235,75 @@ against the same synced git repo and confirm the data round-trips unchanged.
 - Which of the 6 themes survive under libadwaita (Options B/C)?
 - Is MCP client-config compatibility (socket path, bridge script) a hard
   requirement?
+
+## Option A — implementation record
+
+Completed 2026-10-03. All three apps run on Tauri 2 with Rust backends; the
+Electron builds are untouched and still pass their suites (NoteLiner: 26
+Playwright e2e specs, plus the import/slides/lists/MCP integration tests).
+
+### Architecture
+
+- **The renderer and preload don't fork.** Each app's `preload.js` is bundled
+  against `@marina/desktop-ui/tauri-shim` (an `electron` stand-in) and
+  injected as a webview init script. `ipcRenderer.invoke(channel, …)` lands
+  in one Rust `ipc` command that routes by the same channel name, so the
+  Electron IPC surface *is* the contract and nothing in the Svelte code
+  knows which shell it runs in.
+- **Backends are UI-independent crates**, ready for Option B:
+  `marina-core` (git, JSON, paths, debounce), `noteliner-core`,
+  `threadliner-core`, `pageliner-core`. Only `marina-tauri` and the
+  `apps/*/src-tauri` crates depend on Tauri.
+- **Data compatibility** with the Electron builds is exact: same
+  `~/.config/<App>` folders, `JSON.stringify(…, null, 2)` output, and key
+  order. Checked with differential tests against the JS code:
+  - js-yaml 3 dump/load (gray-matter frontmatter): 3,000 fuzzed cases,
+    0 mismatches.
+  - rss-parser entry fields (guid, title, link, content, author, date): 286
+    entries from 15 real feeds, 0 mismatches. GUIDs drive de-duplication,
+    so a mismatch would resurface old entries as unread.
+  - PPTX import: byte-identical Markdown.
+  - DOCX import: matches mammoth except where noted below.
+
+  The differential harnesses are kept as `#[ignore]` tests
+  (`yaml_diff`, `dump_for_diff`, `import_diff`).
+
+### Electron-only features and their replacements
+
+| Electron | Tauri build |
+|---|---|
+| `printToPDF` | WebKitGTK `PrintOperation` to the GTK file printer (Letter, 0.5 in margins) |
+| Chromium session spell checker | WebKitGTK `WebContext` spell checking, system locale |
+| `protocol.handle('attachment')` | Tauri async URI scheme; URLs are now `attachment://localhost/<file>` (Tauri rejects an empty host; Electron accepts both) |
+| `bin/noteliner-mcp-bridge.js` (needs Node) | `noteliner --mcp-bridge` (same runtime file and socket protocol) |
+| `electron-updater` | Checks GitHub Releases and opens the release page; system packages update through the package manager |
+| `render-process-gone` → reload | WebKit `web-process-terminated` → reload |
+| `-webkit-app-region: drag` | `TitleBar` calls `window.api.windowStartDragging()` under Tauri |
+| Wayland/Vulkan and suspend/resume workarounds | Not needed (Chromium-specific) |
+
+### Findings
+
+- **Bug in the Electron DOCX import.** `import-service.js` passes
+  `transformDocument` and `convertImage` inside mammoth's *input* object
+  instead of its options, so mammoth ignores both. Tables are not stripped
+  (cells come out as loose paragraphs) and images are inlined as base64
+  `data:` URIs rather than saved as attachments. The Rust importer
+  implements the intended behaviour. The JS fix is a one-line move of those
+  two keys into the second argument of `convertToMarkdown`.
+- Quote-styled DOCX paragraphs render as `> ` blockquotes (mammoth glued
+  their text onto the next block).
+- Debian package names come from `productName` (`note-liner`, etc.), and
+  the Electron `.deb` installs the same `/usr/bin` launcher, so remove one
+  before installing the other.
+
+### Not done in A (moved to B / Phase 5)
+
+- **Flatpak.** Tauri needs offline cargo and npm vendoring inside
+  flatpak-builder. Deferred to the GTK build, where Flathub is the main
+  channel. `.deb`, `.rpm` and AppImage are built by `tauri build` and the
+  CI job.
+- **A native test runner for the UI.** The Rust crates are unit-tested
+  (39 tests). UI flows were checked with the debug-only
+  `MARINA_SMOKE_SCRIPT` hook, which runs a script in the main window and
+  reports through the `debug:log` channel.
+

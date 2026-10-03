@@ -1,11 +1,15 @@
 # Marina
 
-Monorepo for desktop apps that share UI and Electron infrastructure.
+Monorepo for desktop apps that share UI and desktop-shell infrastructure.
+Each app ships two ways from the same Svelte renderer: the original
+Electron build, and a native Linux build on Tauri with a Rust backend
+(see [Native Linux builds](#native-linux-builds-tauri)).
 
 ## Apps
 
 - `apps/noteliner/`   — outliner-style note-taking
 - `apps/threadliner/` — RSS reader with git sync
+- `apps/pageliner/`   — EPUB/PDF e-reader and document library
 
 ### NoteLiner
 
@@ -17,9 +21,19 @@ NoteLiner should be considered BETA software. I wrote it for my own personal use
 
 A desktop RSS reader built with Electron, Svelte, and Git-synced JSON. Supports RSS 2.0, Atom, and JSON Feed formats.
 
+### PageLiner
+
+An e-reader and document library for EPUB and PDF, with bookmarks, highlights, reading-position persistence, and optional Git sync of the library index and reading state.
+
 ## Packages
 
-- `packages/desktop-ui/` — shared UI components, theme system, Electron host helpers.
+- `packages/desktop-ui/` — shared UI components, theme system, Electron host helpers, and the Tauri IPC shim.
+
+## Rust crates
+
+- `crates/marina-core/` — framework-independent backend shared by all apps: git sync, JSON stores, XDG paths, debouncing.
+- `crates/marina-tauri/` — the Tauri host shared by all apps: the Electron-compatible IPC bridge, window chrome, UI prefs, dialogs, update check.
+- `crates/noteliner-core/`, `crates/threadliner-core/`, `crates/pageliner-core/` — each app's backend (ported from its `src/main/*.js`), independent of the UI shell so the planned GTK build can reuse it.
 
 ## Prerequisites
 
@@ -78,6 +92,64 @@ npm run start -w noteliner
 npm run start -w threadliner
 ```
 
+## Native Linux builds (Tauri)
+
+Each app has a `src-tauri/` crate that replaces the Electron main process
+with Rust. The renderer and even `src/main/preload.js` are shared: at build
+time the preload is bundled against `@marina/desktop-ui/tauri-shim`, which
+stands in for the `electron` module, so `window.api` is identical in both
+builds and every `ipcRenderer.invoke(channel, …)` reaches a Rust handler
+with the same channel name.
+
+Settings and data live in the same places as the Electron build
+(`~/.config/<App>/…`, the same project/library/data folders, byte-identical
+JSON and frontmatter), so you can switch between the two builds freely.
+
+### Additional prerequisites
+
+- Rust 1.85+ (`rustup`)
+- Tauri's system libraries:
+
+  ```bash
+  sudo apt install build-essential pkg-config libwebkit2gtk-4.1-dev libssl-dev \
+    libayatana-appindicator3-dev librsvg2-dev libxdo-dev patchelf
+  ```
+
+- `git` at runtime, as with the Electron build.
+
+### Develop
+
+```bash
+npm run tauri:noteliner      # Vite on 5250 + the Tauri window, with HMR
+npm run tauri:threadliner    # 5251
+npm run tauri:pageliner      # 5253
+```
+
+### Test
+
+```bash
+cargo test --workspace
+cargo clippy --workspace --all-targets
+```
+
+### Package
+
+```bash
+npm run tauri:build -w noteliner    # → target/release/bundle/{deb,rpm,appimage}/
+npm run tauri:build -w threadliner
+npm run tauri:build -w pageliner
+```
+
+Packages are 5–7 MB (vs. 100 MB+ for Electron) and depend on the system WebKitGTK. If the
+Electron `.deb` of the same app is installed, remove it first; both
+install a `/usr/bin/<app>` launcher.
+
+### NoteLiner's MCP server
+
+In the Tauri build the `noteliner` binary is its own MCP bridge: point MCP
+clients at `noteliner --mcp-bridge` (Settings → MCP shows the exact
+snippet). No Node.js runtime is required.
+
 ## App icons
 
 Each app's icon originates from a master SVG inside the app:
@@ -93,6 +165,12 @@ The pipeline from SVG to packaged app is:
    pads that PNG into a square `apps/<app>/build/icon.png`.
 3. `electron-builder` reads `build/icon.png` and derives the platform
    icons (`.icns`, `.ico`, multi-size PNG sets) at package time.
+
+The Tauri builds use pre-generated sizes in `apps/<app>/src-tauri/icons/`;
+regenerate them after changing `assets/icon.png` with
+`npx tauri icon assets/icon.png -o src-tauri/icons` from the app folder
+(then delete the `android/`, `ios/`, `Square*`, `StoreLogo` and `@2x`
+outputs, which the Linux bundles don't use).
 
 After editing either source SVG, regenerate the per-app PNGs:
 

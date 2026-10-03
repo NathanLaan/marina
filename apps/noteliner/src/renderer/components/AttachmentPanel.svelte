@@ -1,6 +1,7 @@
 <script>
   import { projectState } from '../stores/project.svelte.js';
   import { logState } from '../stores/log.svelte.js';
+  import { attachmentUrl } from '../lib/attachments.js';
 
   let { onClose } = $props();
 
@@ -39,7 +40,7 @@
   }
 
   function getThumbnailUrl(attachment) {
-    return `attachment:///${encodeURIComponent(attachment.filename)}`;
+    return attachmentUrl(attachment.filename);
   }
 
   async function handleAddFiles() {
