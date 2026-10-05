@@ -38,6 +38,9 @@ function exposeWindowApi(ipcRenderer) {
     windowMaximize:    () => ipcRenderer.invoke('window:maximize'),
     windowClose:       () => ipcRenderer.invoke('window:close'),
     windowIsMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+    // Tauri only: Electron drags via `-webkit-app-region`, which WebKitGTK
+    // ignores, so TitleBar starts the move explicitly there.
+    windowStartDragging: () => ipcRenderer.invoke('window:startDragging'),
     onWindowMaximizedChange: (cb) => {
       const handler = (_e, v) => cb(v);
       ipcRenderer.on('window:maximized-change', handler);

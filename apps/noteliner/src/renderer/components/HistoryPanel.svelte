@@ -1,6 +1,7 @@
 <script>
   import { projectState } from '../stores/project.svelte.js';
   import { marked } from 'marked';
+  import { resolveAttachmentUrls } from '../lib/attachments.js';
 
   let { onClose = () => {} } = $props();
 
@@ -9,14 +10,6 @@
   let historicalContent = $state(null);
   let loading = $state(false);
   let commitListHeight = $state(200);
-
-  function resolveAttachmentUrls(rawHtml) {
-    return rawHtml.replace(
-      /(?:src|href)="\.?\/?_attachments\/([^"]+)"/g,
-      (match, filename) => match.replace(`./_attachments/${filename}`, `attachment:///${encodeURIComponent(filename)}`)
-        .replace(`_attachments/${filename}`, `attachment:///${encodeURIComponent(filename)}`)
-    );
-  }
 
   function formatDate(dateStr) {
     try {

@@ -1,7 +1,7 @@
 # @marina/desktop-ui
 
-Shared UI components, theme system, and Electron host helpers for the Marina
-desktop apps (NoteLiner, ThreadLiner).
+Shared UI components, theme system, Electron host helpers, and the Tauri IPC
+shim for the Marina desktop apps (NoteLiner, ThreadLiner, PageLiner).
 
 This package is workspace-private — it's not published to npm. Consumers
 inside the Marina monorepo depend on it via `"@marina/desktop-ui": "*"`.
@@ -34,6 +34,7 @@ for production code.
 | `@marina/desktop-ui/electron-host` | `registerWindowHandlers`, `registerUIPrefsHandlers`, `registerRelaunchHandler`, `applyFrameFromPrefs` — used from your app's `main.js` |
 | `@marina/desktop-ui/secondary-window` | `createSecondaryWindow`, `getSecondaryWindow`, `closeSecondaryWindow` — singleton non-modal BrowserWindow helper for help/preferences/scratchpad windows |
 | `@marina/desktop-ui/preload` | `exposeWindowApi`, `exposeUIPrefsApi` — used from your app's `preload.js` |
+| `@marina/desktop-ui/tauri-shim` | `ipcRenderer`, `contextBridge`, `webUtils` — an `electron` module stand-in for the Tauri builds (see below) |
 
 Anything not listed in the `exports` map of `package.json` is **internal**
 and may change without notice (utility files, individual `.svelte`
@@ -179,6 +180,24 @@ the `scripts/dev.js` pattern in this monorepo, register a custom
 `app:relaunch` handler that creates a new `BrowserWindow` (which re-reads
 prefs through `uiPrefsApi.read()`) and closes the old one. Both consumer
 apps and the playground do this.
+
+### Running the same preload under Tauri
+
+The Tauri builds don't rewrite the preload. `scripts/bundle-tauri-preload.mjs`
+(called from each app's `src-tauri/build.rs`) bundles `src/main/preload.js`
+with `electron` aliased to `src/tauri-shim/electron.js`, and the Rust host
+injects the result as a webview initialization script. The shim maps:
+
+- `ipcRenderer.invoke(channel, ...args)` → the app's single `ipc` Tauri
+  command, routed in Rust by the same channel name
+  (`crates/marina-tauri`);
+- `ipcRenderer.on(channel, …)` → a Tauri event of the same name;
+- binary arguments/results ↔ `{ __marinaBytes: <base64> }` markers, or a raw
+  `ArrayBuffer` reply surfaced as a `Uint8Array` (like an Electron
+  `Buffer`).
+
+`TitleBar` moves the window explicitly under Tauri (WebKitGTK ignores
+`-webkit-app-region`) via `window.api.windowStartDragging()`.
 
 ## API stability promise
 

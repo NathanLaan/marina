@@ -1,6 +1,6 @@
 {
   "name": "marina",
-  "version": "1.0.1",
+  "version": "2.0.1",
   "private": true,
   "workspaces": ["packages/*", "packages/desktop-ui/examples/*", "apps/*"],
   "scripts": {
@@ -9,8 +9,11 @@
     "dev:threadliner":      "npm run dev -w threadliner",
     "dev:pageliner":        "npm run dev -w pageliner",
     "electron:noteliner":   "npm run electron:dev -w noteliner",
+    "tauri:noteliner":      "npm run tauri:dev -w noteliner",
     "electron:threadliner": "npm run electron:dev -w threadliner",
+    "tauri:threadliner":    "npm run tauri:dev -w threadliner",
     "electron:pageliner":   "npm run electron:dev -w pageliner",
+    "tauri:pageliner":      "npm run tauri:dev -w pageliner",
     "playground":           "npm run electron:dev -w @marina/desktop-ui-playground",
     "build:noteliner":      "npm run build -w noteliner",
     "build:threadliner":    "npm run build -w threadliner",
@@ -26,7 +29,8 @@
     "electron": "41.10.7",
     "esbuild": "^0.28.2",
     "svelte": "^5.0.0",
-    "vite": "^6.0.0"
+    "vite": "^6.0.0",
+    "@tauri-apps/cli": "^2.12.1"
   },
   "overrides": {
     "@xmldom/xmldom": "^0.8.15"
