@@ -1,6 +1,6 @@
 [package]
 name = "pageliner"
-version = "0.1.0"
+version = "2.0.1"
 description = "PageLiner — e-reader and document library (Tauri build)"
 edition.workspace = true
 license.workspace = true

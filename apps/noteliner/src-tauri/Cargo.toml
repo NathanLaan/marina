@@ -1,6 +1,6 @@
 [package]
 name = "noteliner"
-version = "1.0.1"
+version = "2.0.1"
 description = "NoteLiner — outliner-style Markdown notes with git sync (Tauri build)"
 edition.workspace = true
 license.workspace = true

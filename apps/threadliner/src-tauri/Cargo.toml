@@ -1,6 +1,6 @@
 [package]
 name = "threadliner"
-version = "1.0.1"
+version = "2.0.1"
 description = "ThreadLiner — RSS reader (Tauri build)"
 edition.workspace = true
 license.workspace = true
